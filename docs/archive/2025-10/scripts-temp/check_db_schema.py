@@ -3,14 +3,16 @@
 """
 Check database schema for auth_allowlist table
 """
+
 import sqlite3
 import sys
 import io
 from pathlib import Path
 
 # Fix Windows console encoding
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
 
 def check_schema(db_path: str = "./data/emergence.db"):
     """Check and display schema of auth_allowlist table"""
@@ -48,12 +50,16 @@ def check_schema(db_path: str = "./data/emergence.db"):
 
         for col in columns:
             cid, name, type_, notnull, default, pk = col
-            print(f"{name:<30} {type_:<15} {'YES' if notnull else 'NO':<10} {str(default) if default else '':<15}")
+            print(
+                f"{name:<30} {type_:<15} {'YES' if notnull else 'NO':<10} {str(default) if default else '':<15}"
+            )
 
-        print("\n" + "="* 80)
+        print("\n" + "=" * 80)
 
         # Check if password_must_reset exists
-        has_password_must_reset = any(col[1] == 'password_must_reset' for col in columns)
+        has_password_must_reset = any(
+            col[1] == "password_must_reset" for col in columns
+        )
 
         if has_password_must_reset:
             print("✅ Column 'password_must_reset' EXISTS")
@@ -72,7 +78,9 @@ def check_schema(db_path: str = "./data/emergence.db"):
             print(" | ".join(col_names))
             print("-" * 80)
             for row in rows:
-                print(" | ".join(str(val) if val is not None else "NULL" for val in row))
+                print(
+                    " | ".join(str(val) if val is not None else "NULL" for val in row)
+                )
         else:
             print("(No data)")
 

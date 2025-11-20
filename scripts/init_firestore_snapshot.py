@@ -4,10 +4,12 @@ Initialize Firestore allowlist snapshot document.
 This script creates the initial Firestore document for the allowlist snapshot
 with the current admin email from the environment.
 """
+
 import os
 import asyncio
 from datetime import datetime, timezone
 from google.cloud import firestore  # type: ignore
+
 
 async def init_firestore_snapshot():
     """Initialize the Firestore allowlist snapshot."""
@@ -16,7 +18,7 @@ async def init_firestore_snapshot():
     document = os.getenv("AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT", "allowlist")
     admin_email = os.getenv("AUTH_ADMIN_EMAILS", "gonzalefernando@gmail.com")
 
-    print(f"Initializing Firestore snapshot:")
+    print("Initializing Firestore snapshot:")
     print(f"  Project: {project_id}")
     print(f"  Collection: {collection}")
     print(f"  Document: {document}")
@@ -62,6 +64,7 @@ async def init_firestore_snapshot():
 
     # Close client
     await client.close()
+
 
 if __name__ == "__main__":
     asyncio.run(init_firestore_snapshot())

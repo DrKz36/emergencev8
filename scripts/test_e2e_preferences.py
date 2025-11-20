@@ -34,9 +34,9 @@ class E2ETestPreferences:
 
     async def test_websocket_connection(self):
         """Test connexion WebSocket"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🔌 TEST: Connexion WebSocket")
-        print("="*60)
+        print("=" * 60)
 
         try:
             async with websockets.connect(self.ws_url) as websocket:
@@ -63,26 +63,26 @@ class E2ETestPreferences:
 
     async def send_preference_messages(self, websocket):
         """Envoie messages avec préférences"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("📤 TEST: Envoi messages avec préférences")
-        print("="*60)
+        print("=" * 60)
 
         messages = [
             {
                 "text": "Je préfère utiliser Python avec FastAPI pour mes APIs backend",
                 "agent_id": "anima",
-                "expected_type": "preference"
+                "expected_type": "preference",
             },
             {
                 "text": "J'aime beaucoup TypeScript et React pour le développement frontend",
                 "agent_id": "nexus",
-                "expected_type": "preference"
+                "expected_type": "preference",
             },
             {
                 "text": "J'évite toujours les bases de données NoSQL pour les données financières",
                 "agent_id": "anima",
-                "expected_type": "constraint"
-            }
+                "expected_type": "constraint",
+            },
         ]
 
         for i, msg_data in enumerate(messages, 1):
@@ -96,8 +96,8 @@ class E2ETestPreferences:
                 "payload": {
                     "text": msg_data["text"],
                     "agent_id": msg_data["agent_id"],
-                    "use_rag": False
-                }
+                    "use_rag": False,
+                },
             }
 
             try:
@@ -114,12 +114,15 @@ class E2ETestPreferences:
                     try:
                         response = await asyncio.wait_for(
                             websocket.recv(),
-                            timeout=max(0.1, timeout - (time.time() - start))
+                            timeout=max(0.1, timeout - (time.time() - start)),
                         )
                         response_data = json.loads(response)
 
                         # Chercher réponse agent (ws:agent_response ou similaire)
-                        if response_data.get("type") in ["ws:agent_response", "ws:message"]:
+                        if response_data.get("type") in [
+                            "ws:agent_response",
+                            "ws:message",
+                        ]:
                             print("   ✅ Réponse agent reçue")
                             response_received = True
                             break
@@ -148,9 +151,9 @@ class E2ETestPreferences:
 
     async def close_session_and_wait(self, websocket):
         """Ferme WebSocket et attend finalisation"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🔒 TEST: Fermeture session (déclenche finalisation)")
-        print("="*60)
+        print("=" * 60)
 
         try:
             await websocket.close()
@@ -169,18 +172,19 @@ class E2ETestPreferences:
 
     def validate_chromadb(self):
         """Valide que préférences sont dans ChromaDB"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🔍 TEST: Validation ChromaDB")
-        print("="*60)
+        print("=" * 60)
 
         try:
             import chromadb
             from chromadb.config import Settings
 
-            client = chromadb.Client(Settings(
-                chroma_db_impl="duckdb+parquet",
-                persist_directory="./chroma_data"
-            ))
+            client = chromadb.Client(
+                Settings(
+                    chroma_db_impl="duckdb+parquet", persist_directory="./chroma_data"
+                )
+            )
 
             collection = client.get_collection("memory_preferences")
             count = collection.count()
@@ -188,14 +192,20 @@ class E2ETestPreferences:
             print(f"📊 Total préférences dans ChromaDB: {count}")
 
             if count >= self.preferences_sent:
-                print(f"✅ Au moins {self.preferences_sent} préférences trouvées (attendu: {self.preferences_sent})")
+                print(
+                    f"✅ Au moins {self.preferences_sent} préférences trouvées (attendu: {self.preferences_sent})"
+                )
 
                 # Afficher quelques préférences
                 results = collection.get(limit=5, include=["metadatas", "documents"])
 
-                for i, (doc, meta) in enumerate(zip(results["documents"], results["metadatas"]), 1):
+                for i, (doc, meta) in enumerate(
+                    zip(results["documents"], results["metadatas"]), 1
+                ):
                     print(f"\n   🔹 Préférence {i}:")
-                    print(f"      User: {meta.get('user_sub') or meta.get('user_id', 'N/A')}")
+                    print(
+                        f"      User: {meta.get('user_sub') or meta.get('user_id', 'N/A')}"
+                    )
                     print(f"      Type: {meta.get('type', 'N/A')}")
                     print(f"      Topic: {meta.get('topic', 'N/A')}")
                     print(f"      Confidence: {meta.get('confidence', 'N/A')}")
@@ -204,35 +214,42 @@ class E2ETestPreferences:
                 return True
 
             elif count > 0:
-                print(f"⚠️  {count} préférences trouvées (attendu: ≥{self.preferences_sent})")
+                print(
+                    f"⚠️  {count} préférences trouvées (attendu: ≥{self.preferences_sent})"
+                )
                 print("   Possible que certaines aient été filtrées (confidence < 0.6)")
                 return True
 
             else:
-                print(f"❌ Aucune préférence dans ChromaDB (attendu: ≥{self.preferences_sent})")
+                print(
+                    f"❌ Aucune préférence dans ChromaDB (attendu: ≥{self.preferences_sent})"
+                )
                 print("\n💡 Causes possibles:")
                 print("   - Extraction a échoué (vérifier logs backend)")
-                print("   - Préférences pas encore persistées (attendre plus longtemps)")
+                print(
+                    "   - Préférences pas encore persistées (attendre plus longtemps)"
+                )
                 print("   - Bug Hotfix P1.3 non corrigé")
                 return False
 
         except Exception as e:
             print(f"❌ Erreur validation ChromaDB: {e}")
             import traceback
+
             traceback.print_exc()
             return False
 
     async def run_full_test(self):
         """Exécute test E2E complet"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("🧪 TEST END-TO-END HOTFIX P1.3 - EXTRACTION PRÉFÉRENCES")
-        print("="*70)
+        print("=" * 70)
 
         results = {
             "connection": False,
             "messages_sent": False,
             "session_closed": False,
-            "chromadb_validated": False
+            "chromadb_validated": False,
         }
 
         # Étape 1 : Connexion
@@ -259,6 +276,7 @@ class E2ETestPreferences:
         except Exception as e:
             print(f"\n❌ ERREUR: {e}")
             import traceback
+
             traceback.print_exc()
 
         finally:
@@ -277,36 +295,50 @@ class E2ETestPreferences:
 
     def print_summary(self, results):
         """Affiche résumé des tests"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("📊 RÉSUMÉ TESTS E2E")
-        print("="*70)
+        print("=" * 70)
 
-        print(f"\n✅ Connexion WebSocket:     {'✅ PASS' if results['connection'] else '❌ FAIL'}")
-        print(f"✅ Messages envoyés:         {'✅ PASS' if results['messages_sent'] else '❌ FAIL'}")
-        print(f"✅ Session fermée:           {'✅ PASS' if results['session_closed'] else '❌ FAIL'}")
-        print(f"✅ ChromaDB validé:          {'✅ PASS' if results['chromadb_validated'] else '❌ FAIL'}")
+        print(
+            f"\n✅ Connexion WebSocket:     {'✅ PASS' if results['connection'] else '❌ FAIL'}"
+        )
+        print(
+            f"✅ Messages envoyés:         {'✅ PASS' if results['messages_sent'] else '❌ FAIL'}"
+        )
+        print(
+            f"✅ Session fermée:           {'✅ PASS' if results['session_closed'] else '❌ FAIL'}"
+        )
+        print(
+            f"✅ ChromaDB validé:          {'✅ PASS' if results['chromadb_validated'] else '❌ FAIL'}"
+        )
 
         all_passed = all(results.values())
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
 
         if all_passed:
             print("✅ TOUS LES TESTS E2E SONT PASSÉS !")
             print("🚀 Hotfix P1.3 validé en local - Prêt pour production")
             print("\n💡 Prochaines étapes:")
             print("   1. Vérifier logs backend pour confirmer extraction")
-            print("   2. Vérifier métriques: curl http://localhost:8000/api/metrics | grep memory_preference")
+            print(
+                "   2. Vérifier métriques: curl http://localhost:8000/api/metrics | grep memory_preference"
+            )
             print("   3. Si tout OK: git push origin main")
-            print("   4. Déployer production: gcloud builds submit --config cloudbuild.yaml")
+            print(
+                "   4. Déployer production: gcloud builds submit --config cloudbuild.yaml"
+            )
         else:
             print("❌ CERTAINS TESTS E2E ONT ÉCHOUÉ")
             print("⚠️  Vérifier logs backend et corriger avant déploiement")
             print("\n💡 Debugging:")
             print("   - Logs backend: chercher [PreferenceExtractor]")
             print("   - Vérifier ChromaDB: python scripts/validate_preferences.py")
-            print("   - Vérifier métriques échecs: curl http://localhost:8000/api/metrics")
+            print(
+                "   - Vérifier métriques échecs: curl http://localhost:8000/api/metrics"
+            )
 
-        print("="*70)
+        print("=" * 70)
 
         return all_passed
 
@@ -319,7 +351,7 @@ async def main():
         "--url",
         type=str,
         default="ws://localhost:8000/api/chat/ws",
-        help="URL WebSocket backend (défaut: ws://localhost:8000/api/chat/ws)"
+        help="URL WebSocket backend (défaut: ws://localhost:8000/api/chat/ws)",
     )
 
     args = parser.parse_args()

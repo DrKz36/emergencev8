@@ -38,7 +38,11 @@ class ConceptRecallTracker:
         self.db = db_manager
         self.vector_service = vector_service
         self.connection_manager = connection_manager
-        self.collection = vector_service.get_or_create_collection(self.COLLECTION_NAME) if vector_service else None
+        self.collection = (
+            vector_service.get_or_create_collection(self.COLLECTION_NAME)
+            if vector_service
+            else None
+        )
         self.metrics = concept_recall_metrics
         logger.info("[ConceptRecallTracker] Initialisé avec métriques Prometheus")
 
@@ -80,12 +84,7 @@ class ConceptRecallTracker:
                 collection=self.collection,
                 query_text=message_text,
                 n_results=10,  # Top 10 concepts similaires
-                where_filter={
-                    "$and": [
-                        {"user_id": user_id},
-                        {"type": "concept"}
-                    ]
-                }
+                where_filter={"$and": [{"user_id": user_id}, {"type": "concept"}]},
             )
             vector_search_duration = time.time() - vector_search_start
             self.metrics.record_vector_search(vector_search_duration)
@@ -113,10 +112,14 @@ class ConceptRecallTracker:
 
                 recall = {
                     "concept_text": meta.get("concept_text", ""),
-                    "first_mentioned_at": meta.get("first_mentioned_at") or meta.get("created_at"),
-                    "last_mentioned_at": meta.get("last_mentioned_at") or meta.get("created_at"),
+                    "first_mentioned_at": meta.get("first_mentioned_at")
+                    or meta.get("created_at"),
+                    "last_mentioned_at": meta.get("last_mentioned_at")
+                    or meta.get("created_at"),
                     "mention_count": meta.get("mention_count", 1),
-                    "thread_ids": [tid for tid in thread_ids if tid != thread_id],  # Exclure thread actuel
+                    "thread_ids": [
+                        tid for tid in thread_ids if tid != thread_id
+                    ],  # Exclure thread actuel
                     "similarity_score": round(score, 4),
                     "vector_id": res.get("id", ""),
                 }
@@ -151,13 +154,16 @@ class ConceptRecallTracker:
                     user_id=user_id,
                     similarity_score=recall["similarity_score"],
                     thread_count=len(recall["thread_ids"]),
-                    duration_seconds=detection_duration
+                    duration_seconds=detection_duration,
                 )
 
             return recalls
 
         except Exception as e:
-            logger.error(f"[ConceptRecallTracker] Erreur détection récurrences : {e}", exc_info=True)
+            logger.error(
+                f"[ConceptRecallTracker] Erreur détection récurrences : {e}",
+                exc_info=True,
+            )
             return []
 
     async def _update_mention_metadata(
@@ -186,7 +192,11 @@ class ConceptRecallTracker:
                 if not existing or not existing.get("metadatas"):
                     continue
 
-                meta = existing["metadatas"][0] if isinstance(existing["metadatas"], list) else existing["metadatas"]
+                meta = (
+                    existing["metadatas"][0]
+                    if isinstance(existing["metadatas"], list)
+                    else existing["metadatas"]
+                )
 
                 # Incrémenter mention_count
                 mention_count = int(meta.get("mention_count", 1)) + 1
@@ -210,10 +220,12 @@ class ConceptRecallTracker:
                 self.vector_service.update_metadatas(
                     collection=self.collection,
                     ids=[vector_id],
-                    metadatas=[updated_meta]
+                    metadatas=[updated_meta],
                 )
 
-                logger.debug(f"[ConceptRecallTracker] Concept {vector_id} mis à jour : {mention_count} mentions")
+                logger.debug(
+                    f"[ConceptRecallTracker] Concept {vector_id} mis à jour : {mention_count} mentions"
+                )
 
                 # Record concept reuse metric
                 user_id = meta.get("user_id", "")
@@ -221,7 +233,9 @@ class ConceptRecallTracker:
                     self.metrics.record_concept_reuse(user_id, mention_count)
 
             except Exception as e:
-                logger.warning(f"[ConceptRecallTracker] Impossible de mettre à jour {vector_id} : {e}")
+                logger.warning(
+                    f"[ConceptRecallTracker] Impossible de mettre à jour {vector_id} : {e}"
+                )
 
         # Record metadata update duration
         update_duration = time.time() - update_start
@@ -237,7 +251,9 @@ class ConceptRecallTracker:
         """
         # Phase 2 : Émission désactivée par défaut
         if not os.getenv("CONCEPT_RECALL_EMIT_EVENTS", "false").lower() == "true":
-            logger.debug("[ConceptRecallTracker] Émission ws:concept_recall désactivée (CONCEPT_RECALL_EMIT_EVENTS=false)")
+            logger.debug(
+                "[ConceptRecallTracker] Émission ws:concept_recall désactivée (CONCEPT_RECALL_EMIT_EVENTS=false)"
+            )
             return
 
         if not self.connection_manager:
@@ -254,16 +270,17 @@ class ConceptRecallTracker:
                     "thread_count": len(r["thread_ids"]),
                     "similarity": r["similarity_score"],
                 }
-                for r in recalls[:self.MAX_RECALLS_PER_MESSAGE]
-            ]
+                for r in recalls[: self.MAX_RECALLS_PER_MESSAGE]
+            ],
         }
 
         try:
             await self.connection_manager.send_personal_message(
-                {"type": "ws:concept_recall", "payload": payload},
-                session_id
+                {"type": "ws:concept_recall", "payload": payload}, session_id
             )
-            logger.info(f"[ConceptRecallTracker] Événement ws:concept_recall émis : {len(recalls)} récurrences")
+            logger.info(
+                f"[ConceptRecallTracker] Événement ws:concept_recall émis : {len(recalls)} récurrences"
+            )
 
             # Record event emission metric (extract user_id from first recall)
             if recalls and len(recalls) > 0:
@@ -272,7 +289,9 @@ class ConceptRecallTracker:
                 pass
 
         except Exception as e:
-            logger.debug(f"[ConceptRecallTracker] Impossible d'émettre ws:concept_recall : {e}")
+            logger.debug(
+                f"[ConceptRecallTracker] Impossible d'émettre ws:concept_recall : {e}"
+            )
 
     async def query_concept_history(
         self,
@@ -311,11 +330,8 @@ class ConceptRecallTracker:
                 collection=self.collection,
                 query_text=concept_text,
                 n_results=limit,
-                where_filter={
-                    "user_id": user_id,
-                    "type": "concept"
-                },
-                score_threshold=0.0  # Disable weighted score filtering (use min_score instead)
+                where_filter={"user_id": user_id, "type": "concept"},
+                score_threshold=0.0,  # Disable weighted score filtering (use min_score instead)
             )
 
             history = []
@@ -329,17 +345,24 @@ class ConceptRecallTracker:
                     thread_ids_json = meta.get("thread_ids_json", "[]")
                     thread_ids = json.loads(thread_ids_json) if thread_ids_json else []
 
-                    history.append({
-                        "concept_text": meta.get("concept_text", ""),
-                        "first_mentioned_at": meta.get("first_mentioned_at") or meta.get("created_at"),
-                        "last_mentioned_at": meta.get("last_mentioned_at") or meta.get("created_at"),
-                        "thread_ids": thread_ids,
-                        "mention_count": meta.get("mention_count", 1),
-                        "similarity_score": round(score, 4),
-                    })
+                    history.append(
+                        {
+                            "concept_text": meta.get("concept_text", ""),
+                            "first_mentioned_at": meta.get("first_mentioned_at")
+                            or meta.get("created_at"),
+                            "last_mentioned_at": meta.get("last_mentioned_at")
+                            or meta.get("created_at"),
+                            "thread_ids": thread_ids,
+                            "mention_count": meta.get("mention_count", 1),
+                            "similarity_score": round(score, 4),
+                        }
+                    )
 
             return history
 
         except Exception as e:
-            logger.error(f"[ConceptRecallTracker] Erreur query_concept_history : {e}", exc_info=True)
+            logger.error(
+                f"[ConceptRecallTracker] Erreur query_concept_history : {e}",
+                exc_info=True,
+            )
             return []

@@ -3,6 +3,7 @@
 Guardian Email Report - Génère et envoie un rapport Guardian complet par email
 Exécute tous les guardians, génère les rapports, et envoie par email
 """
+
 import asyncio
 import os
 import sys
@@ -16,11 +17,12 @@ from typing import Any, Iterable, Optional, Sequence
 
 # Charger .env
 from dotenv import load_dotenv
-env_path = Path(__file__).parent.parent / '.env'
+
+env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
 # Ajouter backend au path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src' / 'backend'))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "backend"))
 
 # Secret pour signer les tokens (doit matcher celui du backend)
 GUARDIAN_SECRET = os.getenv("GUARDIAN_SECRET", "dev-secret-change-in-prod")
@@ -28,21 +30,21 @@ GUARDIAN_SECRET = os.getenv("GUARDIAN_SECRET", "dev-secret-change-in-prod")
 
 def normalize_status(raw_status: Any) -> str:
     if raw_status is None:
-        return 'UNKNOWN'
+        return "UNKNOWN"
     status_str = str(raw_status).strip()
     if not status_str:
-        return 'UNKNOWN'
+        return "UNKNOWN"
     upper = status_str.upper()
-    if upper in {'OK', 'HEALTHY', 'SUCCESS'}:
-        return 'OK'
-    if upper in {'WARNING', 'WARN'}:
-        return 'WARNING'
-    if upper in {'NEEDS_UPDATE', 'STALE'}:
-        return 'NEEDS_UPDATE'
-    if upper in {'ERROR', 'FAILED', 'FAILURE'}:
-        return 'ERROR'
-    if upper in {'CRITICAL', 'SEVERE'}:
-        return 'CRITICAL'
+    if upper in {"OK", "HEALTHY", "SUCCESS"}:
+        return "OK"
+    if upper in {"WARNING", "WARN"}:
+        return "WARNING"
+    if upper in {"NEEDS_UPDATE", "STALE"}:
+        return "NEEDS_UPDATE"
+    if upper in {"ERROR", "FAILED", "FAILURE"}:
+        return "ERROR"
+    if upper in {"CRITICAL", "SEVERE"}:
+        return "CRITICAL"
     return upper
 
 
@@ -55,21 +57,23 @@ def resolve_path(data: Any, path: Sequence[str]) -> Any:
     return current
 
 
-def extract_status(report: Any, fallback_paths: Optional[Iterable[Sequence[str]]] = None) -> str:
+def extract_status(
+    report: Any, fallback_paths: Optional[Iterable[Sequence[str]]] = None
+) -> str:
     if not isinstance(report, dict):
-        return 'UNKNOWN'
+        return "UNKNOWN"
 
-    candidates = [report.get('status')]
+    candidates = [report.get("status")]
     if fallback_paths:
         for path in fallback_paths:
             candidates.append(resolve_path(report, path))
 
     for candidate in candidates:
         normalized = normalize_status(candidate)
-        if normalized != 'UNKNOWN':
+        if normalized != "UNKNOWN":
             return normalized
 
-    return 'UNKNOWN'
+    return "UNKNOWN"
 
 
 def generate_fix_token(report_id: str) -> str:
@@ -77,23 +81,27 @@ def generate_fix_token(report_id: str) -> str:
     timestamp = str(int(datetime.now().timestamp()))
     data = f"{report_id}:{timestamp}"
     signature = hmac.new(
-        GUARDIAN_SECRET.encode(),
-        data.encode(),
-        hashlib.sha256
+        GUARDIAN_SECRET.encode(), data.encode(), hashlib.sha256
     ).hexdigest()
     return f"{data}:{signature}"
+
 
 async def run_all_guardians():
     """Exécute tous les guardians pour générer des rapports frais"""
     print("Execution des Guardians...")
 
-    scripts_dir = Path(__file__).parent.parent / 'claude-plugins' / 'integrity-docs-guardian' / 'scripts'
+    scripts_dir = (
+        Path(__file__).parent.parent
+        / "claude-plugins"
+        / "integrity-docs-guardian"
+        / "scripts"
+    )
 
     guardians = [
-        ('ProdGuardian', 'prod_guardian.py'),
-        ('Anima', 'anima.py'),
-        ('Neo', 'neo.py'),
-        ('Nexus', 'nexus_coordinator.py')
+        ("ProdGuardian", "prod_guardian.py"),
+        ("Anima", "anima.py"),
+        ("Neo", "neo.py"),
+        ("Nexus", "nexus_coordinator.py"),
     ]
 
     for name, script in guardians:
@@ -106,7 +114,7 @@ async def run_all_guardians():
                     cwd=str(Path(__file__).parent.parent),
                     capture_output=True,
                     text=True,
-                    timeout=60
+                    timeout=60,
                 )
                 if result.returncode == 0:
                     print(f"    OK {name}")
@@ -117,25 +125,26 @@ async def run_all_guardians():
         else:
             print(f"  SKIP {name} (script non trouvé)")
 
+
 async def load_reports():
     """Charge tous les rapports Guardian"""
-    reports_dir = Path(__file__).parent.parent / 'reports'
+    reports_dir = Path(__file__).parent.parent / "reports"
 
     reports = {}
     report_files = {
-        'prod': 'prod_report.json',
-        'docs': 'docs_report.json',
-        'integrity': 'integrity_report.json',
-        'unified': 'unified_report.json',
-        'orchestration': 'orchestration_report.json',
-        'global': 'global_report.json'
+        "prod": "prod_report.json",
+        "docs": "docs_report.json",
+        "integrity": "integrity_report.json",
+        "unified": "unified_report.json",
+        "orchestration": "orchestration_report.json",
+        "global": "global_report.json",
     }
 
     for key, filename in report_files.items():
         filepath = reports_dir / filename
         if filepath.exists():
             try:
-                with open(filepath, 'r', encoding='utf-8') as f:
+                with open(filepath, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     # S'assurer que c'est un dict, pas une string
                     if isinstance(data, dict):
@@ -151,47 +160,53 @@ async def load_reports():
 
     return reports
 
+
 def format_status_badge(status):
     """Retourne un badge HTML pour le status"""
     colors = {
-        'OK': '#10b981',
-        'WARNING': '#f59e0b',
-        'CRITICAL': '#ef4444',
-        'ERROR': '#ef4444',
-        'NEEDS_UPDATE': '#f59e0b',
-        'UNKNOWN': '#6b7280'
+        "OK": "#10b981",
+        "WARNING": "#f59e0b",
+        "CRITICAL": "#ef4444",
+        "ERROR": "#ef4444",
+        "NEEDS_UPDATE": "#f59e0b",
+        "UNKNOWN": "#6b7280",
     }
 
     emojis = {
-        'OK': '✅',
-        'WARNING': '⚠️',
-        'CRITICAL': '🚨',
-        'ERROR': '🚨',
-        'NEEDS_UPDATE': '📊',
-        'UNKNOWN': '❓'
+        "OK": "✅",
+        "WARNING": "⚠️",
+        "CRITICAL": "🚨",
+        "ERROR": "🚨",
+        "NEEDS_UPDATE": "📊",
+        "UNKNOWN": "❓",
     }
 
-    color = colors.get(status, '#6b7280')
-    emoji = emojis.get(status, '📊')
+    color = colors.get(status, "#6b7280")
+    emoji = emojis.get(status, "📊")
 
     return f'<span style="background:{color};color:white;padding:4px 12px;border-radius:12px;font-weight:600;font-size:14px;">{emoji} {status}</span>'
+
 
 async def generate_html_email(reports):
     """Génère le HTML de l'email Guardian"""
     timestamp = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
 
     # Extraire les infos principales avec safe access
-    global_report = reports.get('global')
-    prod_report = reports.get('prod')
-    docs_report = reports.get('docs')
-    integrity_report = reports.get('integrity')
-    unified_report = reports.get('unified')
+    global_report = reports.get("global")
+    prod_report = reports.get("prod")
+    docs_report = reports.get("docs")
+    integrity_report = reports.get("integrity")
+    unified_report = reports.get("unified")
 
-    global_status = extract_status(global_report, fallback_paths=[('executive_summary', 'status')])
+    global_status = extract_status(
+        global_report, fallback_paths=[("executive_summary", "status")]
+    )
     prod_status = extract_status(prod_report)
     docs_status = extract_status(docs_report)
     integrity_status = extract_status(integrity_report)
-    unified_status = extract_status(unified_report, fallback_paths=[('executive_summary', 'status')])
+    unified_status = extract_status(
+        unified_report, fallback_paths=[("executive_summary", "status")]
+    )
 
     html = f"""
 <!DOCTYPE html>
@@ -361,12 +376,12 @@ async def generate_html_email(reports):
     critical_count = 0
 
     if prod_report and isinstance(prod_report, dict):
-        total_logs = prod_report.get('logs_analyzed', 0)
-        summary = prod_report.get('summary')
+        total_logs = prod_report.get("logs_analyzed", 0)
+        summary = prod_report.get("summary")
         if summary and isinstance(summary, dict):
-            error_count = summary.get('errors', 0)
-            warning_count = summary.get('warnings', 0)
-            critical_count = summary.get('critical_signals', 0)
+            error_count = summary.get("errors", 0)
+            warning_count = summary.get("warnings", 0)
+            critical_count = summary.get("critical_signals", 0)
 
     html += f"""
                 {format_status_badge(prod_status)}
@@ -392,7 +407,7 @@ async def generate_html_email(reports):
     # Recommandations Production avec safe access
     prod_recs = []
     if prod_report and isinstance(prod_report, dict):
-        recs = prod_report.get('recommendations')
+        recs = prod_report.get("recommendations")
         if recs and isinstance(recs, list):
             prod_recs = recs
 
@@ -404,8 +419,8 @@ async def generate_html_email(reports):
 """
         for rec in prod_recs[:3]:  # Top 3
             if isinstance(rec, dict):
-                priority = rec.get('priority', 'LOW')
-                action = rec.get('action', 'N/A')
+                priority = rec.get("priority", "LOW")
+                action = rec.get("action", "N/A")
                 html += f"                    <li>[{priority}] {action}</li>\n"
         html += """
                 </ul>
@@ -433,7 +448,7 @@ async def generate_html_email(reports):
     # Safe access avec vérification de type
     gaps_count = 0
     if docs_report and isinstance(docs_report, dict):
-        documentation_gaps = docs_report.get('documentation_gaps')
+        documentation_gaps = docs_report.get("documentation_gaps")
         if isinstance(documentation_gaps, list):
             gaps_count = len(documentation_gaps)
 
@@ -448,7 +463,7 @@ async def generate_html_email(reports):
     # Safe access avec vérification de type
     updates_count = 0
     if docs_report and isinstance(docs_report, dict):
-        proposed_updates = docs_report.get('proposed_updates')
+        proposed_updates = docs_report.get("proposed_updates")
         if isinstance(proposed_updates, list):
             updates_count = len(proposed_updates)
 
@@ -476,9 +491,9 @@ async def generate_html_email(reports):
     # Safe access avec vérification de type
     critical = 0
     if integrity_report and isinstance(integrity_report, dict):
-        summary = integrity_report.get('summary')
+        summary = integrity_report.get("summary")
         if summary and isinstance(summary, dict):
-            critical = summary.get('critical_count', 0)
+            critical = summary.get("critical_count", 0)
 
     html += f"                <div class='metric-value'>{critical}</div>\n"
 
@@ -491,9 +506,9 @@ async def generate_html_email(reports):
     # Safe access avec vérification de type
     warnings = 0
     if integrity_report and isinstance(integrity_report, dict):
-        summary = integrity_report.get('summary')
+        summary = integrity_report.get("summary")
         if summary and isinstance(summary, dict):
-            warnings = summary.get('warning_count', 0)
+            warnings = summary.get("warning_count", 0)
 
     html += f"                <div class='metric-value'>{warnings}</div>\n"
 
@@ -519,7 +534,7 @@ async def generate_html_email(reports):
     # Safe access avec vérification de type
     priority_actions = 0
     if unified_report and isinstance(unified_report, dict):
-        actions = unified_report.get('priority_actions')
+        actions = unified_report.get("priority_actions")
         if actions and isinstance(actions, list):
             priority_actions = len(actions)
 
@@ -535,45 +550,51 @@ async def generate_html_email(reports):
 
     # Production
     if prod_report and isinstance(prod_report, dict):
-        recs = prod_report.get('recommendations', [])
+        recs = prod_report.get("recommendations", [])
         if recs and isinstance(recs, list):
             for rec in recs:
                 if isinstance(rec, dict):
-                    all_problems.append({
-                        'source': '☁️ Production',
-                        'priority': rec.get('priority', 'MEDIUM'),
-                        'action': rec.get('action', 'N/A'),
-                        'file': rec.get('file', ''),
-                        'details': rec.get('details', '')
-                    })
+                    all_problems.append(
+                        {
+                            "source": "☁️ Production",
+                            "priority": rec.get("priority", "MEDIUM"),
+                            "action": rec.get("action", "N/A"),
+                            "file": rec.get("file", ""),
+                            "details": rec.get("details", ""),
+                        }
+                    )
 
     # Documentation (Anima)
     if docs_report and isinstance(docs_report, dict):
-        recs = docs_report.get('recommendations', [])
+        recs = docs_report.get("recommendations", [])
         if recs and isinstance(recs, list):
             for rec in recs:
                 if isinstance(rec, dict):
-                    all_problems.append({
-                        'source': '📚 Documentation',
-                        'priority': rec.get('priority', 'MEDIUM'),
-                        'action': rec.get('action', 'N/A'),
-                        'file': rec.get('file', ''),
-                        'details': rec.get('details', '')
-                    })
+                    all_problems.append(
+                        {
+                            "source": "📚 Documentation",
+                            "priority": rec.get("priority", "MEDIUM"),
+                            "action": rec.get("action", "N/A"),
+                            "file": rec.get("file", ""),
+                            "details": rec.get("details", ""),
+                        }
+                    )
 
     # Intégrité (Neo)
     if integrity_report and isinstance(integrity_report, dict):
-        recs = integrity_report.get('recommendations', [])
+        recs = integrity_report.get("recommendations", [])
         if recs and isinstance(recs, list):
             for rec in recs:
                 if isinstance(rec, dict):
-                    all_problems.append({
-                        'source': '🔐 Intégrité',
-                        'priority': rec.get('priority', 'MEDIUM'),
-                        'action': rec.get('action', 'N/A'),
-                        'file': rec.get('file', ''),
-                        'details': rec.get('details', '')
-                    })
+                    all_problems.append(
+                        {
+                            "source": "🔐 Intégrité",
+                            "priority": rec.get("priority", "MEDIUM"),
+                            "action": rec.get("action", "N/A"),
+                            "file": rec.get("file", ""),
+                            "details": rec.get("details", ""),
+                        }
+                    )
 
     # Ajouter section détails si problèmes détectés
     if all_problems:
@@ -583,10 +604,10 @@ async def generate_html_email(reports):
 """
         # Limiter à 10 problèmes max pour ne pas surcharger l'email
         for problem in all_problems[:10]:
-            priority = problem['priority']
-            source = problem['source']
-            action = problem['action']
-            file_info = problem.get('file', '')
+            priority = problem["priority"]
+            source = problem["source"]
+            action = problem["action"]
+            file_info = problem.get("file", "")
 
             html += f"""
             <div class="problem-item">
@@ -682,6 +703,7 @@ async def generate_html_email(reports):
 
     return html
 
+
 async def send_guardian_email(reports):
     """Envoie le rapport Guardian par email"""
     from features.auth.email_service import EmailService
@@ -699,12 +721,14 @@ async def send_guardian_email(reports):
     timestamp = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
 
     # Safe extraction des statuts
-    global_report = reports.get('global')
-    prod_report = reports.get('prod')
-    docs_report = reports.get('docs')
-    integrity_report = reports.get('integrity')
+    global_report = reports.get("global")
+    prod_report = reports.get("prod")
+    docs_report = reports.get("docs")
+    integrity_report = reports.get("integrity")
 
-    global_status = extract_status(global_report, fallback_paths=[('executive_summary', 'status')])
+    global_status = extract_status(
+        global_report, fallback_paths=[("executive_summary", "status")]
+    )
     prod_status = extract_status(prod_report)
     docs_status = extract_status(docs_report)
     integrity_status = extract_status(integrity_report)
@@ -730,10 +754,7 @@ Guardian Autonomous Monitoring System
     print("Envoi de l'email Guardian...")
     admin_email = os.getenv("GUARDIAN_ADMIN_EMAIL", "emergence.app.ch@gmail.com")
     success = await email_service.send_custom_email(
-        to_email=admin_email,
-        subject=subject,
-        html_body=html_body,
-        text_body=text_body
+        to_email=admin_email, subject=subject, html_body=html_body, text_body=text_body
     )
 
     if success:
@@ -742,6 +763,7 @@ Guardian Autonomous Monitoring System
     else:
         print("Échec envoi email Guardian")
         return False
+
 
 async def main():
     """Point d'entrée principal"""
@@ -766,12 +788,15 @@ async def main():
     print()
     print("=" * 60)
     if success:
-        print(f"SUCCÈS - Email envoyé à {os.getenv('GUARDIAN_ADMIN_EMAIL', 'emergence.app.ch@gmail.com')}")
+        print(
+            f"SUCCÈS - Email envoyé à {os.getenv('GUARDIAN_ADMIN_EMAIL', 'emergence.app.ch@gmail.com')}"
+        )
     else:
         print("ÉCHEC - Vérifier la configuration SMTP")
     print("=" * 60)
 
     return success
+
 
 if __name__ == "__main__":
     result = asyncio.run(main())

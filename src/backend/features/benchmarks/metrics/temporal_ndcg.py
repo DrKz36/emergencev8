@@ -87,7 +87,7 @@ def ndcg_time_at_k(
             else:
                 temporal_factor = tau(ts)
 
-            gain = (2 ** rel - 1) * temporal_factor
+            gain = (2**rel - 1) * temporal_factor
             discount = math.log2(i + 1)
             score += gain / discount
 
@@ -106,7 +106,7 @@ def ndcg_time_at_k(
             temporal_factor = 0.0
         else:
             temporal_factor = tau(ts)
-        gain = (2 ** rel - 1) * temporal_factor
+        gain = (2**rel - 1) * temporal_factor
         return gain
 
     ideal_ranking = sorted(ranked, key=compute_temporal_gain, reverse=True)

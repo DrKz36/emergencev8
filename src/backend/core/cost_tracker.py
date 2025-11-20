@@ -12,7 +12,10 @@ from backend.core.database import queries as db_queries
 # V13.2 - Prometheus metrics pour LLM cost tracking
 try:
     from prometheus_client import Counter, Histogram, REGISTRY
-    METRICS_ENABLED = os.getenv("CONCEPT_RECALL_METRICS_ENABLED", "true").lower() == "true"
+
+    METRICS_ENABLED = (
+        os.getenv("CONCEPT_RECALL_METRICS_ENABLED", "true").lower() == "true"
+    )
 except ImportError:
     METRICS_ENABLED = False
 
@@ -91,7 +94,9 @@ class CostTracker:
             self.db_manager = db_manager
             self.initialized = True
             metrics_status = "enabled" if METRICS_ENABLED else "disabled"
-            logger.info(f"CostTracker V13.2 initialisé (Prometheus metrics: {metrics_status}).")
+            logger.info(
+                f"CostTracker V13.2 initialisé (Prometheus metrics: {metrics_status})."
+            )
 
     async def record_cost(
         self,
@@ -128,11 +133,17 @@ class CostTracker:
                 # V13.2 - Prometheus metrics
                 if METRICS_ENABLED and llm_requests_total:
                     llm_requests_total.labels(agent=agent, model=model).inc()
-                    llm_tokens_prompt_total.labels(agent=agent, model=model).inc(input_tokens)
-                    llm_tokens_completion_total.labels(agent=agent, model=model).inc(output_tokens)
+                    llm_tokens_prompt_total.labels(agent=agent, model=model).inc(
+                        input_tokens
+                    )
+                    llm_tokens_completion_total.labels(agent=agent, model=model).inc(
+                        output_tokens
+                    )
                     llm_cost_usd_total.labels(agent=agent, model=model).inc(total_cost)
                     if latency_seconds is not None and llm_latency_seconds:
-                        llm_latency_seconds.labels(agent=agent, model=model).observe(latency_seconds)
+                        llm_latency_seconds.labels(agent=agent, model=model).observe(
+                            latency_seconds
+                        )
 
                 logger.info(
                     f"Coût de {total_cost:.6f} pour '{agent}' ('{model}') enregistré."
@@ -143,8 +154,9 @@ class CostTracker:
                     exc_info=True,
                 )
 
-    async def get_spending_summary(self, *, user_id: Optional[str] = None,
-                                   session_id: Optional[str] = None) -> Dict[str, float]:
+    async def get_spending_summary(
+        self, *, user_id: Optional[str] = None, session_id: Optional[str] = None
+    ) -> Dict[str, float]:
         """Résumé brut depuis la BDD (clés: total/today/this_week/this_month)."""
         return await db_queries.get_costs_summary(
             db=self.db_manager,

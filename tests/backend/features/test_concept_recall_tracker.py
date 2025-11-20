@@ -14,7 +14,9 @@ from backend.core.database.manager import DatabaseManager
 from backend.core.database import schema
 
 # Skip all tests in this file - ChromaDB flaky behavior in CI
-pytestmark = pytest.mark.skip(reason="ChromaDB race conditions in CI - all tests in this file are flaky")
+pytestmark = pytest.mark.skip(
+    reason="ChromaDB race conditions in CI - all tests in this file are flaky"
+)
 
 
 @pytest_asyncio.fixture
@@ -58,7 +60,9 @@ async def seed_concept(vector_service, **kwargs):
     donc on stocke thread_ids comme une chaîne JSON (thread_ids_json).
     """
     collection = vector_service.get_or_create_collection("emergence_knowledge")
-    concept_id = kwargs.get("concept_id", f"concept_{kwargs['concept_text'].replace(' ', '_')}")
+    concept_id = kwargs.get(
+        "concept_id", f"concept_{kwargs['concept_text'].replace(' ', '_')}"
+    )
     now_iso = datetime.now(timezone.utc).isoformat()
 
     # Build thread_ids list
@@ -81,11 +85,7 @@ async def seed_concept(vector_service, **kwargs):
     }
 
     # Use add_items like production code
-    item = {
-        "id": concept_id,
-        "text": kwargs["concept_text"],
-        "metadata": metadata
-    }
+    item = {"id": concept_id, "text": kwargs["concept_text"], "metadata": metadata}
     vector_service.add_items(collection, [item])
 
     return concept_id
@@ -144,7 +144,9 @@ async def test_detect_recurring_concepts_second_mention(vector_service, tracker)
     assert recalls[0]["concept_text"] == "CI/CD pipeline"
     assert recalls[0]["mention_count"] >= 1  # Will be incremented
     assert "thread_old" in recalls[0]["thread_ids"]
-    assert recalls[0]["similarity_score"] >= 0.5  # Realistic threshold for semantic similarity
+    assert (
+        recalls[0]["similarity_score"] >= 0.5
+    )  # Realistic threshold for semantic similarity
 
 
 @pytest.mark.asyncio
@@ -240,8 +242,13 @@ async def test_query_concept_history(vector_service, tracker):
 
     # Assert
     assert len(history) >= 1
-    assert any("Docker" in h["concept_text"] or "container" in h["concept_text"].lower() for h in history)
-    assert all(h["similarity_score"] >= 0.6 for h in history)  # Lower threshold for explicit search
+    assert any(
+        "Docker" in h["concept_text"] or "container" in h["concept_text"].lower()
+        for h in history
+    )
+    assert all(
+        h["similarity_score"] >= 0.6 for h in history
+    )  # Lower threshold for explicit search
 
 
 @pytest.mark.asyncio

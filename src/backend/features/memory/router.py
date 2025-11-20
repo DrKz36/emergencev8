@@ -1,4 +1,4 @@
-﻿# src/backend/features/memory/router.py
+# src/backend/features/memory/router.py
 # V2.5 â€” + support body {thread_id} pour tend-garden (consolidation ciblÃ©e dâ€™un thread)
 import os
 import logging
@@ -18,17 +18,20 @@ _KNOWLEDGE_COLLECTION_ENV = "EMERGENCE_KNOWLEDGE_COLLECTION"
 _DEFAULT_KNOWLEDGE_NAME = "emergence_knowledge"
 
 
-
-
 def _supports_kwarg(func: Any, name: str) -> bool:
     try:
         signature = inspect.signature(func)
     except (ValueError, TypeError):
         return False
     for param in signature.parameters.values():
-        if param.name == name and param.kind in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+        if param.name == name and param.kind in (
+            inspect.Parameter.KEYWORD_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        ):
             return True
     return False
+
+
 def _get_container(request: Request) -> Any:
     container = getattr(request.app.state, "service_container", None)
     if container is None:
@@ -220,9 +223,9 @@ def _count_ids_from_get_result(got: dict[str, Any]) -> int:
     return len(ids)
 
 
-
 def _session_vector_clause(session_id: str) -> dict[str, Any]:
     return {"$or": [{"session_id": session_id}, {"source_session_id": session_id}]}
+
 
 def _build_where_filter(
     session_id: Optional[str], agent_id: Optional[str], user_id: Optional[str]
@@ -325,7 +328,8 @@ async def analyze_session_endpoint(
         raise
     except Exception as exc:
         logger.error(
-            f"[memory.analyze] Ã‰chec analyse session={session_id}: {exc}", exc_info=True
+            f"[memory.analyze] Ã‰chec analyse session={session_id}: {exc}",
+            exc_info=True,
         )
         raise HTTPException(
             status_code=500, detail="Analyse mÃ©moire impossible pour cette session."
@@ -389,10 +393,9 @@ async def tend_garden_endpoint(
         except Exception:
             candidate_session = None
         if not candidate_session:
-            candidate_session = (
-                request.headers.get("x-session-id")
-                or request.query_params.get("session_id")
-            )
+            candidate_session = request.headers.get(
+                "x-session-id"
+            ) or request.query_params.get("session_id")
         if candidate_session:
             resolved_session_id = _resolve_session_id(request, candidate_session)
 
@@ -401,26 +404,36 @@ async def tend_garden_endpoint(
                 container = _get_container(request)
                 db = container.db_manager()
                 thread_row = await queries.get_thread_any(db, thread_id)
-                inferred_session = _normalize_session_id((thread_row or {}).get("session_id"))
+                inferred_session = _normalize_session_id(
+                    (thread_row or {}).get("session_id")
+                )
                 if inferred_session:
                     resolved_session_id = inferred_session
             except HTTPException:
                 pass
             except Exception as exc:  # pragma: no cover - diagnostic path
-                logger.debug("[memory] unable to infer session from thread %s: %s", thread_id, exc)
+                logger.debug(
+                    "[memory] unable to infer session from thread %s: %s",
+                    thread_id,
+                    exc,
+                )
 
         call_kwargs: dict[str, Any] = {
-            'thread_id': thread_id,
-            'session_id': resolved_session_id,
-            'agent_id': agent_id,
+            "thread_id": thread_id,
+            "session_id": resolved_session_id,
+            "agent_id": agent_id,
         }
-        if _supports_kwarg(gardener.tend_the_garden, 'user_id'):
-            call_kwargs['user_id'] = user_id
+        if _supports_kwarg(gardener.tend_the_garden, "user_id"):
+            call_kwargs["user_id"] = user_id
         report = await gardener.tend_the_garden(**call_kwargs)
 
         # Invalider cache préférences après jardinage (Bug #5 P1)
         memory_ctx = getattr(request.app.state, "memory_context", None)
-        if memory_ctx and hasattr(memory_ctx, "invalidate_preferences_cache") and user_id:
+        if (
+            memory_ctx
+            and hasattr(memory_ctx, "invalidate_preferences_cache")
+            and user_id
+        ):
             memory_ctx.invalidate_preferences_cache(user_id)
 
         if report.get("status") == "error":
@@ -457,8 +470,8 @@ async def tend_garden_get(
     if use_fallback:
         gardener = _get_gardener_from_request(request)
         call_kwargs: dict[str, Any] = {}
-        if _supports_kwarg(gardener.tend_the_garden, 'user_id'):
-            call_kwargs['user_id'] = user_id
+        if _supports_kwarg(gardener.tend_the_garden, "user_id"):
+            call_kwargs["user_id"] = user_id
         report = await gardener.tend_the_garden(**call_kwargs)
         return {
             "status": report.get("status", "success"),
@@ -474,7 +487,11 @@ async def tend_garden_get(
     try:
         rows = await queries.get_all_sessions_overview(db, user_id=user_id)
     except Exception as exc:
-        logger.error("[memory.tend_garden] Impossible de récupérer l'historique: %s", exc, exc_info=True)
+        logger.error(
+            "[memory.tend_garden] Impossible de récupérer l'historique: %s",
+            exc,
+            exc_info=True,
+        )
         rows = []
 
     if limit is not None and limit >= 1:
@@ -618,9 +635,8 @@ async def clear_memory_post(
     return payload
 
 
-
-
 # ========== Concept Recall API (Phase 4) ==========
+
 
 @router.get("/search")
 async def search_memory(
@@ -651,8 +667,12 @@ async def search_memory(
 
         temporal_search = TemporalSearch(db_manager=container.db_manager())
     except Exception as e:
-        logger.error(f"[memory/search] Failed to initialize TemporalSearch: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal error initializing search")
+        logger.error(
+            f"[memory/search] Failed to initialize TemporalSearch: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail="Internal error initializing search"
+        )
 
     # Execute search
     try:
@@ -661,6 +681,7 @@ async def search_memory(
         # Filter by date range if provided
         if start_date or end_date:
             from datetime import datetime
+
             filtered = []
             for r in results:
                 created_at = r.get("created_at") or r.get("timestamp")
@@ -669,7 +690,9 @@ async def search_memory(
                 try:
                     msg_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
                     if start_date:
-                        start_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+                        start_dt = datetime.fromisoformat(
+                            start_date.replace("Z", "+00:00")
+                        )
                         if msg_dt < start_dt:
                             continue
                     if end_date:
@@ -700,7 +723,9 @@ async def search_memory(
 async def unified_memory_search(
     request: Request,
     q: str = Query(..., min_length=3, description="Requête de recherche"),
-    limit: int = Query(10, ge=1, le=50, description="Nombre max de résultats par catégorie"),
+    limit: int = Query(
+        10, ge=1, le=50, description="Nombre max de résultats par catégorie"
+    ),
     include_archived: bool = Query(True, description="Inclure threads archivés"),
     start_date: Optional[str] = Query(None, description="Date de début (ISO 8601)"),
     end_date: Optional[str] = Query(None, description="Date de fin (ISO 8601)"),
@@ -745,13 +770,15 @@ async def unified_memory_search(
         for sess in sessions:
             summary = sess.get("summary") or ""
             if q.lower() in summary.lower():
-                results["stm_summaries"].append({
-                    "session_id": sess.get("id"),
-                    "summary": summary,
-                    "created_at": sess.get("created_at"),
-                    "updated_at": sess.get("updated_at"),
-                    "concept_count": sess.get("concept_count", 0),
-                })
+                results["stm_summaries"].append(
+                    {
+                        "session_id": sess.get("id"),
+                        "summary": summary,
+                        "created_at": sess.get("created_at"),
+                        "updated_at": sess.get("updated_at"),
+                        "concept_count": sess.get("concept_count", 0),
+                    }
+                )
                 if len(results["stm_summaries"]) >= limit:
                     break
     except Exception as e:
@@ -789,15 +816,17 @@ async def unified_memory_search(
             meta = thread.get("meta") or {}
             meta_str = str(meta) if isinstance(meta, dict) else ""
             if q.lower() in title.lower() or q.lower() in meta_str.lower():
-                results["threads"].append({
-                    "thread_id": thread.get("id"),
-                    "title": title,
-                    "type": thread.get("type"),
-                    "archived": thread.get("archived"),
-                    "last_message_at": thread.get("last_message_at"),
-                    "message_count": thread.get("message_count"),
-                    "created_at": thread.get("created_at"),
-                })
+                results["threads"].append(
+                    {
+                        "thread_id": thread.get("id"),
+                        "title": title,
+                        "type": thread.get("type"),
+                        "archived": thread.get("archived"),
+                        "last_message_at": thread.get("last_message_at"),
+                        "message_count": thread.get("message_count"),
+                        "created_at": thread.get("created_at"),
+                    }
+                )
                 if len(results["threads"]) >= limit:
                     break
     except Exception as e:
@@ -882,8 +911,12 @@ async def search_concepts(
             connection_manager=None,  # No WebSocket emission for REST API
         )
     except Exception as e:
-        logger.error(f"[concepts/search] Failed to initialize tracker: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal error initializing concept search")
+        logger.error(
+            f"[concepts/search] Failed to initialize tracker: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail="Internal error initializing concept search"
+        )
 
     # Query concept history
     try:
@@ -915,10 +948,7 @@ async def _thread_already_consolidated(vector_service: Any, thread_id: str) -> b
         collection = vector_service.get_or_create_collection(collection_name)
 
         # Chercher concepts avec thread_id dans metadata
-        result = collection.get(
-            where={"thread_id": thread_id},
-            limit=1
-        )
+        result = collection.get(where={"thread_id": thread_id}, limit=1)
 
         # Si au moins 1 concept trouvé, thread déjà consolidé
         ids = result.get("ids") or []
@@ -929,7 +959,9 @@ async def _thread_already_consolidated(vector_service: Any, thread_id: str) -> b
         return False
 
     except Exception as e:
-        logger.warning(f"[consolidate_archived] Check failed for thread {thread_id}: {e}")
+        logger.warning(
+            f"[consolidate_archived] Check failed for thread {thread_id}: {e}"
+        )
         return False  # En cas d'erreur, considérer non consolidé
 
 
@@ -939,9 +971,7 @@ async def _thread_already_consolidated(vector_service: Any, thread_id: str) -> b
     summary="Get user's memory statistics and top items",
     description="Returns user's memory stats: preferences, concepts, sessions analyzed, etc.",
 )
-async def get_user_memory_stats(
-    request: Request
-) -> dict[str, Any]:
+async def get_user_memory_stats(request: Request) -> dict[str, Any]:
     """
     Get user's memory statistics and top items.
 
@@ -982,15 +1012,19 @@ async def get_user_memory_stats(
     try:
         # Phase 2 Fix: Utiliser OR au lieu de $in pour meilleure compatibilité ChromaDB
         prefs_results = collection.get(
-            where={"$and": [
-                {"user_id": user_id},
-                {"$or": [
-                    {"type": "preference"},
-                    {"type": "intent"},
-                    {"type": "constraint"}
-                ]}
-            ]},
-            include=["documents", "metadatas"]
+            where={
+                "$and": [
+                    {"user_id": user_id},
+                    {
+                        "$or": [
+                            {"type": "preference"},
+                            {"type": "intent"},
+                            {"type": "constraint"},
+                        ]
+                    },
+                ]
+            },
+            include=["documents", "metadatas"],
         )
 
         prefs_docs = prefs_results.get("documents", [])
@@ -1014,21 +1048,27 @@ async def get_user_memory_stats(
             pref_type = meta.get("type", "preference")
             type_counts[pref_type] = type_counts.get(pref_type, 0) + 1
 
-            preferences.append({
-                "topic": meta.get("topic", "Unknown"),
-                "confidence": float(meta.get("confidence", 0.5)),
-                "type": pref_type,
-                "captured_at": meta.get("captured_at") or meta.get("created_at"),
-                "text": doc if isinstance(doc, str) else str(doc)
-            })
+            preferences.append(
+                {
+                    "topic": meta.get("topic", "Unknown"),
+                    "confidence": float(meta.get("confidence", 0.5)),
+                    "type": pref_type,
+                    "captured_at": meta.get("captured_at") or meta.get("created_at"),
+                    "text": doc if isinstance(doc, str) else str(doc),
+                }
+            )
 
         # Sort by confidence (descending)
         preferences.sort(key=lambda x: x["confidence"], reverse=True)
 
-        logger.info(f"[memory/user/stats] Retrieved {len(preferences)} preferences for user {user_id}")
+        logger.info(
+            f"[memory/user/stats] Retrieved {len(preferences)} preferences for user {user_id}"
+        )
 
     except Exception as e:
-        logger.error(f"[memory/user/stats] Failed to fetch preferences: {e}", exc_info=True)
+        logger.error(
+            f"[memory/user/stats] Failed to fetch preferences: {e}", exc_info=True
+        )
         # Continue with empty preferences
 
     # Fetch user's concepts
@@ -1036,11 +1076,8 @@ async def get_user_memory_stats(
 
     try:
         concepts_results = collection.get(
-            where={"$and": [
-                {"user_id": user_id},
-                {"type": "concept"}
-            ]},
-            include=["documents", "metadatas"]
+            where={"$and": [{"user_id": user_id}, {"type": "concept"}]},
+            include=["documents", "metadatas"],
         )
 
         concepts_docs = concepts_results.get("documents", [])
@@ -1060,19 +1097,27 @@ async def get_user_memory_stats(
             if not meta:  # Skip if metadata is None or empty
                 continue
 
-            concepts.append({
-                "concept": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
-                "mentions": int(meta.get("mention_count", 1)),
-                "last_mentioned": meta.get("last_mentioned_at") or meta.get("created_at")
-            })
+            concepts.append(
+                {
+                    "concept": meta.get("concept_text")
+                    or (doc if isinstance(doc, str) else str(doc)),
+                    "mentions": int(meta.get("mention_count", 1)),
+                    "last_mentioned": meta.get("last_mentioned_at")
+                    or meta.get("created_at"),
+                }
+            )
 
         # Sort by mentions (descending)
         concepts.sort(key=lambda x: x["mentions"], reverse=True)
 
-        logger.info(f"[memory/user/stats] Retrieved {len(concepts)} concepts for user {user_id}")
+        logger.info(
+            f"[memory/user/stats] Retrieved {len(concepts)} concepts for user {user_id}"
+        )
 
     except Exception as e:
-        logger.error(f"[memory/user/stats] Failed to fetch concepts: {e}", exc_info=True)
+        logger.error(
+            f"[memory/user/stats] Failed to fetch concepts: {e}", exc_info=True
+        )
         # Continue with empty concepts
 
     # Database stats
@@ -1087,11 +1132,7 @@ async def get_user_memory_stats(
 
         # Count archived threads
         threads = await queries.get_threads(
-            db_manager,
-            session_id=None,
-            user_id=user_id,
-            archived_only=True,
-            limit=1000
+            db_manager, session_id=None, user_id=user_id, archived_only=True, limit=1000
         )
         archived_count = len(threads)
 
@@ -1099,24 +1140,23 @@ async def get_user_memory_stats(
         ltm_size_mb = (len(prefs_docs) + len(concepts_docs)) * 0.001
 
     except Exception as e:
-        logger.error(f"[memory/user/stats] Failed to fetch database stats: {e}", exc_info=True)
+        logger.error(
+            f"[memory/user/stats] Failed to fetch database stats: {e}", exc_info=True
+        )
         # Continue with zero stats
 
     return {
         "preferences": {
             "total": len(preferences),
             "top": preferences[:10],
-            "by_type": type_counts
+            "by_type": type_counts,
         },
-        "concepts": {
-            "total": len(concepts),
-            "top": concepts[:10]
-        },
+        "concepts": {"total": len(concepts), "top": concepts[:10]},
         "stats": {
             "sessions_analyzed": sessions_count,
             "threads_archived": archived_count,
-            "ltm_size_mb": round(ltm_size_mb, 2)
-        }
+            "ltm_size_mb": round(ltm_size_mb, 2),
+        },
     }
 
 
@@ -1130,7 +1170,9 @@ async def get_concepts(
     request: Request,
     limit: int = Query(20, ge=1, le=100, description="Number of concepts per page"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-    sort: str = Query("recent", pattern="^(recent|frequent|alphabetical)$", description="Sort order"),
+    sort: str = Query(
+        "recent", pattern="^(recent|frequent|alphabetical)$", description="Sort order"
+    ),
 ) -> dict[str, Any]:
     """Get paginated list of user's concepts."""
     try:
@@ -1146,11 +1188,8 @@ async def get_concepts(
     try:
         # Get all user concepts
         results = collection.get(
-            where={"$and": [
-                {"user_id": user_id},
-                {"type": "concept"}
-            ]},
-            include=["documents", "metadatas"]
+            where={"$and": [{"user_id": user_id}, {"type": "concept"}]},
+            include=["documents", "metadatas"],
         )
 
         concepts_docs = results.get("documents", [])
@@ -1163,13 +1202,16 @@ async def get_concepts(
             concept = {
                 "id": concept_id,
                 "concept_id": concept_id,
-                "concept_text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+                "concept_text": meta.get("concept_text")
+                or (doc if isinstance(doc, str) else str(doc)),
                 "description": meta.get("description", ""),
                 "tags": meta.get("tags", []),
                 "relations": meta.get("relations", []),
                 "occurrence_count": int(meta.get("mention_count", 1)),
-                "first_mentioned": meta.get("first_mentioned_at") or meta.get("created_at"),
-                "last_mentioned": meta.get("last_mentioned_at") or meta.get("created_at"),
+                "first_mentioned": meta.get("first_mentioned_at")
+                or meta.get("created_at"),
+                "last_mentioned": meta.get("last_mentioned_at")
+                or meta.get("created_at"),
                 "thread_ids": meta.get("thread_ids", []),
             }
             concepts.append(concept)
@@ -1184,7 +1226,7 @@ async def get_concepts(
 
         # Apply pagination
         total = len(concepts)
-        paginated = concepts[offset:offset + limit]
+        paginated = concepts[offset : offset + limit]
 
         return {
             "concepts": paginated,
@@ -1221,10 +1263,7 @@ async def get_concept(
 
     try:
         # Get concept by ID
-        results = collection.get(
-            ids=[concept_id],
-            include=["documents", "metadatas"]
-        )
+        results = collection.get(ids=[concept_id], include=["documents", "metadatas"])
 
         if not results.get("ids") or len(results["ids"]) == 0:
             raise HTTPException(status_code=404, detail="Concept not found")
@@ -1239,7 +1278,8 @@ async def get_concept(
         return {
             "id": concept_id,
             "concept_id": concept_id,
-            "concept_text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+            "concept_text": meta.get("concept_text")
+            or (doc if isinstance(doc, str) else str(doc)),
             "description": meta.get("description", ""),
             "tags": meta.get("tags", []),
             "relations": meta.get("relations", []),
@@ -1280,10 +1320,7 @@ async def update_concept(
 
     try:
         # Get existing concept
-        results = collection.get(
-            ids=[concept_id],
-            include=["metadatas"]
-        )
+        results = collection.get(ids=[concept_id], include=["metadatas"])
 
         if not results.get("ids") or len(results["ids"]) == 0:
             raise HTTPException(status_code=404, detail="Concept not found")
@@ -1304,10 +1341,7 @@ async def update_concept(
             updated_meta["relations"] = data["relations"]
 
         # Update in ChromaDB
-        collection.update(
-            ids=[concept_id],
-            metadatas=[updated_meta]
-        )
+        collection.update(ids=[concept_id], metadatas=[updated_meta])
 
         return {
             "status": "success",
@@ -1345,10 +1379,7 @@ async def delete_concept(
 
     try:
         # Get concept to verify ownership
-        results = collection.get(
-            ids=[concept_id],
-            include=["metadatas"]
-        )
+        results = collection.get(ids=[concept_id], include=["metadatas"])
 
         if not results.get("ids") or len(results["ids"]) == 0:
             raise HTTPException(status_code=404, detail="Concept not found")
@@ -1403,7 +1434,9 @@ async def merge_concepts(
     new_concept_text = data.get("new_concept_text")
 
     if not source_ids or len(source_ids) < 1:
-        raise HTTPException(status_code=400, detail="source_ids required (at least 1 concept)")
+        raise HTTPException(
+            status_code=400, detail="source_ids required (at least 1 concept)"
+        )
     if not target_id:
         raise HTTPException(status_code=400, detail="target_id required")
     if target_id in source_ids:
@@ -1417,18 +1450,19 @@ async def merge_concepts(
     try:
         # Get all concepts
         all_ids = source_ids + [target_id]
-        results = collection.get(
-            ids=all_ids,
-            include=["documents", "metadatas"]
-        )
+        results = collection.get(ids=all_ids, include=["documents", "metadatas"])
 
         if not results.get("ids") or len(results["ids"]) != len(all_ids):
-            raise HTTPException(status_code=404, detail="One or more concepts not found")
+            raise HTTPException(
+                status_code=404, detail="One or more concepts not found"
+            )
 
         # Verify ownership for all concepts
         for meta in results["metadatas"]:
             if meta.get("user_id") != user_id:
-                raise HTTPException(status_code=403, detail="Access denied to one or more concepts")
+                raise HTTPException(
+                    status_code=403, detail="Access denied to one or more concepts"
+                )
 
         # Find target metadata
         target_idx = results["ids"].index(target_id)
@@ -1439,8 +1473,12 @@ async def merge_concepts(
         merged_relations = list(target_meta.get("relations", []))
         merged_thread_ids = set(target_meta.get("thread_ids", []))
         total_occurrences = int(target_meta.get("mention_count", 1))
-        earliest_mentioned = target_meta.get("first_mentioned_at") or target_meta.get("created_at")
-        latest_mentioned = target_meta.get("last_mentioned_at") or target_meta.get("created_at")
+        earliest_mentioned = target_meta.get("first_mentioned_at") or target_meta.get(
+            "created_at"
+        )
+        latest_mentioned = target_meta.get("last_mentioned_at") or target_meta.get(
+            "created_at"
+        )
 
         for concept_id in source_ids:
             idx = results["ids"].index(concept_id)
@@ -1461,10 +1499,16 @@ async def merge_concepts(
             total_occurrences += int(source_meta.get("mention_count", 1))
 
             # Update timestamps
-            source_first = source_meta.get("first_mentioned_at") or source_meta.get("created_at")
-            source_last = source_meta.get("last_mentioned_at") or source_meta.get("created_at")
+            source_first = source_meta.get("first_mentioned_at") or source_meta.get(
+                "created_at"
+            )
+            source_last = source_meta.get("last_mentioned_at") or source_meta.get(
+                "created_at"
+            )
 
-            if source_first and (not earliest_mentioned or source_first < earliest_mentioned):
+            if source_first and (
+                not earliest_mentioned or source_first < earliest_mentioned
+            ):
                 earliest_mentioned = source_first
             if source_last and (not latest_mentioned or source_last > latest_mentioned):
                 latest_mentioned = source_last
@@ -1484,13 +1528,15 @@ async def merge_concepts(
         collection.update(
             ids=[target_id],
             metadatas=[target_meta],
-            documents=[new_concept_text] if new_concept_text else None
+            documents=[new_concept_text] if new_concept_text else None,
         )
 
         # Delete source concepts
         collection.delete(ids=source_ids)
 
-        logger.info(f"[concepts/merge] Merged {len(source_ids)} concepts into {target_id} for user {user_id}")
+        logger.info(
+            f"[concepts/merge] Merged {len(source_ids)} concepts into {target_id} for user {user_id}"
+        )
 
         return {
             "status": "success",
@@ -1555,15 +1601,16 @@ async def split_concept(
     try:
         # Get source concept
         results = collection.get(
-            ids=[source_id],
-            include=["documents", "metadatas", "embeddings"]
+            ids=[source_id], include=["documents", "metadatas", "embeddings"]
         )
 
         if not results.get("ids") or len(results["ids"]) == 0:
             raise HTTPException(status_code=404, detail="Source concept not found")
 
         source_meta = results["metadatas"][0]
-        source_embedding = results["embeddings"][0] if results.get("embeddings") else None
+        source_embedding = (
+            results["embeddings"][0] if results.get("embeddings") else None
+        )
 
         # Verify ownership
         if source_meta.get("user_id") != user_id:
@@ -1576,10 +1623,14 @@ async def split_concept(
         for idx, new_concept in enumerate(new_concepts):
             concept_text = new_concept.get("concept_text")
             if not concept_text:
-                raise HTTPException(status_code=400, detail=f"concept_text required for new_concept[{idx}]")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"concept_text required for new_concept[{idx}]",
+                )
 
             # Generate new ID
             import uuid
+
             new_id = f"concept_{user_id}_{uuid.uuid4().hex[:8]}"
 
             # Create metadata
@@ -1603,7 +1654,7 @@ async def split_concept(
                 ids=[new_id],
                 documents=[concept_text],
                 metadatas=[new_meta],
-                embeddings=[source_embedding] if source_embedding else None
+                embeddings=[source_embedding] if source_embedding else None,
             )
 
             new_ids.append(new_id)
@@ -1611,7 +1662,9 @@ async def split_concept(
         # Delete source concept
         collection.delete(ids=[source_id])
 
-        logger.info(f"[concepts/split] Split concept {source_id} into {len(new_ids)} concepts for user {user_id}")
+        logger.info(
+            f"[concepts/split] Split concept {source_id} into {len(new_ids)} concepts for user {user_id}"
+        )
 
         return {
             "status": "success",
@@ -1660,25 +1713,28 @@ async def bulk_delete_concepts(
 
     try:
         # Get concepts to verify ownership
-        results = collection.get(
-            ids=concept_ids,
-            include=["metadatas"]
-        )
+        results = collection.get(ids=concept_ids, include=["metadatas"])
 
         found_ids = results.get("ids", [])
         if len(found_ids) != len(concept_ids):
             missing = set(concept_ids) - set(found_ids)
-            raise HTTPException(status_code=404, detail=f"Concepts not found: {list(missing)}")
+            raise HTTPException(
+                status_code=404, detail=f"Concepts not found: {list(missing)}"
+            )
 
         # Verify ownership for all
         for meta in results["metadatas"]:
             if meta.get("user_id") != user_id:
-                raise HTTPException(status_code=403, detail="Access denied to one or more concepts")
+                raise HTTPException(
+                    status_code=403, detail="Access denied to one or more concepts"
+                )
 
         # Delete all
         collection.delete(ids=concept_ids)
 
-        logger.info(f"[concepts/bulk-delete] Deleted {len(concept_ids)} concepts for user {user_id}")
+        logger.info(
+            f"[concepts/bulk-delete] Deleted {len(concept_ids)} concepts for user {user_id}"
+        )
 
         return {
             "status": "success",
@@ -1690,7 +1746,9 @@ async def bulk_delete_concepts(
         raise
     except Exception as e:
         logger.error(f"[concepts/bulk-delete] Failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to bulk delete concepts: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to bulk delete concepts: {e}"
+        )
 
 
 @router.post(
@@ -1734,21 +1792,22 @@ async def bulk_tag_concepts(
 
     try:
         # Get concepts
-        results = collection.get(
-            ids=concept_ids,
-            include=["metadatas"]
-        )
+        results = collection.get(ids=concept_ids, include=["metadatas"])
 
         found_ids = results.get("ids", [])
         if len(found_ids) != len(concept_ids):
             missing = set(concept_ids) - set(found_ids)
-            raise HTTPException(status_code=404, detail=f"Concepts not found: {list(missing)}")
+            raise HTTPException(
+                status_code=404, detail=f"Concepts not found: {list(missing)}"
+            )
 
         # Verify ownership and update tags
         updated_metas = []
         for meta in results["metadatas"]:
             if meta.get("user_id") != user_id:
-                raise HTTPException(status_code=403, detail="Access denied to one or more concepts")
+                raise HTTPException(
+                    status_code=403, detail="Access denied to one or more concepts"
+                )
 
             updated_meta = {**meta}
             if mode == "replace":
@@ -1761,12 +1820,11 @@ async def bulk_tag_concepts(
             updated_metas.append(updated_meta)
 
         # Update all concepts
-        collection.update(
-            ids=found_ids,
-            metadatas=updated_metas
-        )
+        collection.update(ids=found_ids, metadatas=updated_metas)
 
-        logger.info(f"[concepts/bulk-tag] Tagged {len(found_ids)} concepts for user {user_id}")
+        logger.info(
+            f"[concepts/bulk-tag] Tagged {len(found_ids)} concepts for user {user_id}"
+        )
 
         return {
             "status": "success",
@@ -1806,26 +1864,28 @@ async def export_concepts(
     try:
         # Get all user concepts
         results = collection.get(
-            where={"$and": [
-                {"user_id": user_id},
-                {"type": "concept"}
-            ]},
-            include=["documents", "metadatas"]
+            where={"$and": [{"user_id": user_id}, {"type": "concept"}]},
+            include=["documents", "metadatas"],
         )
 
         concepts = []
-        for concept_id, doc, meta in zip(results["ids"], results["documents"], results["metadatas"]):
-            concepts.append({
-                "id": concept_id,
-                "concept_text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
-                "description": meta.get("description", ""),
-                "tags": meta.get("tags", []),
-                "relations": meta.get("relations", []),
-                "occurrence_count": int(meta.get("mention_count", 1)),
-                "first_mentioned": meta.get("first_mentioned_at"),
-                "last_mentioned": meta.get("last_mentioned_at"),
-                "thread_ids": meta.get("thread_ids", []),
-            })
+        for concept_id, doc, meta in zip(
+            results["ids"], results["documents"], results["metadatas"]
+        ):
+            concepts.append(
+                {
+                    "id": concept_id,
+                    "concept_text": meta.get("concept_text")
+                    or (doc if isinstance(doc, str) else str(doc)),
+                    "description": meta.get("description", ""),
+                    "tags": meta.get("tags", []),
+                    "relations": meta.get("relations", []),
+                    "occurrence_count": int(meta.get("mention_count", 1)),
+                    "first_mentioned": meta.get("first_mentioned_at"),
+                    "last_mentioned": meta.get("last_mentioned_at"),
+                    "thread_ids": meta.get("thread_ids", []),
+                }
+            )
 
         return {
             "concepts": concepts,
@@ -1881,11 +1941,13 @@ async def import_concepts(
         if mode == "replace":
             existing = collection.get(
                 where={"$and": [{"user_id": user_id}, {"type": "concept"}]},
-                include=["metadatas"]
+                include=["metadatas"],
             )
             if existing.get("ids"):
                 collection.delete(ids=existing["ids"])
-                logger.info(f"[concepts/import] Deleted {len(existing['ids'])} existing concepts (replace mode)")
+                logger.info(
+                    f"[concepts/import] Deleted {len(existing['ids'])} existing concepts (replace mode)"
+                )
 
         # Import concepts
         for concept in concepts:
@@ -1895,6 +1957,7 @@ async def import_concepts(
 
             # Generate new ID
             import uuid
+
             new_id = f"concept_{user_id}_{uuid.uuid4().hex[:8]}"
 
             meta = {
@@ -1911,15 +1974,13 @@ async def import_concepts(
                 "created_at": __import__("datetime").datetime.utcnow().isoformat(),
             }
 
-            collection.add(
-                ids=[new_id],
-                documents=[concept_text],
-                metadatas=[meta]
-            )
+            collection.add(ids=[new_id], documents=[concept_text], metadatas=[meta])
 
             imported_count += 1
 
-        logger.info(f"[concepts/import] Imported {imported_count} concepts for user {user_id}")
+        logger.info(
+            f"[concepts/import] Imported {imported_count} concepts for user {user_id}"
+        )
 
         return {
             "status": "success",
@@ -1964,12 +2025,9 @@ async def get_concepts_graph(
     try:
         # Get user's concepts
         results = collection.get(
-            where={"$and": [
-                {"user_id": user_id},
-                {"type": "concept"}
-            ]},
+            where={"$and": [{"user_id": user_id}, {"type": "concept"}]},
             include=["documents", "metadatas"],
-            limit=limit
+            limit=limit,
         )
 
         concepts_docs = results.get("documents", [])
@@ -1987,8 +2045,10 @@ async def get_concepts_graph(
             concept = {
                 "id": concept_id,
                 "concept_id": concept_id,
-                "concept_text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
-                "label": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+                "concept_text": meta.get("concept_text")
+                or (doc if isinstance(doc, str) else str(doc)),
+                "label": meta.get("concept_text")
+                or (doc if isinstance(doc, str) else str(doc)),
                 "occurrence_count": int(meta.get("mention_count", 1)),
                 "created_at": meta.get("first_mentioned_at") or meta.get("created_at"),
                 "last_mentioned": meta.get("last_mentioned_at"),
@@ -2000,14 +2060,18 @@ async def get_concepts_graph(
             concept_relations = meta.get("relations", [])
             for rel in concept_relations:
                 if isinstance(rel, dict):
-                    relations.append({
-                        "source": concept_id,
-                        "target": rel.get("target_id"),
-                        "type": rel.get("type", "related"),
-                        "strength": rel.get("strength", 1.0),
-                    })
+                    relations.append(
+                        {
+                            "source": concept_id,
+                            "target": rel.get("target_id"),
+                            "type": rel.get("type", "related"),
+                            "strength": rel.get("strength", 1.0),
+                        }
+                    )
 
-        logger.info(f"[concepts/graph] Retrieved {len(concepts)} concepts and {len(relations)} relations for user {user_id}")
+        logger.info(
+            f"[concepts/graph] Retrieved {len(concepts)} concepts and {len(relations)} relations for user {user_id}"
+        )
 
         return {
             "concepts": concepts,
@@ -2018,7 +2082,9 @@ async def get_concepts_graph(
 
     except Exception as e:
         logger.error(f"[concepts/graph] Failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve concept graph: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve concept graph: {e}"
+        )
 
 
 @router.post(
@@ -2028,8 +2094,7 @@ async def get_concepts_graph(
     description="Consolide tous threads archivés non encore traités. Utile pour migration ou rattrapage batch.",
 )
 async def consolidate_archived_threads(
-    request: Request,
-    data: dict[str, Any] = Body(default={})
+    request: Request, data: dict[str, Any] = Body(default={})
 ) -> dict[str, Any]:
     """
     Consolide tous les threads archivés non encore traités.
@@ -2061,17 +2126,24 @@ async def consolidate_archived_threads(
             session_id=None,  # Tous sessions
             user_id=user_id,
             archived_only=True,
-            limit=limit
+            limit=limit,
         )
     except Exception as e:
-        logger.error(f"[consolidate_archived] Failed to fetch archived threads: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch archived threads: {e}")
+        logger.error(
+            f"[consolidate_archived] Failed to fetch archived threads: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch archived threads: {e}"
+        )
 
     consolidated = 0
     skipped = 0
     errors = []
 
-    logger.info(f"[consolidate_archived] Processing {len(threads)} archived threads (force={force})")
+    logger.info(
+        f"[consolidate_archived] Processing {len(threads)} archived threads (force={force})"
+    )
 
     for thread in threads:
         thread_id = thread.get("id")
@@ -2080,32 +2152,40 @@ async def consolidate_archived_threads(
 
         try:
             # Vérifier si déjà consolidé (concepts dans ChromaDB)
-            if not force and await _thread_already_consolidated(container.vector_service(), thread_id):
+            if not force and await _thread_already_consolidated(
+                container.vector_service(), thread_id
+            ):
                 skipped += 1
-                logger.debug(f"[consolidate_archived] Thread {thread_id} already consolidated, skipping")
+                logger.debug(
+                    f"[consolidate_archived] Thread {thread_id} already consolidated, skipping"
+                )
                 continue
 
             # Consolider thread
             result = await gardener._tend_single_thread(
                 thread_id=thread_id,
                 session_id=thread.get("session_id"),
-                user_id=thread.get("user_id")
+                user_id=thread.get("user_id"),
             )
 
             new_concepts = result.get("new_concepts", 0)
             if new_concepts > 0:
                 consolidated += 1
-                logger.info(f"[consolidate_archived] Thread {thread_id} consolidated: {new_concepts} concepts")
+                logger.info(
+                    f"[consolidate_archived] Thread {thread_id} consolidated: {new_concepts} concepts"
+                )
             else:
                 skipped += 1
-                logger.debug(f"[consolidate_archived] Thread {thread_id} produced no concepts")
+                logger.debug(
+                    f"[consolidate_archived] Thread {thread_id} produced no concepts"
+                )
 
         except Exception as e:
-            logger.error(f"[consolidate_archived] Error consolidating thread {thread_id}: {e}", exc_info=True)
-            errors.append({
-                "thread_id": thread_id,
-                "error": str(e)
-            })
+            logger.error(
+                f"[consolidate_archived] Error consolidating thread {thread_id}: {e}",
+                exc_info=True,
+            )
+            errors.append({"thread_id": thread_id, "error": str(e)})
 
     logger.info(
         f"[consolidate_archived] Batch completed: "
@@ -2117,7 +2197,7 @@ async def consolidate_archived_threads(
         "consolidated_count": consolidated,
         "skipped_count": skipped,
         "total_archived": len(threads),
-        "errors": errors
+        "errors": errors,
     }
 
 
@@ -2128,9 +2208,7 @@ async def consolidate_archived_threads(
     summary="Get unified memory dashboard",
     description="Returns complete memory overview: stats, preferences, concepts, archived conversations",
 )
-async def get_memory_dashboard(
-    request: Request
-) -> dict[str, Any]:
+async def get_memory_dashboard(request: Request) -> dict[str, Any]:
     """
     🆕 Sprint 5: Dashboard mémoire unifié.
 
@@ -2174,7 +2252,7 @@ async def get_memory_dashboard(
         "top_preferences": [],
         "top_concepts": [],
         "recent_archives": [],
-        "timeline": []
+        "timeline": [],
     }
 
     try:
@@ -2184,35 +2262,37 @@ async def get_memory_dashboard(
             session_id=None,
             user_id=user_id,
             archived_only=False,
-            limit=10000  # Large pour stats
+            limit=10000,  # Large pour stats
         )
 
-        active_threads = [t for t in all_threads if not t.get('archived')]
-        archived_threads = [t for t in all_threads if t.get('archived')]
+        active_threads = [t for t in all_threads if not t.get("archived")]
+        archived_threads = [t for t in all_threads if t.get("archived")]
 
         # 2. Stats concepts
         concepts_results = collection.get(
             where={"$and": [{"user_id": user_id}, {"type": "concept"}]},
-            include=["metadatas"]
+            include=["metadatas"],
         )
-        total_concepts = len(concepts_results.get('ids', []))
+        total_concepts = len(concepts_results.get("ids", []))
 
         # 3. Stats préférences
         prefs_results = collection.get(
-            where={"$and": [
-                {"user_id": user_id},
-                {"type": "preference"},
-                {"confidence": {"$gte": 0.6}}
-            ]},
-            include=["documents", "metadatas"]
+            where={
+                "$and": [
+                    {"user_id": user_id},
+                    {"type": "preference"},
+                    {"confidence": {"$gte": 0.6}},
+                ]
+            },
+            include=["documents", "metadatas"],
         )
-        active_prefs = prefs_results.get('ids', [])
+        active_prefs = prefs_results.get("ids", [])
 
         # 4. Calcul taille mémoire approx (KB → MB)
         memory_size_kb = (
-            len(all_threads) * 2 +  # ~2KB par thread
-            total_concepts * 1 +     # ~1KB par concept
-            len(active_prefs) * 0.5  # ~0.5KB par préférence
+            len(all_threads) * 2  # ~2KB par thread
+            + total_concepts * 1  # ~1KB par concept
+            + len(active_prefs) * 0.5  # ~0.5KB par préférence
         )
         memory_size_mb = round(memory_size_kb / 1024, 2)
 
@@ -2222,65 +2302,71 @@ async def get_memory_dashboard(
             "conversations_archived": len(archived_threads),
             "concepts_total": total_concepts,
             "preferences_active": len(active_prefs),
-            "memory_size_mb": memory_size_mb
+            "memory_size_mb": memory_size_mb,
         }
 
         # 5. Top préférences (top 5 par confidence)
-        prefs_docs = prefs_results.get('documents', [])
-        prefs_meta = prefs_results.get('metadatas', [])
+        prefs_docs = prefs_results.get("documents", [])
+        prefs_meta = prefs_results.get("metadatas", [])
 
         preferences = []
         for doc, meta in zip(prefs_docs, prefs_meta):
             if not meta:
                 continue
-            preferences.append({
-                "text": doc if isinstance(doc, str) else str(doc),
-                "confidence": float(meta.get("confidence", 0.5)),
-                "topic": meta.get("topic", "general")
-            })
+            preferences.append(
+                {
+                    "text": doc if isinstance(doc, str) else str(doc),
+                    "confidence": float(meta.get("confidence", 0.5)),
+                    "topic": meta.get("topic", "general"),
+                }
+            )
 
         preferences.sort(key=lambda x: x["confidence"], reverse=True)
         dashboard["top_preferences"] = preferences[:5]
 
         # 6. Top concepts (top 5 par mention_count)
-        concepts_docs = concepts_results.get('documents', [])
-        concepts_meta = concepts_results.get('metadatas', [])
+        concepts_docs = concepts_results.get("documents", [])
+        concepts_meta = concepts_results.get("metadatas", [])
 
         concepts = []
         for doc, meta in zip(concepts_docs, concepts_meta):
             if not meta:
                 continue
-            concepts.append({
-                "text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
-                "mentions": int(meta.get("mention_count", 1)),
-                "last_mentioned": meta.get("last_mentioned_at")
-            })
+            concepts.append(
+                {
+                    "text": meta.get("concept_text")
+                    or (doc if isinstance(doc, str) else str(doc)),
+                    "mentions": int(meta.get("mention_count", 1)),
+                    "last_mentioned": meta.get("last_mentioned_at"),
+                }
+            )
 
         concepts.sort(key=lambda x: x["mentions"], reverse=True)
         dashboard["top_concepts"] = concepts[:5]
 
         # 7. Archives récentes (top 3)
-        archived_threads.sort(
-            key=lambda t: t.get('archived_at', ''),
-            reverse=True
-        )
+        archived_threads.sort(key=lambda t: t.get("archived_at", ""), reverse=True)
 
         for thread in archived_threads[:3]:
-            dashboard["recent_archives"].append({
-                "thread_id": thread.get('id'),
-                "title": thread.get('title', 'Sans titre'),
-                "archived_at": thread.get('archived_at'),
-                "message_count": thread.get('message_count', 0),
-                "consolidated": thread.get('consolidated_at') is not None
-            })
+            dashboard["recent_archives"].append(
+                {
+                    "thread_id": thread.get("id"),
+                    "title": thread.get("title", "Sans titre"),
+                    "archived_at": thread.get("archived_at"),
+                    "message_count": thread.get("message_count", 0),
+                    "consolidated": thread.get("consolidated_at") is not None,
+                }
+            )
 
         # 8. Timeline activité (groupée par période)
         # TODO: Améliorer avec topics via MemoryQueryTool
         dashboard["timeline"] = [
             {
                 "period": "Cette semaine",
-                "conversations": len([t for t in all_threads if _is_this_week(t.get('created_at'))]),
-                "topics": []  # TODO
+                "conversations": len(
+                    [t for t in all_threads if _is_this_week(t.get("created_at"))]
+                ),
+                "topics": [],  # TODO
             }
         ]
 
@@ -2290,7 +2376,9 @@ async def get_memory_dashboard(
 
     except Exception as e:
         logger.error(f"[dashboard] Failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to generate dashboard: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate dashboard: {e}"
+        )
 
 
 def _is_this_week(iso_date: Optional[str]) -> bool:
@@ -2299,7 +2387,8 @@ def _is_this_week(iso_date: Optional[str]) -> bool:
         return False
     try:
         from datetime import datetime, timedelta, timezone
-        dt = datetime.fromisoformat(iso_date.replace('Z', '+00:00'))
+
+        dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
         now = datetime.now(timezone.utc)
         week_start = now - timedelta(days=now.weekday())
         return dt >= week_start

@@ -34,15 +34,17 @@ async def infer_agent_from_thread(db: DatabaseManager, thread_id: str) -> Option
         agent_id inféré (anima par défaut)
     """
     try:
-        thread = await queries.get_thread_any(db, thread_id, session_id=None, user_id=None)
+        thread = await queries.get_thread_any(
+            db, thread_id, session_id=None, user_id=None
+        )
         if thread:
-            agent_id = thread.get('agent_id')
+            agent_id = thread.get("agent_id")
             if agent_id:
                 return cast(str, agent_id.lower())
-        return 'anima'  # Défaut si pas d'agent_id dans thread
+        return "anima"  # Défaut si pas d'agent_id dans thread
     except Exception as e:
         logger.warning(f"Failed to infer agent from thread {thread_id}: {e}")
-        return 'anima'
+        return "anima"
 
 
 async def backfill_missing_agent_ids(
@@ -50,7 +52,7 @@ async def backfill_missing_agent_ids(
     db: DatabaseManager,
     *,
     user_id: Optional[str] = None,
-    dry_run: bool = False
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     """
     Backfill agent_id pour concepts sans agent_id.
@@ -71,13 +73,10 @@ async def backfill_missing_agent_ids(
     if user_id:
         where = {"$and": [where, {"user_id": user_id}]}
 
-    results = collection.get(
-        where=where,
-        include=["metadatas"]
-    )
+    results = collection.get(where=where, include=["metadatas"])
 
-    concept_ids = results.get('ids', [])
-    metadatas = results.get('metadatas', [])
+    concept_ids = results.get("ids", [])
+    metadatas = results.get("metadatas", [])
 
     logger.info(f"Trouvé {len(concept_ids)} concepts à analyser")
 
@@ -88,12 +87,12 @@ async def backfill_missing_agent_ids(
     for concept_id, meta in zip(concept_ids, metadatas):
         try:
             # Skip si agent_id déjà présent
-            if meta.get('agent_id'):
+            if meta.get("agent_id"):
                 skipped += 1
                 continue
 
             # Inférer depuis thread_ids
-            thread_ids = meta.get('thread_ids', [])
+            thread_ids = meta.get("thread_ids", [])
             if not thread_ids:
                 logger.debug(f"Concept {concept_id[:8]}... sans thread_ids, skip")
                 skipped += 1
@@ -108,22 +107,20 @@ async def backfill_missing_agent_ids(
 
             if not dry_run:
                 # Mettre à jour
-                updated_meta = {**meta, 'agent_id': inferred_agent}
-                collection.update(
-                    ids=[concept_id],
-                    metadatas=[updated_meta]
-                )
+                updated_meta = {**meta, "agent_id": inferred_agent}
+                collection.update(ids=[concept_id], metadatas=[updated_meta])
                 updated += 1
             else:
-                logger.info(f"  [DRY-RUN] Aurait mis à jour avec agent_id={inferred_agent}")
+                logger.info(
+                    f"  [DRY-RUN] Aurait mis à jour avec agent_id={inferred_agent}"
+                )
                 updated += 1
 
         except Exception as e:
-            logger.error(f"Erreur traitement concept {concept_id[:8]}...: {e}", exc_info=True)
-            errors.append({
-                'concept_id': concept_id,
-                'error': str(e)
-            })
+            logger.error(
+                f"Erreur traitement concept {concept_id[:8]}...: {e}", exc_info=True
+            )
+            errors.append({"concept_id": concept_id, "error": str(e)})
 
     # Rapport final
     logger.info(f"""
@@ -142,10 +139,10 @@ async def backfill_missing_agent_ids(
         logger.error(f"Erreurs détaillées:\n{errors}")
 
     return {
-        'total': len(concept_ids),
-        'updated': updated,
-        'skipped': skipped,
-        'errors': errors
+        "total": len(concept_ids),
+        "updated": updated,
+        "skipped": skipped,
+        "errors": errors,
     }
 
 
@@ -153,15 +150,17 @@ async def main():
     parser = argparse.ArgumentParser(
         description="Backfill agent_id pour concepts legacy"
     )
-    parser.add_argument('--user-id', help="User ID à traiter")
-    parser.add_argument('--all', action='store_true', help="Tous utilisateurs")
-    parser.add_argument('--dry-run', action='store_true', help="Simulation sans modification")
-    parser.add_argument('--db', default='emergence.db', help="Chemin DB SQLite")
+    parser.add_argument("--user-id", help="User ID à traiter")
+    parser.add_argument("--all", action="store_true", help="Tous utilisateurs")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Simulation sans modification"
+    )
+    parser.add_argument("--db", default="emergence.db", help="Chemin DB SQLite")
     args = parser.parse_args()
 
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     # Setup
@@ -179,14 +178,12 @@ async def main():
 
     # Exécution
     await backfill_missing_agent_ids(
-        vector_service, db,
-        user_id=user_id,
-        dry_run=args.dry_run
+        vector_service, db, user_id=user_id, dry_run=args.dry_run
     )
 
     await db.close()
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit(asyncio.run(main()))

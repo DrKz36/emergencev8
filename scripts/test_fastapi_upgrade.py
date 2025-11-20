@@ -12,11 +12,12 @@ Critical areas to test:
 Usage:
     python scripts/test_fastapi_upgrade.py
 """
+
 import asyncio
 import logging
 import sys
 from pathlib import Path
-from typing import AsyncGenerator, Dict, Any, List
+from typing import Dict, Any, List
 
 # Add src to path
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -25,8 +26,7 @@ SRC_DIR = REPO_ROOT / "src"
 sys.path.insert(0, str(SRC_DIR))
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -39,11 +39,13 @@ class FastAPIUpgradeTests:
 
     def test_result(self, name: str, passed: bool, details: str = ""):
         """Record test result."""
-        self.results.append({
-            "test": name,
-            "passed": passed,
-            "details": details,
-        })
+        self.results.append(
+            {
+                "test": name,
+                "passed": passed,
+                "details": details,
+            }
+        )
         status = "✓" if passed else "✗"
         logger.info(f"{status} {name}: {details}")
 
@@ -72,6 +74,7 @@ class FastAPIUpgradeTests:
                         yield f"chunk-{i}\n"
                         await asyncio.sleep(0.001)
                     cleanup_log.append("stream_done")
+
                 return StreamingResponse(generate(), media_type="text/plain")
 
             client = TestClient(app)
@@ -89,15 +92,13 @@ class FastAPIUpgradeTests:
 
             if cleanup_log == expected_order:
                 self.test_result(
-                    test_name,
-                    True,
-                    f"Cleanup order correct: {cleanup_log}"
+                    test_name, True, f"Cleanup order correct: {cleanup_log}"
                 )
             else:
                 self.test_result(
                     test_name,
                     False,
-                    f"Cleanup order unexpected. Expected {expected_order}, got {cleanup_log}"
+                    f"Cleanup order unexpected. Expected {expected_order}, got {cleanup_log}",
                 )
 
         except Exception as e:
@@ -127,6 +128,7 @@ class FastAPIUpgradeTests:
                         chunks_sent.append(i)
                         yield f"data-{i}\n"
                         await asyncio.sleep(0.001)
+
                 return StreamingResponse(generate(), media_type="text/plain")
 
             client = TestClient(app)
@@ -139,9 +141,7 @@ class FastAPIUpgradeTests:
                 assert f"data-{i}" in response.text
 
             self.test_result(
-                test_name,
-                True,
-                f"All {len(chunks_sent)} chunks sent successfully"
+                test_name, True, f"All {len(chunks_sent)} chunks sent successfully"
             )
 
         except Exception as e:
@@ -171,18 +171,13 @@ class FastAPIUpgradeTests:
 
             client = TestClient(app)
             response = client.post(
-                "/test-pydantic",
-                json={"user_id": "test123", "data": {"key": "value"}}
+                "/test-pydantic", json={"user_id": "test123", "data": {"key": "value"}}
             )
 
             assert response.status_code == 200
             assert response.json()["received"]["user_id"] == "test123"
 
-            self.test_result(
-                test_name,
-                True,
-                "Pydantic v2 models work correctly"
-            )
+            self.test_result(test_name, True, "Pydantic v2 models work correctly")
 
         except Exception as e:
             self.test_result(test_name, False, f"Exception: {e}")
@@ -202,7 +197,9 @@ class FastAPIUpgradeTests:
                 yield "ws_resource"
 
             @app.websocket("/ws-test")
-            async def websocket_endpoint(websocket: WebSocket, dep=Depends(get_ws_dependency)):
+            async def websocket_endpoint(
+                websocket: WebSocket, dep=Depends(get_ws_dependency)
+            ):
                 await websocket.accept()
                 await websocket.send_text("connected")
                 data = await websocket.receive_text()
@@ -217,11 +214,7 @@ class FastAPIUpgradeTests:
                 response = websocket.receive_text()
                 assert response == "echo: hello"
 
-            self.test_result(
-                test_name,
-                True,
-                "WebSocket with Depends works correctly"
-            )
+            self.test_result(test_name, True, "WebSocket with Depends works correctly")
 
         except Exception as e:
             self.test_result(test_name, False, f"Exception: {e}")
@@ -253,11 +246,7 @@ class FastAPIUpgradeTests:
             await asyncio.sleep(0.1)  # Give time for task to execute
             assert len(task_executed) > 0
 
-            self.test_result(
-                test_name,
-                True,
-                "BackgroundTasks executed successfully"
-            )
+            self.test_result(test_name, True, "BackgroundTasks executed successfully")
 
         except Exception as e:
             self.test_result(test_name, False, f"Exception: {e}")
@@ -288,6 +277,7 @@ class FastAPIUpgradeTests:
 
             # TestClient triggers lifespan
             from fastapi.testclient import TestClient
+
             with TestClient(app) as client:
                 response = client.get("/test")
                 assert response.status_code == 200
@@ -296,20 +286,16 @@ class FastAPIUpgradeTests:
             assert "startup" in startup_log
             assert "shutdown" in startup_log
 
-            self.test_result(
-                test_name,
-                True,
-                f"Lifespan events: {startup_log}"
-            )
+            self.test_result(test_name, True, f"Lifespan events: {startup_log}")
 
         except Exception as e:
             self.test_result(test_name, False, f"Exception: {e}")
 
     async def run_all(self):
         """Run all tests."""
-        logger.info("="*60)
+        logger.info("=" * 60)
         logger.info("Starting FastAPI 0.119 upgrade compatibility tests")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         await self.test_dependency_yield_cleanup()
         await self.test_streaming_response_no_interruption()
@@ -318,18 +304,18 @@ class FastAPIUpgradeTests:
         await self.test_background_tasks()
         await self.test_lifespan_context_manager()
 
-        logger.info("="*60)
+        logger.info("=" * 60)
         logger.info("Test suite completed")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
     def print_summary(self):
         """Print test summary."""
         passed = sum(1 for r in self.results if r["passed"])
         total = len(self.results)
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("TEST RESULTS SUMMARY")
-        print("="*60)
+        print("=" * 60)
 
         for result in self.results:
             status = "✓ PASS" if result["passed"] else "✗ FAIL"
@@ -337,9 +323,9 @@ class FastAPIUpgradeTests:
             if result["details"]:
                 print(f"       {result['details']}")
 
-        print("\n" + "-"*60)
+        print("\n" + "-" * 60)
         print(f"TOTAL: {passed}/{total} tests passed")
-        print("="*60)
+        print("=" * 60)
 
         return passed == total
 

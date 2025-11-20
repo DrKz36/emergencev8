@@ -14,6 +14,7 @@ from time import time
 
 try:
     from prometheus_client import Counter, Histogram, Gauge, Info
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
@@ -29,35 +30,29 @@ logger = logging.getLogger(__name__)
 if PROMETHEUS_AVAILABLE:
     # Nombre total de requêtes RAG par agent
     rag_queries_total = Counter(
-        'rag_queries_total',
-        'Total number of RAG queries processed',
-        ['agent_id', 'has_intent']
+        "rag_queries_total",
+        "Total number of RAG queries processed",
+        ["agent_id", "has_intent"],
     )
 
     # Cache hits/misses
-    rag_cache_hits_total = Counter(
-        'rag_cache_hits_total',
-        'Number of RAG cache hits'
-    )
+    rag_cache_hits_total = Counter("rag_cache_hits_total", "Number of RAG cache hits")
 
     rag_cache_misses_total = Counter(
-        'rag_cache_misses_total',
-        'Number of RAG cache misses'
+        "rag_cache_misses_total", "Number of RAG cache misses"
     )
 
     # Chunks fusionnés
     rag_chunks_merged_total = Counter(
-        'rag_chunks_merged_total',
-        'Total number of adjacent chunks merged'
+        "rag_chunks_merged_total", "Total number of adjacent chunks merged"
     )
 
     # Requêtes par type de contenu
     rag_queries_by_content_type = Counter(
-        'rag_queries_by_content_type_total',
-        'RAG queries by detected content type',
-        ['content_type']
+        "rag_queries_by_content_type_total",
+        "RAG queries by detected content type",
+        ["content_type"],
     )
-
 
     # ==========================================
     # Histogrammes - Distribution des latences
@@ -65,32 +60,31 @@ if PROMETHEUS_AVAILABLE:
 
     # Latence query vectorielle (Phase 3)
     rag_query_phase3_duration_seconds = Histogram(
-        'rag_query_phase3_duration_seconds',
-        'Time spent in Phase 3 document search query',
-        buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0]
+        "rag_query_phase3_duration_seconds",
+        "Time spent in Phase 3 document search query",
+        buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0],
     )
 
     # Latence fusion de chunks
     rag_merge_duration_seconds = Histogram(
-        'rag_merge_duration_seconds',
-        'Time spent merging adjacent chunks',
-        buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5]
+        "rag_merge_duration_seconds",
+        "Time spent merging adjacent chunks",
+        buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5],
     )
 
     # Latence scoring sémantique
     rag_scoring_duration_seconds = Histogram(
-        'rag_scoring_duration_seconds',
-        'Time spent in semantic scoring',
-        buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5]
+        "rag_scoring_duration_seconds",
+        "Time spent in semantic scoring",
+        buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5],
     )
 
     # Latence totale end-to-end
     rag_total_duration_seconds = Histogram(
-        'rag_total_duration_seconds',
-        'Total RAG pipeline duration (query + merge + score)',
-        buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+        "rag_total_duration_seconds",
+        "Total RAG pipeline duration (query + merge + score)",
+        buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
     )
-
 
     # ==========================================
     # Gauges - Valeurs instantanées/moyennes
@@ -98,37 +92,29 @@ if PROMETHEUS_AVAILABLE:
 
     # Nombre moyen de chunks retournés
     rag_avg_chunks_returned = Gauge(
-        'rag_avg_chunks_returned',
-        'Average number of chunks returned per query'
+        "rag_avg_chunks_returned", "Average number of chunks returned per query"
     )
 
     # Ratio de fusion moyen (chunks fusionnés / chunks bruts)
     rag_avg_merge_ratio = Gauge(
-        'rag_avg_merge_ratio',
-        'Average merge ratio (merged_blocks / raw_chunks)'
+        "rag_avg_merge_ratio", "Average merge ratio (merged_blocks / raw_chunks)"
     )
 
     # Score moyen de pertinence
     rag_avg_relevance_score = Gauge(
-        'rag_avg_relevance_score',
-        'Average relevance score of top result'
+        "rag_avg_relevance_score", "Average relevance score of top result"
     )
 
     # Diversité des sources (nombre de documents uniques dans top-10)
     rag_avg_source_diversity = Gauge(
-        'rag_avg_source_diversity',
-        'Average number of unique documents in top results'
+        "rag_avg_source_diversity", "Average number of unique documents in top results"
     )
-
 
     # ==========================================
     # Info - Métadonnées de configuration
     # ==========================================
 
-    rag_config_info = Info(
-        'rag_config',
-        'RAG system configuration parameters'
-    )
+    rag_config_info = Info("rag_config", "RAG system configuration parameters")
 
     # ==========================================
     # Phase 3 - Métriques Mémoire Temporelle
@@ -136,36 +122,36 @@ if PROMETHEUS_AVAILABLE:
 
     # Compteur questions temporelles détectées
     memory_temporal_queries_total = Counter(
-        'memory_temporal_queries_total',
-        'Total temporal queries detected',
-        ['detected']  # "true" ou "false"
+        "memory_temporal_queries_total",
+        "Total temporal queries detected",
+        ["detected"],  # "true" ou "false"
     )
 
     # Compteur concepts consolidés trouvés
     memory_temporal_concepts_found_total = Counter(
-        'memory_temporal_concepts_found_total',
-        'Total consolidated concepts found in temporal queries',
-        ['count_range']  # "0", "1-2", "3-5", "5+"
+        "memory_temporal_concepts_found_total",
+        "Total consolidated concepts found in temporal queries",
+        ["count_range"],  # "0", "1-2", "3-5", "5+"
     )
 
     # Histogram durée recherche ChromaDB pour mémoire consolidée
     memory_temporal_search_duration_seconds = Histogram(
-        'memory_temporal_search_duration_seconds',
-        'Time spent searching ChromaDB for consolidated concepts',
-        buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
+        "memory_temporal_search_duration_seconds",
+        "Time spent searching ChromaDB for consolidated concepts",
+        buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0],
     )
 
     # Histogram taille contexte enrichi
     memory_temporal_context_size_bytes = Histogram(
-        'memory_temporal_context_size_bytes',
-        'Size of enriched temporal context in bytes',
-        buckets=[100, 500, 1000, 2000, 5000, 10000]
+        "memory_temporal_context_size_bytes",
+        "Size of enriched temporal context in bytes",
+        buckets=[100, 500, 1000, 2000, 5000, 10000],
     )
 
     # Gauge cache hit rate (calculé périodiquement)
     memory_temporal_cache_hit_rate = Gauge(
-        'memory_temporal_cache_hit_rate',
-        'Cache hit rate for temporal queries (percentage)'
+        "memory_temporal_cache_hit_rate",
+        "Cache hit rate for temporal queries (percentage)",
     )
 
 
@@ -173,8 +159,9 @@ if PROMETHEUS_AVAILABLE:
 # Helper functions pour instrumentation
 # ==========================================
 
+
 @contextmanager
-def track_duration(histogram: Optional['Histogram']) -> Iterator[None]:
+def track_duration(histogram: Optional["Histogram"]) -> Iterator[None]:
     """Context manager pour mesurer durée d'exécution."""
     if not PROMETHEUS_AVAILABLE or histogram is None:
         yield
@@ -247,22 +234,25 @@ def set_rag_config(
     max_blocks: int,
     chunk_tolerance: int,
     cache_enabled: bool,
-    cache_ttl: int
+    cache_ttl: int,
 ) -> None:
     """Configure les métadonnées de configuration RAG."""
     if PROMETHEUS_AVAILABLE:
-        rag_config_info.info({
-            'n_results': str(n_results),
-            'max_blocks': str(max_blocks),
-            'chunk_tolerance': str(chunk_tolerance),
-            'cache_enabled': str(cache_enabled),
-            'cache_ttl_seconds': str(cache_ttl),
-        })
+        rag_config_info.info(
+            {
+                "n_results": str(n_results),
+                "max_blocks": str(max_blocks),
+                "chunk_tolerance": str(chunk_tolerance),
+                "cache_enabled": str(cache_enabled),
+                "cache_ttl_seconds": str(cache_ttl),
+            }
+        )
 
 
 # ==========================================
 # Classe wrapper pour statistiques rolling
 # ==========================================
+
 
 class RAGMetricsAggregator:
     """
@@ -283,7 +273,7 @@ class RAGMetricsAggregator:
         raw_chunks: int,
         merged_blocks: int,
         top_score: float,
-        unique_docs: int
+        unique_docs: int,
     ) -> None:
         """Ajoute un résultat et met à jour les métriques."""
         # Ajouter aux historiques
@@ -340,6 +330,7 @@ def get_aggregator() -> RAGMetricsAggregator:
 # Phase 3 - Helper functions Mémoire Temporelle
 # ==========================================
 
+
 def record_temporal_query(is_temporal: bool) -> None:
     """Enregistre une question temporelle (détectée ou non)."""
     if PROMETHEUS_AVAILABLE:
@@ -380,4 +371,6 @@ def update_temporal_cache_hit_rate(hit_rate_percentage: float) -> None:
         memory_temporal_cache_hit_rate.set(hit_rate_percentage)
 
 
-logger.info(f"[RAG Metrics] Module initialized (Prometheus available: {PROMETHEUS_AVAILABLE})")
+logger.info(
+    f"[RAG Metrics] Module initialized (Prometheus available: {PROMETHEUS_AVAILABLE})"
+)

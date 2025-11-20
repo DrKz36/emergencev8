@@ -10,6 +10,7 @@ Usage:
     python src/backend/cli/consolidate_all_archives.py --all  # Admin only
     python src/backend/cli/consolidate_all_archives.py --all --force  # Reconsolider tout
 """
+
 import asyncio
 import argparse
 import logging
@@ -44,10 +45,7 @@ async def is_already_consolidated(vector_service: Any, thread_id: str) -> bool:
     """
     try:
         collection = vector_service.get_or_create_collection("emergence_knowledge")
-        result = collection.get(
-            where={"thread_id": thread_id},
-            limit=1
-        )
+        result = collection.get(where={"thread_id": thread_id}, limit=1)
         ids = result.get("ids") or []
         if isinstance(ids, list) and len(ids) > 0:
             if isinstance(ids[0], list):
@@ -66,7 +64,7 @@ async def consolidate_all_archives(
     *,
     user_id: Optional[str] = None,
     limit: int = 1000,
-    force: bool = False
+    force: bool = False,
 ) -> dict[str, Any]:
     """
     Consolide tous threads archivés non traités.
@@ -93,7 +91,7 @@ async def consolidate_all_archives(
 
     query = f"""
         SELECT * FROM threads
-        WHERE {' AND '.join(where_clauses)}
+        WHERE {" AND ".join(where_clauses)}
         ORDER BY created_at DESC
         LIMIT ?
     """
@@ -109,7 +107,7 @@ async def consolidate_all_archives(
     errors = []
 
     for i, thread in enumerate(threads, 1):
-        thread_id = thread.get('id')
+        thread_id = thread.get("id")
         if not thread_id:
             continue
 
@@ -125,11 +123,11 @@ async def consolidate_all_archives(
             # Consolider
             result = await gardener._tend_single_thread(
                 thread_id=thread_id,
-                session_id=thread.get('session_id'),
-                user_id=thread.get('user_id')
+                session_id=thread.get("session_id"),
+                user_id=thread.get("user_id"),
             )
 
-            new_concepts = result.get('new_concepts', 0)
+            new_concepts = result.get("new_concepts", 0)
             if new_concepts > 0:
                 logger.info(f"  -> Consolidé: {new_concepts} concepts")
                 consolidated += 1
@@ -138,7 +136,7 @@ async def consolidate_all_archives(
                 await db.execute(
                     "UPDATE threads SET consolidated_at = ? WHERE id = ?",
                     (datetime.now(timezone.utc).isoformat(), thread_id),
-                    commit=True
+                    commit=True,
                 )
             else:
                 logger.info("  -> Aucun concept extrait")
@@ -146,10 +144,7 @@ async def consolidate_all_archives(
 
         except Exception as e:
             logger.error(f"  -> ERREUR: {e}", exc_info=True)
-            errors.append({
-                'thread_id': thread_id,
-                'error': str(e)
-            })
+            errors.append({"thread_id": thread_id, "error": str(e)})
 
     # Rapport final
     logger.info(f"""
@@ -167,26 +162,29 @@ async def consolidate_all_archives(
         logger.error(f"Erreurs détaillées:\n{errors}")
 
     return {
-        'total': len(threads),
-        'consolidated': consolidated,
-        'skipped': skipped,
-        'errors': errors
+        "total": len(threads),
+        "consolidated": consolidated,
+        "skipped": skipped,
+        "errors": errors,
     }
 
 
 async def main():
     parser = argparse.ArgumentParser(description="Consolide threads archivés en LTM")
-    parser.add_argument('--user-id', help="User ID à traiter (optionnel)")
-    parser.add_argument('--all', action='store_true', help="Tous utilisateurs (admin)")
-    parser.add_argument('--limit', type=int, default=1000, help="Limite threads (défaut: 1000)")
-    parser.add_argument('--force', action='store_true', help="Forcer reconsolidation")
-    parser.add_argument('--db', default='emergence.db', help="Chemin DB (défaut: emergence.db)")
+    parser.add_argument("--user-id", help="User ID à traiter (optionnel)")
+    parser.add_argument("--all", action="store_true", help="Tous utilisateurs (admin)")
+    parser.add_argument(
+        "--limit", type=int, default=1000, help="Limite threads (défaut: 1000)"
+    )
+    parser.add_argument("--force", action="store_true", help="Forcer reconsolidation")
+    parser.add_argument(
+        "--db", default="emergence.db", help="Chemin DB (défaut: emergence.db)"
+    )
     args = parser.parse_args()
 
     # Setup logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
     # Setup database
@@ -206,10 +204,12 @@ async def main():
         return 1
 
     await consolidate_all_archives(
-        db, gardener, vector_service,
+        db,
+        gardener,
+        vector_service,
         user_id=user_id,
         limit=args.limit,
-        force=args.force
+        force=args.force,
     )
 
     await db.close()
@@ -217,5 +217,5 @@ async def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit(asyncio.run(main()))

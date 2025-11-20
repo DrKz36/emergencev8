@@ -1,6 +1,7 @@
 """
 Webhooks router - REST endpoints for webhook management
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,7 +39,7 @@ async def get_webhook_service(request: Request) -> WebhookService:
 async def create_webhook(
     payload: WebhookCreatePayload,
     claims: dict[str, Any] = Depends(get_auth_claims),
-    service: WebhookService = Depends(get_webhook_service)
+    service: WebhookService = Depends(get_webhook_service),
 ) -> WebhookResponse:
     """
     Create a new webhook subscription
@@ -79,14 +80,14 @@ async def create_webhook(
         logger.error(f"Failed to create webhook: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create webhook"
+            detail="Failed to create webhook",
         ) from e
 
 
 @router.get("", response_model=WebhookListResponse)
 async def list_webhooks(
     claims: dict[str, Any] = Depends(get_auth_claims),
-    service: WebhookService = Depends(get_webhook_service)
+    service: WebhookService = Depends(get_webhook_service),
 ) -> WebhookListResponse:
     """
     List all webhooks for the current user
@@ -99,7 +100,7 @@ async def list_webhooks(
         logger.error(f"Failed to list webhooks: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to list webhooks"
+            detail="Failed to list webhooks",
         ) from e
 
 
@@ -107,7 +108,7 @@ async def list_webhooks(
 async def get_webhook(
     webhook_id: str,
     claims: dict[str, Any] = Depends(get_auth_claims),
-    service: WebhookService = Depends(get_webhook_service)
+    service: WebhookService = Depends(get_webhook_service),
 ) -> WebhookResponse:
     """
     Get a single webhook by ID
@@ -117,15 +118,12 @@ async def get_webhook(
     try:
         return await service.get_webhook(webhook_id, user_id)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to get webhook {webhook_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get webhook"
+            detail="Failed to get webhook",
         ) from e
 
 
@@ -134,7 +132,7 @@ async def update_webhook(
     webhook_id: str,
     payload: WebhookUpdatePayload,
     claims: dict[str, Any] = Depends(get_auth_claims),
-    service: WebhookService = Depends(get_webhook_service)
+    service: WebhookService = Depends(get_webhook_service),
 ) -> WebhookResponse:
     """
     Update an existing webhook
@@ -148,15 +146,12 @@ async def update_webhook(
         logger.info(f"Webhook {webhook_id} updated by user {user_id}")
         return webhook
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to update webhook {webhook_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update webhook"
+            detail="Failed to update webhook",
         ) from e
 
 
@@ -164,7 +159,7 @@ async def update_webhook(
 async def delete_webhook(
     webhook_id: str,
     claims: dict[str, Any] = Depends(get_auth_claims),
-    service: WebhookService = Depends(get_webhook_service)
+    service: WebhookService = Depends(get_webhook_service),
 ) -> None:
     """
     Delete a webhook
@@ -177,15 +172,12 @@ async def delete_webhook(
         await service.delete_webhook(webhook_id, user_id)
         logger.info(f"Webhook {webhook_id} deleted by user {user_id}")
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to delete webhook {webhook_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete webhook"
+            detail="Failed to delete webhook",
         ) from e
 
 
@@ -194,7 +186,7 @@ async def get_webhook_deliveries(
     webhook_id: str,
     limit: int = 50,
     claims: dict[str, Any] = Depends(get_auth_claims),
-    service: WebhookService = Depends(get_webhook_service)
+    service: WebhookService = Depends(get_webhook_service),
 ) -> WebhookDeliveryListResponse:
     """
     Get delivery logs for a webhook
@@ -206,21 +198,20 @@ async def get_webhook_deliveries(
     if limit < 1 or limit > 200:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Limit must be between 1 and 200"
+            detail="Limit must be between 1 and 200",
         )
 
     try:
         return await service.get_webhook_deliveries(webhook_id, user_id, limit)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to get deliveries for webhook {webhook_id}: {e}", exc_info=True)
+        logger.error(
+            f"Failed to get deliveries for webhook {webhook_id}: {e}", exc_info=True
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get webhook deliveries"
+            detail="Failed to get webhook deliveries",
         ) from e
 
 
@@ -228,7 +219,7 @@ async def get_webhook_deliveries(
 async def get_webhook_stats(
     webhook_id: str,
     claims: dict[str, Any] = Depends(get_auth_claims),
-    service: WebhookService = Depends(get_webhook_service)
+    service: WebhookService = Depends(get_webhook_service),
 ) -> WebhookStatsResponse:
     """
     Get statistics for a webhook
@@ -240,13 +231,12 @@ async def get_webhook_stats(
     try:
         return await service.get_webhook_stats(webhook_id, user_id)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to get stats for webhook {webhook_id}: {e}", exc_info=True)
+        logger.error(
+            f"Failed to get stats for webhook {webhook_id}: {e}", exc_info=True
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get webhook stats"
+            detail="Failed to get webhook stats",
         ) from e

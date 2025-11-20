@@ -25,7 +25,7 @@ try:
 
     def _get_cache_counter(name: str, doc: str) -> Counter:
         try:
-            return Counter(name, doc, ['operation'], registry=REGISTRY)
+            return Counter(name, doc, ["operation"], registry=REGISTRY)
         except ValueError:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
             if existing is None:
@@ -42,12 +42,10 @@ try:
             return cast(Gauge, existing)
 
     SCORE_CACHE_OPS = _get_cache_counter(
-        'score_cache_operations_total',
-        'Opérations cache scores (hit/miss/set/evict)'
+        "score_cache_operations_total", "Opérations cache scores (hit/miss/set/evict)"
     )
     SCORE_CACHE_SIZE = _get_cache_gauge(
-        'score_cache_size',
-        'Taille actuelle cache scores'
+        "score_cache_size", "Taille actuelle cache scores"
     )
     PROMETHEUS_AVAILABLE = True
 
@@ -67,11 +65,7 @@ class ScoreCache:
     - Thread-safe (via dict avec GIL Python)
     """
 
-    def __init__(
-        self,
-        max_size: int = 10000,
-        ttl_seconds: int = 3600
-    ):
+    def __init__(self, max_size: int = 10000, ttl_seconds: int = 3600):
         """
         Initialize ScoreCache.
 
@@ -88,12 +82,7 @@ class ScoreCache:
             f"[ScoreCache] Initialisé (max_size={max_size}, ttl={ttl_seconds}s)"
         )
 
-    def get(
-        self,
-        query_text: str,
-        entry_id: str,
-        last_used_at: str
-    ) -> Optional[float]:
+    def get(self, query_text: str, entry_id: str, last_used_at: str) -> Optional[float]:
         """
         Récupère score depuis cache.
 
@@ -110,7 +99,7 @@ class ScoreCache:
         cached = self._cache.get(cache_key)
         if not cached:
             if PROMETHEUS_AVAILABLE:
-                SCORE_CACHE_OPS.labels(operation='miss').inc()
+                SCORE_CACHE_OPS.labels(operation="miss").inc()
             return None
 
         # Vérifier TTL
@@ -120,24 +109,20 @@ class ScoreCache:
             # Expiré → evict
             del self._cache[cache_key]
             if PROMETHEUS_AVAILABLE:
-                SCORE_CACHE_OPS.labels(operation='evict').inc()
+                SCORE_CACHE_OPS.labels(operation="evict").inc()
                 SCORE_CACHE_SIZE.set(len(self._cache))
             logger.debug(f"[ScoreCache] Cache expiré pour {cache_key[:16]}...")
             return None
 
         # Cache hit
         if PROMETHEUS_AVAILABLE:
-            SCORE_CACHE_OPS.labels(operation='hit').inc()
+            SCORE_CACHE_OPS.labels(operation="hit").inc()
 
         logger.debug(f"[ScoreCache] Cache hit pour {cache_key[:16]}...")
         return cast(float | None, cached["score"])
 
     def set(
-        self,
-        query_text: str,
-        entry_id: str,
-        last_used_at: str,
-        score: float
+        self, query_text: str, entry_id: str, last_used_at: str, score: float
     ) -> None:
         """
         Stocke score dans cache.
@@ -159,7 +144,7 @@ class ScoreCache:
             "score": score,
             "expires_at": expires_at,
             "created_at": datetime.now(timezone.utc),
-            "entry_id": entry_id  # Stocker pour invalidation
+            "entry_id": entry_id,  # Stocker pour invalidation
         }
 
         # Associer clé à entry_id pour invalidation rapide
@@ -168,7 +153,7 @@ class ScoreCache:
         self._entry_to_keys[entry_id].add(cache_key)
 
         if PROMETHEUS_AVAILABLE:
-            SCORE_CACHE_OPS.labels(operation='set').inc()
+            SCORE_CACHE_OPS.labels(operation="set").inc()
             SCORE_CACHE_SIZE.set(len(self._cache))
 
         logger.debug(f"[ScoreCache] Stocké {cache_key[:16]}... = {score:.4f}")
@@ -194,7 +179,7 @@ class ScoreCache:
             del self._entry_to_keys[entry_id]
 
         if PROMETHEUS_AVAILABLE:
-            SCORE_CACHE_OPS.labels(operation='evict').inc(len(keys_to_delete))
+            SCORE_CACHE_OPS.labels(operation="evict").inc(len(keys_to_delete))
             SCORE_CACHE_SIZE.set(len(self._cache))
 
         logger.debug(
@@ -208,17 +193,12 @@ class ScoreCache:
         self._entry_to_keys.clear()
 
         if PROMETHEUS_AVAILABLE:
-            SCORE_CACHE_OPS.labels(operation='evict').inc(count)
+            SCORE_CACHE_OPS.labels(operation="evict").inc(count)
             SCORE_CACHE_SIZE.set(0)
 
         logger.info(f"[ScoreCache] Cache vidé ({count} entrées)")
 
-    def _compute_key(
-        self,
-        query_text: str,
-        entry_id: str,
-        last_used_at: str
-    ) -> str:
+    def _compute_key(self, query_text: str, entry_id: str, last_used_at: str) -> str:
         """
         Calcule clé de cache.
 
@@ -245,10 +225,7 @@ class ScoreCache:
             return
 
         # Trouver clé la plus ancienne
-        oldest_key = min(
-            self._cache.keys(),
-            key=lambda k: self._cache[k]["created_at"]
-        )
+        oldest_key = min(self._cache.keys(), key=lambda k: self._cache[k]["created_at"])
 
         # Nettoyer la map entry_to_keys
         entry_id = self._cache[oldest_key].get("entry_id")
@@ -260,7 +237,7 @@ class ScoreCache:
         del self._cache[oldest_key]
 
         if PROMETHEUS_AVAILABLE:
-            SCORE_CACHE_OPS.labels(operation='evict').inc()
+            SCORE_CACHE_OPS.labels(operation="evict").inc()
             SCORE_CACHE_SIZE.set(len(self._cache))
 
         logger.debug(f"[ScoreCache] Evicted {oldest_key[:16]}... (LRU)")
@@ -281,6 +258,8 @@ class ScoreCache:
         return {
             "size": size,
             "max_size": self.max_size,
-            "usage_percent": round((size / self.max_size) * 100, 2) if self.max_size > 0 else 0,
-            "ttl_seconds": self.ttl_seconds
+            "usage_percent": round((size / self.max_size) * 100, 2)
+            if self.max_size > 0
+            else 0,
+            "ttl_seconds": self.ttl_seconds,
         }

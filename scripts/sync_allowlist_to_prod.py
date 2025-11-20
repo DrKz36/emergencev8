@@ -3,16 +3,17 @@
 Script pour synchroniser l'allowlist locale vers la production
 Usage: python scripts/sync_allowlist_to_prod.py
 """
+
 import sqlite3
 import requests
 import sys
-import os
 from pathlib import Path
 
 # Configuration
 LOCAL_DB_PATH = "src/backend/data/db/emergence_v7.db"
 PROD_API_URL = "https://emergence-app-486095406755.europe-west1.run.app"
 ADMIN_EMAIL = "gonzalefernando@gmail.com"
+
 
 def get_local_allowlist():
     """Récupère l'allowlist de la base locale"""
@@ -23,12 +24,12 @@ def get_local_allowlist():
 
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute("""
         SELECT email, role, note, password_must_reset
         FROM auth_allowlist
         WHERE revoked_at IS NULL
         ORDER BY email
-    ''')
+    """)
     users = cursor.fetchall()
     conn.close()
 
@@ -37,17 +38,18 @@ def get_local_allowlist():
             "email": row[0],
             "role": row[1],
             "note": row[2] or "",
-            "password_must_reset": bool(row[3])
+            "password_must_reset": bool(row[3]),
         }
         for row in users
     ]
+
 
 def get_prod_token(password):
     """Obtient un token admin de production"""
     response = requests.post(
         f"{PROD_API_URL}/api/auth/login",
         json={"email": ADMIN_EMAIL, "password": password},
-        timeout=10
+        timeout=10,
     )
 
     if response.status_code != 200:
@@ -57,12 +59,13 @@ def get_prod_token(password):
 
     return response.json()["token"]
 
+
 def get_prod_allowlist(token):
     """Récupère l'allowlist de production"""
     response = requests.get(
         f"{PROD_API_URL}/api/auth/admin/allowlist?page=1&page_size=100",
         headers={"Authorization": f"Bearer {token}"},
-        timeout=10
+        timeout=10,
     )
 
     if response.status_code != 200:
@@ -75,20 +78,18 @@ def get_prod_allowlist(token):
     users = data.get("users") or data.get("entries") or []
     return {user["email"]: user for user in users}
 
+
 def add_user_to_prod(token, user):
     """Ajoute un utilisateur à l'allowlist de production"""
     response = requests.post(
         f"{PROD_API_URL}/api/auth/admin/allowlist",
         headers={"Authorization": f"Bearer {token}"},
-        json={
-            "email": user["email"],
-            "role": user["role"],
-            "note": user["note"]
-        },
-        timeout=10
+        json={"email": user["email"], "role": user["role"], "note": user["note"]},
+        timeout=10,
     )
 
     return response.status_code in [200, 201]
+
 
 def main():
     print("=== Synchronisation de l'allowlist vers la production ===\n")
@@ -127,7 +128,7 @@ def main():
 
     # Confirmer
     confirm = input("\n[WARNING] Confirmer l'ajout en production? (y/N): ")
-    if confirm.lower() != 'y':
+    if confirm.lower() != "y":
         print("[ANNULE]")
         sys.exit(0)
 
@@ -141,7 +142,10 @@ def main():
         else:
             print(f"   [ERREUR] {user['email']} (echec)")
 
-    print(f"\n[OK] Synchronisation terminee: {success_count}/{len(to_add)} utilisateurs ajoutes")
+    print(
+        f"\n[OK] Synchronisation terminee: {success_count}/{len(to_add)} utilisateurs ajoutes"
+    )
+
 
 if __name__ == "__main__":
     main()

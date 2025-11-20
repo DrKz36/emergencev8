@@ -1,20 +1,21 @@
 """
 Send authentication issue email to selected beta testers - CONFIRMED
 """
+
 import asyncio
 import sys
 import io
-import os
 from pathlib import Path
 
 # Force UTF-8 encoding for console output
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # Load .env file
 from dotenv import load_dotenv
-env_path = Path(__file__).parent / '.env'
+
+env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
 from src.backend.features.auth.email_service import EmailService
@@ -26,7 +27,7 @@ RECIPIENTS = [
     "fernando36@bluewin.ch",
     "gonzalefernando@gmail.com",
     "pepin1936@gmail.com",
-    "stephane.cola@bluewin.ch"
+    "stephane.cola@bluewin.ch",
 ]
 
 
@@ -66,7 +67,7 @@ async def send_to_confirmed_members():
         "sent": 0,
         "failed": 0,
         "sent_to": [],
-        "failed_emails": []
+        "failed_emails": [],
     }
 
     for email in RECIPIENTS:
@@ -74,8 +75,7 @@ async def send_to_confirmed_members():
             print(f"📤 Envoi à {email}...", end=" ", flush=True)
 
             success = await email_service.send_auth_issue_notification_email(
-                to_email=email,
-                base_url=base_url
+                to_email=email, base_url=base_url
             )
 
             if success:
@@ -102,24 +102,24 @@ async def send_to_confirmed_members():
     print(f"❌ Échoués : {results['failed']}")
     print()
 
-    if results['sent'] > 0:
+    if results["sent"] > 0:
         print("✅ Emails envoyés avec succès à :")
-        for email in results['sent_to']:
+        for email in results["sent_to"]:
             print(f"   • {email}")
         print()
 
-    if results['failed'] > 0:
+    if results["failed"] > 0:
         print("❌ Emails échoués pour :")
-        for email in results['failed_emails']:
+        for email in results["failed_emails"]:
             print(f"   • {email}")
         print()
 
     print("=" * 80)
     print()
 
-    if results['sent'] == results['total']:
+    if results["sent"] == results["total"]:
         print("🎉 SUCCÈS TOTAL ! Tous les emails ont été envoyés.")
-    elif results['sent'] > 0:
+    elif results["sent"] > 0:
         print("⚠️  SUCCÈS PARTIEL : Certains emails n'ont pas pu être envoyés.")
     else:
         print("❌ ÉCHEC : Aucun email n'a pu être envoyé.")
@@ -127,7 +127,7 @@ async def send_to_confirmed_members():
     print()
     print("=" * 80)
 
-    return results['failed'] == 0
+    return results["failed"] == 0
 
 
 async def main():

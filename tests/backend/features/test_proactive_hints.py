@@ -11,12 +11,13 @@ Tests:
 Run:
     python -m pytest tests/backend/features/test_proactive_hints.py -v
 """
+
 import pytest
 from unittest.mock import MagicMock
 from backend.features.memory.proactive_hints import (
     ProactiveHintEngine,
     ProactiveHint,
-    ConceptTracker
+    ConceptTracker,
 )
 
 
@@ -35,15 +36,23 @@ def mock_vector_service():
         {
             "id": "pref_123",
             "text": "I prefer Python for scripting",
-            "metadata": {"user_id": "user_123", "type": "preference", "confidence": 0.85},
-            "distance": 0.15  # High similarity
+            "metadata": {
+                "user_id": "user_123",
+                "type": "preference",
+                "confidence": 0.85,
+            },
+            "distance": 0.15,  # High similarity
         },
         {
             "id": "pref_456",
             "text": "I like Docker for containerization",
-            "metadata": {"user_id": "user_123", "type": "preference", "confidence": 0.75},
-            "distance": 0.25
-        }
+            "metadata": {
+                "user_id": "user_123",
+                "type": "preference",
+                "confidence": 0.75,
+            },
+            "distance": 0.25,
+        },
     ]
 
     return service
@@ -114,8 +123,8 @@ class TestProactiveHintEngine:
             user_id="user_123",
             current_context={
                 "topic": "scripting",
-                "message": "I need to write a python script"
-            }
+                "message": "I need to write a python script",
+            },
         )
 
         # Assertions
@@ -137,12 +146,16 @@ class TestProactiveHintEngine:
             user_id="user_123",
             current_context={
                 "topic": "containers",
-                "message": "How do I use docker?"  # This will track "docker" once more (total = 2)
-            }
+                "message": "How do I use docker?",  # This will track "docker" once more (total = 2)
+            },
         )
 
         # Should not generate preference reminder (below threshold of 3)
-        pref_hints = [h for h in hints if h.type == "preference_reminder" and "docker" in h.message.lower()]
+        pref_hints = [
+            h
+            for h in hints
+            if h.type == "preference_reminder" and "docker" in h.message.lower()
+        ]
         assert len(pref_hints) == 0
 
     @pytest.mark.asyncio
@@ -157,8 +170,8 @@ class TestProactiveHintEngine:
             user_id="user_123",
             current_context={
                 "topic": "devops",
-                "message": "I need to set up python, docker, kubernetes, terraform, and ansible"
-            }
+                "message": "I need to set up python, docker, kubernetes, terraform, and ansible",
+            },
         )
 
         # Max 3 hints enforced
@@ -173,15 +186,23 @@ class TestProactiveHintEngine:
             {
                 "id": "pref_1",
                 "text": "Low relevance preference",
-                "metadata": {"user_id": "user_123", "type": "preference", "confidence": 0.65},
-                "distance": 0.8  # Low relevance (high distance)
+                "metadata": {
+                    "user_id": "user_123",
+                    "type": "preference",
+                    "confidence": 0.65,
+                },
+                "distance": 0.8,  # Low relevance (high distance)
             },
             {
                 "id": "pref_2",
                 "text": "High relevance preference",
-                "metadata": {"user_id": "user_123", "type": "preference", "confidence": 0.95},
-                "distance": 0.1  # High relevance (low distance)
-            }
+                "metadata": {
+                    "user_id": "user_123",
+                    "type": "preference",
+                    "confidence": 0.95,
+                },
+                "distance": 0.1,  # High relevance (low distance)
+            },
         ]
 
         # Trigger hints for multiple concepts
@@ -190,10 +211,7 @@ class TestProactiveHintEngine:
                 await hint_engine.concept_tracker.track_mention("user_123", concept)
 
         hints = await hint_engine.generate_hints(
-            user_id="user_123",
-            current_context={
-                "message": "test1 and test2"
-            }
+            user_id="user_123", current_context={"message": "test1 and test2"}
         )
 
         # Verify sorted by relevance (descending)
@@ -209,8 +227,12 @@ class TestProactiveHintEngine:
             {
                 "id": "pref_low",
                 "text": "Unrelated preference",
-                "metadata": {"user_id": "user_123", "type": "preference", "confidence": 0.5},
-                "distance": 0.95  # Very low relevance
+                "metadata": {
+                    "user_id": "user_123",
+                    "type": "preference",
+                    "confidence": 0.5,
+                },
+                "distance": 0.95,  # Very low relevance
             }
         ]
 
@@ -219,8 +241,7 @@ class TestProactiveHintEngine:
             await hint_engine.concept_tracker.track_mention("user_123", "irrelevant")
 
         hints = await hint_engine.generate_hints(
-            user_id="user_123",
-            current_context={"message": "irrelevant topic"}
+            user_id="user_123", current_context={"message": "irrelevant topic"}
         )
 
         # Should filter out hints with relevance < 0.6
@@ -235,8 +256,7 @@ class TestProactiveHintEngine:
 
         # Generate hint (should reset counter)
         await hint_engine.generate_hints(
-            user_id="user_123",
-            current_context={"message": "python script"}
+            user_id="user_123", current_context={"message": "python script"}
         )
 
         # Verify counter was reset
@@ -252,13 +272,13 @@ class TestProactiveHintEngine:
                 "id": "intent_123",
                 "text": "Learn Docker containerization",
                 "metadata": {"user_id": "user_123", "type": "intent"},
-                "distance": 0.2  # High relevance
+                "distance": 0.2,  # High relevance
             }
         ]
 
         hints = await hint_engine.generate_hints(
             user_id="user_123",
-            current_context={"message": "Working on containerization"}
+            current_context={"message": "Working on containerization"},
         )
 
         # Should include intent followup hint
@@ -273,8 +293,7 @@ class TestProactiveHintEngine:
     async def test_generate_hints_empty_user_id(self, hint_engine):
         """Test graceful handling of empty user_id."""
         hints = await hint_engine.generate_hints(
-            user_id="",
-            current_context={"message": "test"}
+            user_id="", current_context={"message": "test"}
         )
 
         assert hints == []
@@ -316,7 +335,7 @@ class TestProactiveHintEngine:
             relevance_score=0.85,
             source_preference_id="pref_456",
             action_label="Apply",
-            action_payload={"key": "value"}
+            action_payload={"key": "value"},
         )
 
         hint_dict = hint.to_dict()
@@ -347,8 +366,7 @@ class TestProactiveHintEngineConfiguration:
         await engine.concept_tracker.track_mention("user_123", "python")
 
         hints = await engine.generate_hints(
-            user_id="user_123",
-            current_context={"message": "python script"}
+            user_id="user_123", current_context={"message": "python script"}
         )
 
         # Should generate hint at 2 mentions (custom threshold)

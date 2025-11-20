@@ -23,6 +23,7 @@ from typing import Any, Callable, Dict, List, Optional, TypeVar, cast
 # Import metrics recorder (lazy import pour éviter circular dependency)
 try:
     from .metrics import record_span
+
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
@@ -37,6 +38,7 @@ _current_span_id: ContextVar[Optional[str]] = ContextVar("span_id", default=None
 
 class SpanStatus(str, Enum):
     """Status d'un span (OK, ERROR, TIMEOUT)."""
+
     OK = "OK"
     ERROR = "ERROR"
     TIMEOUT = "TIMEOUT"
@@ -265,6 +267,7 @@ def trace_span(name: str, **attrs: Any) -> Callable[[F], F]:
     Le span démarre au début de la fonction et se termine automatiquement
     (status=OK si succès, status=ERROR si exception).
     """
+
     def decorator(func: F) -> F:
         @wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:

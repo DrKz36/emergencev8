@@ -49,11 +49,13 @@ def mock_gardener(mock_db_manager, mock_vector_service):
     gardener.vector_service = vector_service
 
     # Mock _tend_single_thread pour retourner succès avec concepts
-    gardener._tend_single_thread = AsyncMock(return_value={
-        "status": "success",
-        "new_concepts": 5,
-        "consolidated_sessions": 1
-    })
+    gardener._tend_single_thread = AsyncMock(
+        return_value={
+            "status": "success",
+            "new_concepts": 5,
+            "consolidated_sessions": 1,
+        }
+    )
 
     return gardener
 
@@ -68,7 +70,7 @@ def sample_archived_threads():
             "user_id": "user_123",
             "title": "Archived Thread 1",
             "archived": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
         },
         {
             "id": "thread_archived_2",
@@ -76,7 +78,7 @@ def sample_archived_threads():
             "user_id": "user_123",
             "title": "Archived Thread 2",
             "archived": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
         },
         {
             "id": "thread_archived_3",
@@ -84,7 +86,7 @@ def sample_archived_threads():
             "user_id": "user_123",
             "title": "Archived Thread 3",
             "archived": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
         },
     ]
 
@@ -93,8 +95,11 @@ def sample_archived_threads():
 # Tests unitaires - Endpoint /consolidate-archived
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_consolidate_archived_endpoint_success(mock_gardener, sample_archived_threads, mock_vector_service):
+async def test_consolidate_archived_endpoint_success(
+    mock_gardener, sample_archived_threads, mock_vector_service
+):
     """Test endpoint /consolidate-archived - succès."""
     from backend.features.memory.router import consolidate_archived_threads
 
@@ -117,13 +122,21 @@ async def test_consolidate_archived_endpoint_success(mock_gardener, sample_archi
         return mock_gardener
 
     with patch("backend.shared.dependencies.get_user_id", new=mock_get_user_id):
-        with patch("backend.features.memory.router._get_gardener_from_request", new=mock_get_gardener):
-            with patch("backend.features.memory.router._get_container", return_value=mock_container):
-                with patch("backend.core.database.queries.get_threads", new=AsyncMock(return_value=sample_archived_threads)):
+        with patch(
+            "backend.features.memory.router._get_gardener_from_request",
+            new=mock_get_gardener,
+        ):
+            with patch(
+                "backend.features.memory.router._get_container",
+                return_value=mock_container,
+            ):
+                with patch(
+                    "backend.core.database.queries.get_threads",
+                    new=AsyncMock(return_value=sample_archived_threads),
+                ):
                     # Exécuter endpoint
                     result = await consolidate_archived_threads(
-                        request=mock_request,
-                        data={"limit": 10, "force": False}
+                        request=mock_request, data={"limit": 10, "force": False}
                     )
 
     # Vérifications
@@ -134,7 +147,9 @@ async def test_consolidate_archived_endpoint_success(mock_gardener, sample_archi
 
 
 @pytest.mark.asyncio
-async def test_consolidate_archived_endpoint_no_archived_threads(mock_gardener, mock_vector_service):
+async def test_consolidate_archived_endpoint_no_archived_threads(
+    mock_gardener, mock_vector_service
+):
     """Test endpoint - aucun thread archivé."""
     from backend.features.memory.router import consolidate_archived_threads
 
@@ -154,12 +169,20 @@ async def test_consolidate_archived_endpoint_no_archived_threads(mock_gardener, 
 
     # Mock get_threads retournant liste vide
     with patch("backend.shared.dependencies.get_user_id", new=mock_get_user_id):
-        with patch("backend.features.memory.router._get_gardener_from_request", return_value=mock_gardener):
-            with patch("backend.features.memory.router._get_container", return_value=mock_container):
-                with patch("backend.core.database.queries.get_threads", new=AsyncMock(return_value=[])):
+        with patch(
+            "backend.features.memory.router._get_gardener_from_request",
+            return_value=mock_gardener,
+        ):
+            with patch(
+                "backend.features.memory.router._get_container",
+                return_value=mock_container,
+            ):
+                with patch(
+                    "backend.core.database.queries.get_threads",
+                    new=AsyncMock(return_value=[]),
+                ):
                     result = await consolidate_archived_threads(
-                        request=mock_request,
-                        data={"limit": 10}
+                        request=mock_request, data={"limit": 10}
                     )
 
     # Vérifications
@@ -170,7 +193,9 @@ async def test_consolidate_archived_endpoint_no_archived_threads(mock_gardener, 
 
 
 @pytest.mark.asyncio
-async def test_consolidate_archived_endpoint_partial_failure(mock_gardener, sample_archived_threads, mock_vector_service):
+async def test_consolidate_archived_endpoint_partial_failure(
+    mock_gardener, sample_archived_threads, mock_vector_service
+):
     """Test endpoint - échec partiel (continue avec les autres)."""
     from backend.features.memory.router import consolidate_archived_threads
 
@@ -197,12 +222,20 @@ async def test_consolidate_archived_endpoint_partial_failure(mock_gardener, samp
         return "user_123"
 
     with patch("backend.shared.dependencies.get_user_id", new=mock_get_user_id):
-        with patch("backend.features.memory.router._get_gardener_from_request", return_value=mock_gardener):
-            with patch("backend.features.memory.router._get_container", return_value=mock_container):
-                with patch("backend.core.database.queries.get_threads", new=AsyncMock(return_value=sample_archived_threads)):
+        with patch(
+            "backend.features.memory.router._get_gardener_from_request",
+            return_value=mock_gardener,
+        ):
+            with patch(
+                "backend.features.memory.router._get_container",
+                return_value=mock_container,
+            ):
+                with patch(
+                    "backend.core.database.queries.get_threads",
+                    new=AsyncMock(return_value=sample_archived_threads),
+                ):
                     result = await consolidate_archived_threads(
-                        request=mock_request,
-                        data={"limit": 10}
+                        request=mock_request, data={"limit": 10}
                     )
 
     # Vérifications
@@ -213,7 +246,9 @@ async def test_consolidate_archived_endpoint_partial_failure(mock_gardener, samp
 
 
 @pytest.mark.asyncio
-async def test_consolidate_archived_skips_already_consolidated(mock_gardener, sample_archived_threads, mock_vector_service):
+async def test_consolidate_archived_skips_already_consolidated(
+    mock_gardener, sample_archived_threads, mock_vector_service
+):
     """Test endpoint - skip threads déjà consolidés."""
     from backend.features.memory.router import consolidate_archived_threads
 
@@ -240,12 +275,20 @@ async def test_consolidate_archived_skips_already_consolidated(mock_gardener, sa
         return "user_123"
 
     with patch("backend.shared.dependencies.get_user_id", new=mock_get_user_id):
-        with patch("backend.features.memory.router._get_gardener_from_request", return_value=mock_gardener):
-            with patch("backend.features.memory.router._get_container", return_value=mock_container):
-                with patch("backend.core.database.queries.get_threads", new=AsyncMock(return_value=sample_archived_threads)):
+        with patch(
+            "backend.features.memory.router._get_gardener_from_request",
+            return_value=mock_gardener,
+        ):
+            with patch(
+                "backend.features.memory.router._get_container",
+                return_value=mock_container,
+            ):
+                with patch(
+                    "backend.core.database.queries.get_threads",
+                    new=AsyncMock(return_value=sample_archived_threads),
+                ):
                     result = await consolidate_archived_threads(
-                        request=mock_request,
-                        data={"limit": 10, "force": False}
+                        request=mock_request, data={"limit": 10, "force": False}
                     )
 
     # Vérifications
@@ -256,6 +299,7 @@ async def test_consolidate_archived_skips_already_consolidated(mock_gardener, sa
 # ============================================================================
 # Tests intégration hook archivage
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_update_thread_hook_logic():
@@ -301,7 +345,7 @@ async def test_update_thread_no_trigger_if_already_archived():
         user_id="user_123",
         email="test@example.com",
         role="user",
-        claims={}
+        claims={},
     )
 
     # Mock task queue enqueue
@@ -313,23 +357,30 @@ async def test_update_thread_no_trigger_if_already_archived():
         return {
             "id": "thread_1",
             "archived": True,  # Déjà archivé
-            "title": "Test Thread"
+            "title": "Test Thread",
         }
 
     # Mock update_thread
     async def mock_update_thread(*args, **kwargs):
         pass
 
-    with patch("backend.core.database.queries.get_thread", new=mock_get_thread_already_archived):
-        with patch("backend.core.database.queries.update_thread", new=mock_update_thread):
-            with patch("backend.features.memory.task_queue.get_memory_queue", return_value=mock_queue):
+    with patch(
+        "backend.core.database.queries.get_thread", new=mock_get_thread_already_archived
+    ):
+        with patch(
+            "backend.core.database.queries.update_thread", new=mock_update_thread
+        ):
+            with patch(
+                "backend.features.memory.task_queue.get_memory_queue",
+                return_value=mock_queue,
+            ):
                 payload = ThreadUpdate(archived=True)
 
                 await update_thread(
                     thread_id="thread_1",
                     payload=payload,
                     session=mock_session,
-                    db=mock_db
+                    db=mock_db,
                 )
 
     # Vérifications - Queue NE doit PAS être appelée
@@ -340,6 +391,7 @@ async def test_update_thread_no_trigger_if_already_archived():
 # Tests task queue
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_task_queue_consolidate_thread_type():
     """Test MemoryTaskQueue traite type 'consolidate_thread'."""
@@ -348,11 +400,13 @@ async def test_task_queue_consolidate_thread_type():
     queue = MemoryTaskQueue(max_workers=1)
 
     # Mock _run_thread_consolidation
-    queue._run_thread_consolidation = AsyncMock(return_value={
-        "status": "consolidated",
-        "thread_id": "thread_1",
-        "new_concepts": 7
-    })
+    queue._run_thread_consolidation = AsyncMock(
+        return_value={
+            "status": "consolidated",
+            "thread_id": "thread_1",
+            "new_concepts": 7,
+        }
+    )
 
     # Créer tâche
     task = MemoryTask(
@@ -361,8 +415,8 @@ async def test_task_queue_consolidate_thread_type():
             "thread_id": "thread_1",
             "session_id": "session_1",
             "user_id": "user_123",
-            "reason": "archiving"
-        }
+            "reason": "archiving",
+        },
     )
 
     # Traiter tâche
@@ -376,7 +430,9 @@ async def test_task_queue_consolidate_thread_type():
 
 
 @pytest.mark.asyncio
-async def test_task_queue_consolidate_thread_saves_concepts(mock_db_manager, mock_vector_service):
+async def test_task_queue_consolidate_thread_saves_concepts(
+    mock_db_manager, mock_vector_service
+):
     """Test consolidation sauvegarde concepts dans ChromaDB."""
     from backend.features.memory.task_queue import MemoryTaskQueue
 
@@ -392,21 +448,25 @@ async def test_task_queue_consolidate_thread_saves_concepts(mock_db_manager, moc
 
     # Mock gardener
     mock_gardener = Mock()
-    mock_gardener._tend_single_thread = AsyncMock(return_value={
-        "status": "success",
-        "new_concepts": 10
-    })
+    mock_gardener._tend_single_thread = AsyncMock(
+        return_value={"status": "success", "new_concepts": 10}
+    )
 
     # Patcher à l'intérieur du module task_queue
     with patch("backend.containers.ServiceContainer", return_value=mock_container):
-        with patch("backend.features.memory.gardener.MemoryGardener", return_value=mock_gardener):
+        with patch(
+            "backend.features.memory.gardener.MemoryGardener",
+            return_value=mock_gardener,
+        ):
             # Exécuter consolidation
-            result = await queue._run_thread_consolidation({
-                "thread_id": "thread_1",
-                "session_id": "session_1",
-                "user_id": "user_123",
-                "reason": "manual"
-            })
+            result = await queue._run_thread_consolidation(
+                {
+                    "thread_id": "thread_1",
+                    "session_id": "session_1",
+                    "user_id": "user_123",
+                    "reason": "manual",
+                }
+            )
 
     # Vérifications
     assert result["status"] == "consolidated"
@@ -418,6 +478,7 @@ async def test_task_queue_consolidate_thread_saves_concepts(mock_db_manager, moc
 # Tests helper _thread_already_consolidated
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_thread_already_consolidated_returns_true(mock_vector_service):
     """Test _thread_already_consolidated retourne True si concepts trouvés."""
@@ -426,9 +487,7 @@ async def test_thread_already_consolidated_returns_true(mock_vector_service):
     vector_service, collection = mock_vector_service
 
     # Mock collection.get() retournant concepts
-    collection.get = Mock(return_value={
-        "ids": [["concept_1", "concept_2"]]
-    })
+    collection.get = Mock(return_value={"ids": [["concept_1", "concept_2"]]})
 
     result = await _thread_already_consolidated(vector_service, "thread_1")
 

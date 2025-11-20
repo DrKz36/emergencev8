@@ -53,7 +53,7 @@ class BM25Scorer:
 
     def _tokenize(self, text: str) -> List[str]:
         """Tokenisation simple : lowercase + split sur non-alphanumériques"""
-        tokens = re.findall(r'\b\w+\b', text.lower())
+        tokens = re.findall(r"\b\w+\b", text.lower())
         return tokens
 
     def _build_index(self) -> None:
@@ -98,7 +98,9 @@ class BM25Scorer:
                 tf = freq_dict[term]
                 idf = self.idf.get(term, 0.0)
                 numerator = tf * (self.k1 + 1)
-                denominator = tf + self.k1 * (1 - self.b + self.b * doc_len / self.avgdl)
+                denominator = tf + self.k1 * (
+                    1 - self.b + self.b * doc_len / self.avgdl
+                )
                 scores[idx] += idf * (numerator / denominator)
 
         return scores
@@ -194,7 +196,11 @@ class HybridRetriever:
         # Combiner les scores : hybrid_score = (1 - alpha) * bm25 + alpha * vector
         hybrid_results: List[Dict[str, Any]] = []
         for idx, text in enumerate(all_texts):
-            bm25_score = bm25_scores_normalized[idx] if idx < len(bm25_scores_normalized) else 0.0
+            bm25_score = (
+                bm25_scores_normalized[idx]
+                if idx < len(bm25_scores_normalized)
+                else 0.0
+            )
             vector_score = vector_map.get(text, 0.0)
 
             hybrid_score = (1 - self.alpha) * bm25_score + self.alpha * vector_score
@@ -209,18 +215,20 @@ class HybridRetriever:
                     metadata = vr.get("metadata", {})
                     break
 
-            hybrid_results.append({
-                "text": text,
-                "score": hybrid_score,
-                "bm25_score": bm25_score,
-                "vector_score": vector_score,
-                "metadata": metadata,
-            })
+            hybrid_results.append(
+                {
+                    "text": text,
+                    "score": hybrid_score,
+                    "bm25_score": bm25_score,
+                    "vector_score": vector_score,
+                    "metadata": metadata,
+                }
+            )
 
         # Trier par score décroissant
         hybrid_results.sort(key=lambda x: x["score"], reverse=True)
 
-        return hybrid_results[:self.top_k]
+        return hybrid_results[: self.top_k]
 
     def retrieve(
         self,
@@ -283,6 +291,7 @@ class HybridRetriever:
 # ============================================================
 # Helpers pour intégration avec VectorService
 # ============================================================
+
 
 def hybrid_query(
     vector_service: Any,

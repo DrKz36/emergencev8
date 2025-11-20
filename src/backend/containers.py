@@ -40,7 +40,9 @@ except Exception:  # pragma: no cover
 
 try:
     from backend.features.documents.service import DocumentService
-    from backend.features.documents.parser import ParserFactory  # requis par DocumentService
+    from backend.features.documents.parser import (
+        ParserFactory,
+    )  # requis par DocumentService
 except Exception:  # pragma: no cover
     DocumentService = None  # type: ignore[assignment,misc]
     ParserFactory = None  # type: ignore[assignment,misc]
@@ -71,7 +73,6 @@ except Exception:  # pragma: no cover
 _VOICE_STT_MODEL_DEFAULT = "whisper-1"
 _VOICE_TTS_MODEL_DEFAULT = "eleven_multilingual_v2"
 _VOICE_TTS_VOICE_DEFAULT = "ohItIVrXTBI80RrUECOD"
-
 
 
 # ----------------------------
@@ -115,6 +116,7 @@ def _get_db_path(settings: Settings) -> str:
         cand = "./data/emergence.db"
     return str(Path(cand).resolve())
 
+
 def _get_vector_dir(settings: Settings) -> str:
     """
     Préfère settings.vector.persist_directory, sinon EMERGENCE_VECTOR_DIR, défaut ./data/vector_store
@@ -152,6 +154,7 @@ def _get_vector_dir(settings: Settings) -> str:
         cand = "./data/vector_store"
     return str(Path(cand).resolve())
 
+
 def _get_vector_backend(settings: Settings) -> str:
     try:
         vec = getattr(settings, "vector", None)
@@ -162,6 +165,7 @@ def _get_vector_backend(settings: Settings) -> str:
         pass
     env = os.getenv("VECTOR_BACKEND")
     return (env or "auto").strip()
+
 
 def _get_qdrant_url(settings: Settings) -> Optional[str]:
     try:
@@ -174,6 +178,7 @@ def _get_qdrant_url(settings: Settings) -> Optional[str]:
     env = os.getenv("QDRANT_URL") or os.getenv("QDRANT_HOST")
     return env.strip() if isinstance(env, str) and env.strip() else None
 
+
 def _get_qdrant_api_key(settings: Settings) -> Optional[str]:
     try:
         vec = getattr(settings, "vector", None)
@@ -184,6 +189,7 @@ def _get_qdrant_api_key(settings: Settings) -> Optional[str]:
         pass
     env = os.getenv("QDRANT_API_KEY")
     return env.strip() if isinstance(env, str) and env.strip() else None
+
 
 def _get_embed_model_name(settings: Settings) -> str:
     """
@@ -198,6 +204,7 @@ def _get_embed_model_name(settings: Settings) -> str:
     except Exception:
         pass
     return (os.getenv("EMBED_MODEL_NAME") or "all-MiniLM-L6-v2").strip()
+
 
 def _get_uploads_dir(settings: Settings) -> str:
     """
@@ -240,7 +247,7 @@ def _build_voice_config(settings: Settings) -> VoiceServiceConfig:
     # - Nexus (masculin posé) : Josh - TxGEqnHWrfWFTfGW9XjX
     agent_voices = {
         "anima": "21m00Tcm4TlvDq8ikWAM",  # Rachel - Voix féminine claire
-        "neo": "ErXwobaYiN019PkySvjV",    # Antoni - Voix masculine jeune
+        "neo": "ErXwobaYiN019PkySvjV",  # Antoni - Voix masculine jeune
         "nexus": "TxGEqnHWrfWFTfGW9XjX",  # Josh - Voix masculine mûre
     }
 
@@ -248,8 +255,12 @@ def _build_voice_config(settings: Settings) -> VoiceServiceConfig:
         stt_api_key=str(stt_api_key).strip(),
         stt_model=str(stt_model).strip() if stt_model else _VOICE_STT_MODEL_DEFAULT,
         tts_api_key=str(tts_api_key).strip(),
-        tts_model_id=str(tts_model_id).strip() if tts_model_id else _VOICE_TTS_MODEL_DEFAULT,
-        tts_voice_id=str(tts_voice_id).strip() if tts_voice_id else _VOICE_TTS_VOICE_DEFAULT,
+        tts_model_id=str(tts_model_id).strip()
+        if tts_model_id
+        else _VOICE_TTS_MODEL_DEFAULT,
+        tts_voice_id=str(tts_voice_id).strip()
+        if tts_voice_id
+        else _VOICE_TTS_VOICE_DEFAULT,
         agent_voices=agent_voices,
     )
 
@@ -258,37 +269,38 @@ def _build_benchmarks_firestore_client(settings: Settings) -> Any:
     if build_firestore_client is None:
         return None  # type: ignore[unreachable]
     project_id = None
-    candidate = getattr(settings, 'benchmarks_firestore_project', None)
+    candidate = getattr(settings, "benchmarks_firestore_project", None)
     if isinstance(candidate, str) and candidate.strip():
         project_id = candidate.strip()
     else:
-        bench_cfg = getattr(settings, 'benchmarks', None)
+        bench_cfg = getattr(settings, "benchmarks", None)
         if bench_cfg is not None:
             if isinstance(bench_cfg, dict):
-                for attr in ('firestore_project', 'project_id', 'project'):
+                for attr in ("firestore_project", "project_id", "project"):
                     value = bench_cfg.get(attr)
                     if isinstance(value, str) and value.strip():
                         project_id = value.strip()
                         break
             else:
-                for attr in ('firestore_project', 'project_id', 'project'):
+                for attr in ("firestore_project", "project_id", "project"):
                     value = getattr(bench_cfg, attr, None)
                     if isinstance(value, str) and value.strip():
                         project_id = value.strip()
                         break
     if project_id is None:
         for key in (
-            'EMERGENCE_FIRESTORE_PROJECT',
-            'BENCHMARKS_FIRESTORE_PROJECT',
-            'GOOGLE_CLOUD_PROJECT',
-            'GCLOUD_PROJECT',
-            'GOOGLE_PROJECT_ID',
+            "EMERGENCE_FIRESTORE_PROJECT",
+            "BENCHMARKS_FIRESTORE_PROJECT",
+            "GOOGLE_CLOUD_PROJECT",
+            "GCLOUD_PROJECT",
+            "GOOGLE_PROJECT_ID",
         ):
             env_val = os.getenv(key)
             if isinstance(env_val, str) and env_val.strip():
                 project_id = env_val.strip()
                 break
     return build_firestore_client(project_id=project_id)
+
 
 # ----------------------------
 # Container
@@ -348,7 +360,9 @@ class AppContainer(containers.DeclarativeContainer):
         rate_limiter=auth_rate_limiter,
     )
 
-    connection_manager = providers.Singleton(ConnectionManager, session_manager=session_manager)
+    connection_manager = providers.Singleton(
+        ConnectionManager, session_manager=session_manager
+    )
 
     # --- Documents (doit être défini avant ChatService) ---
     if DocumentService is not None and ParserFactory is not None:
@@ -385,6 +399,7 @@ class AppContainer(containers.DeclarativeContainer):
     # TimelineService pour les graphiques dashboard
     try:
         from backend.features.dashboard.timeline_service import TimelineService
+
         timeline_service = providers.Singleton(
             TimelineService,
             db_manager=db_manager,
@@ -438,8 +453,6 @@ class AppContainer(containers.DeclarativeContainer):
             chat_service=chat_service,
         )
 
+
 # Alias attendu par main.py & routers
 ServiceContainer = AppContainer
-
-
-

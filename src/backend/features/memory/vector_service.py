@@ -1,4 +1,4 @@
-﻿# mypy: ignore-errors
+# mypy: ignore-errors
 # src/backend/features/memory/vector_service.py
 # V3.6.0 (V13.2 - Startup-safe RAG)
 #          - Lazy-load sûr (double-checked lock) + télémétrie ultra-OFF conservée
@@ -20,8 +20,6 @@ import threading
 import uuid
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Union, cast
-
-
 
 
 # ---- Force disable telemetry as early as possible (before importing chromadb) ----
@@ -113,7 +111,9 @@ class _StubSentenceTransformer:
         try:
             import numpy as np
 
-            embeddings = np.zeros((len(normalized), self.embedding_dim), dtype="float32")
+            embeddings = np.zeros(
+                (len(normalized), self.embedding_dim), dtype="float32"
+            )
         except Exception:
             embeddings = [[0.0] * self.embedding_dim for _ in normalized]
 
@@ -143,6 +143,7 @@ class _VectorEmbeddingFunction:
         if hasattr(encoded, "tolist"):
             return encoded.tolist()
         return cast(List[List[float]], encoded)
+
 
 # Imports de libs (on garde les imports module-level, l'instanciation sera lazy)
 import chromadb  # noqa: E402
@@ -182,24 +183,39 @@ class MemoryConfig:
         if os.path.exists(config_path):
             try:
                 import json
+
                 with open(config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     # Charger la section "default" si elle existe
                     config_data = data.get("default", data)
-                    self.decay_lambda = config_data.get("decay_lambda", self.decay_lambda)
-                    self.reinforcement_alpha = config_data.get("reinforcement_alpha", self.reinforcement_alpha)
+                    self.decay_lambda = config_data.get(
+                        "decay_lambda", self.decay_lambda
+                    )
+                    self.reinforcement_alpha = config_data.get(
+                        "reinforcement_alpha", self.reinforcement_alpha
+                    )
                     self.top_k = config_data.get("top_k", self.top_k)
-                    self.score_threshold = config_data.get("score_threshold", self.score_threshold)
-                    self.enable_trace_logging = config_data.get("enable_trace_logging", self.enable_trace_logging)
-                    self.gc_inactive_days = config_data.get("gc_inactive_days", self.gc_inactive_days)
+                    self.score_threshold = config_data.get(
+                        "score_threshold", self.score_threshold
+                    )
+                    self.enable_trace_logging = config_data.get(
+                        "enable_trace_logging", self.enable_trace_logging
+                    )
+                    self.gc_inactive_days = config_data.get(
+                        "gc_inactive_days", self.gc_inactive_days
+                    )
                 logger.info(
                     f"MemoryConfig chargée depuis {config_path}: λ={self.decay_lambda}, α={self.reinforcement_alpha}, "
                     f"top_k={self.top_k}, threshold={self.score_threshold}"
                 )
             except Exception as e:
-                logger.warning(f"Impossible de charger {config_path}, utilisation des valeurs par défaut: {e}")
+                logger.warning(
+                    f"Impossible de charger {config_path}, utilisation des valeurs par défaut: {e}"
+                )
         else:
-            logger.info(f"Fichier config {config_path} absent, utilisation des valeurs par défaut")
+            logger.info(
+                f"Fichier config {config_path} absent, utilisation des valeurs par défaut"
+            )
 
     @classmethod
     def from_env(cls) -> "MemoryConfig":
@@ -213,7 +229,9 @@ class MemoryConfig:
                 pass
         if os.getenv("MEMORY_REINFORCEMENT_ALPHA"):
             try:
-                config.reinforcement_alpha = float(os.getenv("MEMORY_REINFORCEMENT_ALPHA"))
+                config.reinforcement_alpha = float(
+                    os.getenv("MEMORY_REINFORCEMENT_ALPHA")
+                )
             except ValueError:
                 pass
         if os.getenv("MEMORY_TOP_K"):
@@ -222,7 +240,9 @@ class MemoryConfig:
             except ValueError:
                 pass
         if os.getenv("MEMORY_TRACE_LOGGING"):
-            config.enable_trace_logging = os.getenv("MEMORY_TRACE_LOGGING", "").lower() in {"1", "true", "yes"}
+            config.enable_trace_logging = os.getenv(
+                "MEMORY_TRACE_LOGGING", ""
+            ).lower() in {"1", "true", "yes"}
         return config
 
 
@@ -434,7 +454,7 @@ def compute_specificity_score(text: str) -> float:
     import re
 
     # Tokenize (split by whitespace and punctuation)
-    tokens = re.findall(r'\b\w+\b', text)
+    tokens = re.findall(r"\b\w+\b", text)
     if not tokens:
         return 0.0
 
@@ -442,23 +462,20 @@ def compute_specificity_score(text: str) -> float:
 
     # 1. Densité tokens rares (IDF approximé)
     # Heuristique: tokens longs (> 6 car) + tokens mixtes alphanumériques
-    rare_tokens = [
-        t for t in tokens
-        if len(t) > 6 or any(c.isdigit() for c in t)
-    ]
+    rare_tokens = [t for t in tokens if len(t) > 6 or any(c.isdigit() for c in t)]
     rare_density = len(rare_tokens) / total_tokens
 
     # 2. Densité nombres/dates
     # Regex: nombres décimaux, années, dates
-    numbers = re.findall(r'\b\d+\.?\d*\b|\b\d{4}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b', text)
+    numbers = re.findall(r"\b\d+\.?\d*\b|\b\d{4}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b", text)
     number_density = len(numbers) / total_tokens
 
     # 3. Densité entités nommées (heuristique: mots capitalisés hors début de phrase)
     # Split en phrases
-    sentences = re.split(r'[.!?]+', text)
+    sentences = re.split(r"[.!?]+", text)
     capitalized = []
     for sentence in sentences:
-        words = re.findall(r'\b[A-Z][a-z]+\b', sentence)
+        words = re.findall(r"\b[A-Z][a-z]+\b", sentence)
         # Exclure le premier mot (probablement début de phrase)
         if len(words) > 1:
             capitalized.extend(words[1:])
@@ -471,15 +488,14 @@ def compute_specificity_score(text: str) -> float:
 
     # Combinaison pondérée des 3 facteurs
     # Poids: rare_tokens (40%), numbers (30%), NER (30%)
-    specificity_score = (
-        rare_density * 0.40 +
-        number_density * 0.30 +
-        ner_density * 0.30
-    )
+    specificity_score = rare_density * 0.40 + number_density * 0.30 + ner_density * 0.30
 
     # Normaliser sur [0, 1] avec saturation douce (tanh)
     import math
-    normalized_score = math.tanh(specificity_score * 2.0)  # tanh(x*2) → saturation à ~0.96 pour x=1
+
+    normalized_score = math.tanh(
+        specificity_score * 2.0
+    )  # tanh(x*2) → saturation à ~0.96 pour x=1
 
     return max(0.0, min(1.0, normalized_score))
 
@@ -523,7 +539,7 @@ def rerank_with_lexical_overlap(
     # Fonction de lemmatisation simple (lowercase + strip)
     def simple_lemmatize(text: str) -> set[str]:
         """Tokenize et normalise le texte (lowercase, alphanumérique uniquement)."""
-        tokens = re.findall(r'\b\w+\b', text.lower())
+        tokens = re.findall(r"\b\w+\b", text.lower())
         return set(tokens)
 
     # Lemmatiser la query
@@ -648,13 +664,19 @@ class VectorService:
 
         # 🆕 Score cache pour performance
         from backend.features.memory.score_cache import ScoreCache
+
         cache_size = int(os.getenv("MEMORY_SCORE_CACHE_SIZE", "10000"))
         cache_ttl = int(os.getenv("MEMORY_SCORE_CACHE_TTL", "3600"))
         self.score_cache = ScoreCache(max_size=cache_size, ttl_seconds=cache_ttl)
-        logger.info(f"[VectorService] Score cache initialisé (size={cache_size}, ttl={cache_ttl}s)")
+        logger.info(
+            f"[VectorService] Score cache initialisé (size={cache_size}, ttl={cache_ttl}s)"
+        )
 
         # 🆕 Métriques Prometheus pour weighted retrieval
-        from backend.features.memory.weighted_retrieval_metrics import WeightedRetrievalMetrics
+        from backend.features.memory.weighted_retrieval_metrics import (
+            WeightedRetrievalMetrics,
+        )
+
         self.metrics = WeightedRetrievalMetrics()
         logger.info("[VectorService] Métriques Prometheus initialisées")
 
@@ -797,9 +819,7 @@ class VectorService:
             return False
 
     # ---------- Initialisation protégée du client ----------
-    def _init_client_with_guard(
-        self, path: str, allow_auto_reset: bool
-    ) -> Any:
+    def _init_client_with_guard(self, path: str, allow_auto_reset: bool) -> Any:
         try:
             client = chromadb.PersistentClient(
                 path=path, settings=Settings(anonymized_telemetry=False)
@@ -1157,9 +1177,7 @@ class VectorService:
 
     # ---------- API publique ----------
     def get_or_create_collection(
-        self,
-        name: str,
-        metadata: Optional[Dict[str, Any]] = None
+        self, name: str, metadata: Optional[Dict[str, Any]] = None
     ):
         """
         Get or create a ChromaDB collection with optimized HNSW parameters.
@@ -1278,11 +1296,11 @@ class VectorService:
         n_results: int = 5,
         where_filter: Optional[Dict[str, Any]] = None,
         apply_recency: bool = True,  # P2.2 - Enable recency decay
-        apply_mmr: bool = True,      # P2.2 - Enable MMR diversity
+        apply_mmr: bool = True,  # P2.2 - Enable MMR diversity
         recency_half_life: float = 90.0,  # P2.2 - Half-life in days
-        mmr_lambda: float = 0.7,     # P2.2 - MMR balance (0.7 = 70% relevance, 30% diversity)
+        mmr_lambda: float = 0.7,  # P2.2 - MMR balance (0.7 = 70% relevance, 30% diversity)
         apply_specificity_boost: bool = True,  # P2.1 - Enable specificity scoring
-        apply_rerank: bool = True,   # P2.1 - Enable lexical rerank
+        apply_rerank: bool = True,  # P2.1 - Enable lexical rerank
     ) -> List[Dict[str, Any]]:
         """
         Recherche vectorielle avec support optionnel de recency decay, MMR, specificity boost et rerank.
@@ -1315,14 +1333,22 @@ class VectorService:
             if self.backend == "qdrant":
                 collection_name = getattr(collection, "name", str(collection))
                 raw_results = self._qdrant_query(
-                    collection_name, query_embedding, n_results * 2, where_filter  # Fetch more for MMR
+                    collection_name,
+                    query_embedding,
+                    n_results * 2,
+                    where_filter,  # Fetch more for MMR
                 )
             else:
                 results = collection.query(
                     query_embeddings=embeddings_list,
                     n_results=n_results * 2,  # Fetch more candidates for MMR filtering
                     where=self._normalize_where(where_filter),
-                    include=["documents", "metadatas", "distances", "embeddings"],  # Need embeddings for MMR
+                    include=[
+                        "documents",
+                        "metadatas",
+                        "distances",
+                        "embeddings",
+                    ],  # Need embeddings for MMR
                 )
 
                 raw_results: List[Dict[str, Any]] = []
@@ -1331,12 +1357,16 @@ class VectorService:
                     docs = results.get("documents", [[]])[0]
                     metas = results.get("metadatas", [[]])[0]
                     dists = results.get("distances", [[]])[0]
-                    embeds = results.get("embeddings", [[]])[0] if "embeddings" in results else [[]] * len(ids)
+                    embeds = (
+                        results.get("embeddings", [[]])[0]
+                        if "embeddings" in results
+                        else [[]] * len(ids)
+                    )
                     for i, doc_id in enumerate(ids):
                         # Fix: Avoid ambiguous truth check on numpy array
                         embed_value = embeds[i] if i < len(embeds) else None
                         use_embed = embed_value is not None and (
-                            not hasattr(embed_value, '__len__') or len(embed_value) > 0
+                            not hasattr(embed_value, "__len__") or len(embed_value) > 0
                         )
                         raw_results.append(
                             {
@@ -1344,13 +1374,16 @@ class VectorService:
                                 "text": docs[i] if i < len(docs) else None,
                                 "metadata": metas[i] if i < len(metas) else None,
                                 "distance": dists[i] if i < len(dists) else None,
-                                "embedding": embed_value if use_embed else query_embedding,
+                                "embedding": embed_value
+                                if use_embed
+                                else query_embedding,
                             }
                         )
 
             # P2.2 - Apply recency decay if enabled
             if apply_recency and raw_results:
                 from datetime import datetime, timezone
+
                 now = datetime.now(timezone.utc)
                 for result in raw_results:
                     meta = result.get("metadata") or {}
@@ -1360,7 +1393,9 @@ class VectorService:
                             # Parse timestamp (ISO format expected)
                             ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
                             age_days = (now - ts).total_seconds() / 86400
-                            recency_score = recency_decay(age_days, half_life=recency_half_life)
+                            recency_score = recency_decay(
+                                age_days, half_life=recency_half_life
+                            )
                             result["age_days"] = round(age_days, 1)
                             result["recency_score"] = round(recency_score, 3)
                             # Adjust distance by recency (lower distance = better match)
@@ -1390,10 +1425,12 @@ class VectorService:
 
                     # 📊 Enregistrer métrique Prometheus
                     try:
-                        from backend.features.memory.rag_metrics import memory_rag_precision_score
+                        from backend.features.memory.rag_metrics import (
+                            memory_rag_precision_score,
+                        )
+
                         memory_rag_precision_score.labels(
-                            collection=collection_name,
-                            metric_type="specificity"
+                            collection=collection_name, metric_type="specificity"
                         ).observe(specificity_score)
                     except Exception:
                         pass  # Graceful degradation si Prometheus indisponible
@@ -1404,13 +1441,14 @@ class VectorService:
 
                     # Score final combiné : weighted average
                     # final_score = (1 - weight) * cosine + weight * specificity
-                    combined_score = (1 - specificity_weight) * cosine_score + specificity_weight * specificity_score
+                    combined_score = (
+                        1 - specificity_weight
+                    ) * cosine_score + specificity_weight * specificity_score
 
                     # 📊 Enregistrer score combiné
                     try:
                         memory_rag_precision_score.labels(
-                            collection=collection_name,
-                            metric_type="combined"
+                            collection=collection_name, metric_type="combined"
                         ).observe(combined_score)
                     except Exception:
                         pass
@@ -1433,19 +1471,23 @@ class VectorService:
                 raw_results = rerank_with_lexical_overlap(
                     query=query_text,
                     results=candidates_for_rerank,
-                    topk=min(len(candidates_for_rerank), rerank_topk * 2),  # Garder assez pour MMR
+                    topk=min(
+                        len(candidates_for_rerank), rerank_topk * 2
+                    ),  # Garder assez pour MMR
                     cosine_weight=0.7,
                     lexical_weight=0.3,
                 )
 
                 # 📊 Enregistrer métriques jaccard pour résultats reranked
                 try:
-                    from backend.features.memory.rag_metrics import memory_rag_precision_score
+                    from backend.features.memory.rag_metrics import (
+                        memory_rag_precision_score,
+                    )
+
                     for r in raw_results[:5]:  # Top-5 pour éviter trop de métriques
                         jaccard = r.get("jaccard_score", 0.0)
                         memory_rag_precision_score.labels(
-                            collection=collection_name,
-                            metric_type="jaccard"
+                            collection=collection_name, metric_type="jaccard"
                         ).observe(jaccard)
                 except Exception:
                     pass
@@ -1513,12 +1555,17 @@ class VectorService:
                     if not values:
                         return True
                     # Si toutes les sous-conditions sont vides → filtre vide
-                    if all(self._is_filter_empty(v) if isinstance(v, dict) else False for v in values):
+                    if all(
+                        self._is_filter_empty(v) if isinstance(v, dict) else False
+                        for v in values
+                    ):
                         return True
 
         # Vérifier si toutes les valeurs sont None
         non_operator_keys = [k for k in where_filter.keys() if not k.startswith("$")]
-        if non_operator_keys and all(where_filter[k] is None for k in non_operator_keys):
+        if non_operator_keys and all(
+            where_filter[k] is None for k in non_operator_keys
+        ):
             return True
 
         return False
@@ -1534,7 +1581,9 @@ class VectorService:
                 f"[VectorService] Suppression refusée sur '{collection.name}': "
                 f"filtre vide ou invalide (protection suppression globale)"
             )
-            raise ValueError("Cannot delete with empty or invalid filter (global deletion protection)")
+            raise ValueError(
+                "Cannot delete with empty or invalid filter (global deletion protection)"
+            )
         try:
             if self.backend == "qdrant":
                 collection_name = getattr(collection, "name", str(collection))
@@ -1580,7 +1629,10 @@ class VectorService:
             Liste de résultats avec scores hybrides détaillés
         """
         try:
-            from backend.features.memory.hybrid_retriever import hybrid_query as _hybrid_query
+            from backend.features.memory.hybrid_retriever import (
+                hybrid_query as _hybrid_query,
+            )
+
             return _hybrid_query(
                 vector_service=self,
                 collection=collection,
@@ -1593,7 +1645,9 @@ class VectorService:
                 bm25_b=bm25_b,
             )
         except ImportError:
-            logger.warning("HybridRetriever non disponible, fallback sur query() classique")
+            logger.warning(
+                "HybridRetriever non disponible, fallback sur query() classique"
+            )
             return self.query(collection, query_text, n_results, where_filter)
         except Exception as e:
             logger.error(f"Erreur hybrid_query: {e}", exc_info=True)
@@ -1654,13 +1708,22 @@ class VectorService:
         lambda_ = lambda_ if lambda_ is not None else self.memory_config.decay_lambda
         alpha = alpha if alpha is not None else self.memory_config.reinforcement_alpha
         n_results = n_results if n_results is not None else self.memory_config.top_k
-        score_threshold = score_threshold if score_threshold is not None else self.memory_config.score_threshold
-        enable_trace = enable_trace if enable_trace is not None else self.memory_config.enable_trace_logging
+        score_threshold = (
+            score_threshold
+            if score_threshold is not None
+            else self.memory_config.score_threshold
+        )
+        enable_trace = (
+            enable_trace
+            if enable_trace is not None
+            else self.memory_config.enable_trace_logging
+        )
 
         if not query_text:
             return []
 
         import time
+
         query_start = time.time()
 
         try:
@@ -1672,7 +1735,7 @@ class VectorService:
                 n_results=fetch_size,
                 where_filter=where_filter,
                 apply_recency=False,  # Désactiver recency decay standard (on utilise notre propre scoring)
-                apply_mmr=False,      # Désactiver MMR (on trie par weighted_score)
+                apply_mmr=False,  # Désactiver MMR (on trie par weighted_score)
             )
 
             if not raw_results:
@@ -1680,6 +1743,7 @@ class VectorService:
 
             # 2. Calculer weighted scores pour chaque résultat
             from datetime import datetime, timezone
+
             now = datetime.now(timezone.utc)
             weighted_results = []
             collection_name = getattr(collection, "name", "unknown")
@@ -1706,7 +1770,9 @@ class VectorService:
                     # Calculer Δt (jours depuis last_used_at)
                     if last_used_str:
                         try:
-                            last_used = datetime.fromisoformat(last_used_str.replace("Z", "+00:00"))
+                            last_used = datetime.fromisoformat(
+                                last_used_str.replace("Z", "+00:00")
+                            )
                             delta_days = (now - last_used).total_seconds() / 86400
                         except Exception:
                             # Si parsing échoue, considérer comme jamais utilisé (très ancien)
@@ -1730,11 +1796,15 @@ class VectorService:
                     )
 
                     # 🆕 Stocker dans cache
-                    self.score_cache.set(query_text, entry_id, last_used_str, weighted_score)
+                    self.score_cache.set(
+                        query_text, entry_id, last_used_str, weighted_score
+                    )
 
                     # 🆕 Métriques scoring
                     score_duration = time.time() - score_start
-                    self.metrics.record_score(collection_name, weighted_score, score_duration)
+                    self.metrics.record_score(
+                        collection_name, weighted_score, score_duration
+                    )
                     self.metrics.record_entry_age(collection_name, delta_days)
                     self.metrics.record_use_count(collection_name, use_count)
 
@@ -1763,7 +1833,9 @@ class VectorService:
                 weighted_results.append(res)
 
             # 3. Trier par weighted_score décroissant
-            weighted_results.sort(key=lambda x: x.get("weighted_score", 0.0), reverse=True)
+            weighted_results.sort(
+                key=lambda x: x.get("weighted_score", 0.0), reverse=True
+            )
 
             # 4. Conserver top_k
             final_results = weighted_results[:n_results]
@@ -1775,7 +1847,11 @@ class VectorService:
                     results=final_results,
                 )
 
-            score_info = f", score_min={final_results[-1]['weighted_score']:.3f}" if final_results else ""
+            score_info = (
+                f", score_min={final_results[-1]['weighted_score']:.3f}"
+                if final_results
+                else ""
+            )
             logger.info(
                 f"[VectorService] Weighted query '{query_text[:30]}...': "
                 f"{len(final_results)} résultats{score_info}"
@@ -1785,9 +1861,9 @@ class VectorService:
             query_duration = time.time() - query_start
             self.metrics.record_query(
                 collection=collection_name,
-                status='success',
+                status="success",
                 results_count=len(final_results),
-                duration_seconds=query_duration
+                duration_seconds=query_duration,
             )
 
             return final_results
@@ -1800,12 +1876,14 @@ class VectorService:
             )
 
             # 🆕 Métriques erreur
-            collection_name = getattr(collection, "name", "unknown") if collection else "unknown"
+            collection_name = (
+                getattr(collection, "name", "unknown") if collection else "unknown"
+            )
             self.metrics.record_query(
                 collection=collection_name,
-                status='error',
+                status="error",
                 results_count=0,
-                duration_seconds=time.time() - query_start
+                duration_seconds=time.time() - query_start,
             )
 
             return []
@@ -1829,10 +1907,12 @@ class VectorService:
             return
 
         import time
+
         update_start = time.time()
 
         try:
             from datetime import datetime, timezone
+
             now = datetime.now(timezone.utc).isoformat()
             collection_name = getattr(collection, "name", "unknown")
 

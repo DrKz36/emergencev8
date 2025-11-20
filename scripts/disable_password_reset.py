@@ -2,6 +2,7 @@ import asyncio
 import sys
 from pathlib import Path
 
+
 def _import_backend():
     repo_root = Path(__file__).resolve().parent.parent
     src_dir = repo_root / "src"
@@ -9,7 +10,9 @@ def _import_backend():
         sys.path.insert(0, str(src_dir))
 
     from backend.core.database.manager import DatabaseManager
+
     return DatabaseManager
+
 
 async def disable_password_reset(email: str, db_path: str):
     DatabaseManager = _import_backend()
@@ -20,13 +23,13 @@ async def disable_password_reset(email: str, db_path: str):
         # Update password_must_reset to 0
         await db.execute(
             "UPDATE auth_allowlist SET password_must_reset = 0 WHERE email = ?",
-            (email,)
+            (email,),
         )
 
         # Verify the change
         result = await db.fetch_one(
             "SELECT email, role, password_must_reset FROM auth_allowlist WHERE email = ?",
-            (email,)
+            (email,),
         )
 
         if result:
@@ -38,6 +41,7 @@ async def disable_password_reset(email: str, db_path: str):
 
     finally:
         await db.disconnect()
+
 
 if __name__ == "__main__":
     email = "gonzalefernando@gmail.com"

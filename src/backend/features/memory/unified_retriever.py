@@ -24,14 +24,14 @@ try:
     def _get_unified_retriever_counter() -> Counter:
         try:
             return Counter(
-                'unified_retriever_calls_total',
-                'Nombre appels UnifiedRetriever',
-                ['agent_id', 'source'],  # source: stm, ltm, archives
-                registry=REGISTRY
+                "unified_retriever_calls_total",
+                "Nombre appels UnifiedRetriever",
+                ["agent_id", "source"],  # source: stm, ltm, archives
+                registry=REGISTRY,
             )
         except ValueError:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(
-                'unified_retriever_calls_total'
+                "unified_retriever_calls_total"
             )
             if existing is None:
                 raise
@@ -40,14 +40,14 @@ try:
     def _get_unified_retriever_duration() -> Histogram:
         try:
             return Histogram(
-                'unified_retriever_duration_seconds',
-                'Durée récupération contexte',
-                ['source'],
-                registry=REGISTRY
+                "unified_retriever_duration_seconds",
+                "Durée récupération contexte",
+                ["source"],
+                registry=REGISTRY,
             )
         except ValueError:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(
-                'unified_retriever_duration_seconds'
+                "unified_retriever_duration_seconds"
             )
             if existing is None:
                 raise
@@ -99,24 +99,22 @@ class MemoryContext:
 
         # Préférences actives (prioritaire - affiché en premier)
         if self.ltm_preferences:
-            prefs_text = "\n".join([
-                f"- {p['text']}" for p in self.ltm_preferences[:5]
-            ])
+            prefs_text = "\n".join([f"- {p['text']}" for p in self.ltm_preferences[:5]])
             sections.append(("Préférences actives", prefs_text))
 
         # Conversations passées pertinentes
         if self.archived_conversations:
-            conv_text = "\n".join([
-                f"- {c['date']}: {c['summary']}"
-                for c in self.archived_conversations[:3]
-            ])
+            conv_text = "\n".join(
+                [
+                    f"- {c['date']}: {c['summary']}"
+                    for c in self.archived_conversations[:3]
+                ]
+            )
             sections.append(("Conversations passées pertinentes", conv_text))
 
         # Concepts pertinents
         if self.ltm_concepts:
-            concepts_text = "\n".join([
-                f"- {c['text']}" for c in self.ltm_concepts[:5]
-            ])
+            concepts_text = "\n".join([f"- {c['text']}" for c in self.ltm_concepts[:5]])
             sections.append(("Connaissances pertinentes", concepts_text))
 
         return sections
@@ -147,11 +145,7 @@ class UnifiedMemoryRetriever:
     """
 
     def __init__(
-        self,
-        session_manager,
-        vector_service,
-        db_manager,
-        memory_query_tool=None
+        self, session_manager, vector_service, db_manager, memory_query_tool=None
     ):
         """
         Initialize UnifiedMemoryRetriever.
@@ -182,7 +176,7 @@ class UnifiedMemoryRetriever:
         include_ltm: bool = True,
         include_archives: bool = True,
         top_k_concepts: int = 5,
-        top_k_archives: int = 3
+        top_k_archives: int = 3,
     ) -> MemoryContext:
         """
         Récupère contexte unifié pour agent.
@@ -211,8 +205,10 @@ class UnifiedMemoryRetriever:
             stm_start = time.time()
             context.stm_history = await self._get_stm_context(session_id)
             if PROMETHEUS_AVAILABLE:
-                UNIFIED_RETRIEVER_DURATION.labels(source='stm').observe(time.time() - stm_start)
-                UNIFIED_RETRIEVER_CALLS.labels(agent_id=agent_id, source='stm').inc()
+                UNIFIED_RETRIEVER_DURATION.labels(source="stm").observe(
+                    time.time() - stm_start
+                )
+                UNIFIED_RETRIEVER_CALLS.labels(agent_id=agent_id, source="stm").inc()
 
         # 2. LTM: Préférences + concepts pertinents
         if include_ltm:
@@ -220,11 +216,13 @@ class UnifiedMemoryRetriever:
             ltm_results = await self._get_ltm_context(
                 user_id, agent_id, current_query, top_k=top_k_concepts
             )
-            context.ltm_preferences = ltm_results['preferences']
-            context.ltm_concepts = ltm_results['concepts']
+            context.ltm_preferences = ltm_results["preferences"]
+            context.ltm_concepts = ltm_results["concepts"]
             if PROMETHEUS_AVAILABLE:
-                UNIFIED_RETRIEVER_DURATION.labels(source='ltm').observe(time.time() - ltm_start)
-                UNIFIED_RETRIEVER_CALLS.labels(agent_id=agent_id, source='ltm').inc()
+                UNIFIED_RETRIEVER_DURATION.labels(source="ltm").observe(
+                    time.time() - ltm_start
+                )
+                UNIFIED_RETRIEVER_CALLS.labels(agent_id=agent_id, source="ltm").inc()
 
         # 3. 🆕 Archives: Conversations passées pertinentes
         if include_archives:
@@ -233,13 +231,17 @@ class UnifiedMemoryRetriever:
                 user_id, agent_id, current_query, limit=top_k_archives
             )
             if PROMETHEUS_AVAILABLE:
-                UNIFIED_RETRIEVER_DURATION.labels(source='archives').observe(time.time() - archives_start)
-                UNIFIED_RETRIEVER_CALLS.labels(agent_id=agent_id, source='archives').inc()
+                UNIFIED_RETRIEVER_DURATION.labels(source="archives").observe(
+                    time.time() - archives_start
+                )
+                UNIFIED_RETRIEVER_CALLS.labels(
+                    agent_id=agent_id, source="archives"
+                ).inc()
 
         total_duration = time.time() - start_time
 
         if PROMETHEUS_AVAILABLE:
-            UNIFIED_RETRIEVER_DURATION.labels(source='total').observe(total_duration)
+            UNIFIED_RETRIEVER_DURATION.labels(source="total").observe(total_duration)
 
         logger.info(
             f"[UnifiedRetriever] Context récupéré en {total_duration:.3f}s: "
@@ -263,12 +265,15 @@ class UnifiedMemoryRetriever:
         """
         try:
             # Try get_full_history first
-            if hasattr(self.session_manager, 'get_full_history'):
-                return cast(list[dict[str, Any]], self.session_manager.get_full_history(session_id))
+            if hasattr(self.session_manager, "get_full_history"):
+                return cast(
+                    list[dict[str, Any]],
+                    self.session_manager.get_full_history(session_id),
+                )
 
             # Fallback: get_session puis extraire history
             session = self.session_manager.get_session(session_id)
-            if session and hasattr(session, 'history'):
+            if session and hasattr(session, "history"):
                 return cast(list[dict[str, Any]], session.history)
 
             return []
@@ -305,22 +310,22 @@ class UnifiedMemoryRetriever:
                                 {"user_id": user_id},
                                 {"agent_id": agent_id},
                                 {"type": "preference"},
-                                {"confidence": {"$gte": 0.6}}
+                                {"confidence": {"$gte": 0.6}},
                             ]
                         },
-                        include=["documents", "metadatas"]
+                        include=["documents", "metadatas"],
                     )
                 )
 
                 preferences = [
                     {
-                        'text': doc,
-                        'confidence': meta.get('confidence', 0.5),
-                        'topic': meta.get('topic', 'general')
+                        "text": doc,
+                        "confidence": meta.get("confidence", 0.5),
+                        "topic": meta.get("topic", "general"),
                     }
                     for doc, meta in zip(
-                        prefs_result.get('documents', []),
-                        prefs_result.get('metadatas', [])
+                        prefs_result.get("documents", []),
+                        prefs_result.get("metadatas", []),
                     )
                 ]
             except Exception as e:
@@ -339,33 +344,30 @@ class UnifiedMemoryRetriever:
                             "$and": [
                                 {"user_id": user_id},
                                 {"agent_id": agent_id},
-                                {"type": "concept"}
+                                {"type": "concept"},
                             ]
-                        }
+                        },
                     )
                 )
 
                 concepts = [
                     {
-                        'text': r.get('text', ''),
-                        'weighted_score': r.get('weighted_score', 0),  # Score pondéré
-                        'metadata': r.get('metadata', {})
+                        "text": r.get("text", ""),
+                        "weighted_score": r.get("weighted_score", 0),  # Score pondéré
+                        "metadata": r.get("metadata", {}),
                     }
                     for r in (concepts_results or [])
-                    if r.get('text', '').strip()
+                    if r.get("text", "").strip()
                 ]
             except Exception as e:
                 logger.warning(f"Concepts retrieval failed: {e}")
                 concepts = []
 
-            return {
-                'preferences': preferences,
-                'concepts': concepts
-            }
+            return {"preferences": preferences, "concepts": concepts}
 
         except Exception as e:
             logger.error(f"LTM retrieval failed: {e}", exc_info=True)
-            return {'preferences': [], 'concepts': []}
+            return {"preferences": [], "concepts": []}
 
     async def _get_archived_context(
         self, user_id: str, agent_id: str, query: str, limit: int
@@ -396,7 +398,7 @@ class UnifiedMemoryRetriever:
                 session_id=None,
                 user_id=user_id,
                 archived_only=True,
-                limit=limit * 3  # Fetch plus pour filtrer
+                limit=limit * 3,  # Fetch plus pour filtrer
             )
 
             if not archived_threads:
@@ -411,7 +413,7 @@ class UnifiedMemoryRetriever:
             scored_threads = []
 
             for thread in archived_threads:
-                title = thread.get('title', '').lower()
+                title = thread.get("title", "").lower()
 
                 # Score basique: mots clés dans title
                 score = 0.0
@@ -420,29 +422,33 @@ class UnifiedMemoryRetriever:
                         score += 1
 
                 # Si consolidated_at existe, bonus (thread consolidé)
-                if thread.get('consolidated_at'):
+                if thread.get("consolidated_at"):
                     score += 0.5
 
                 if score > 0:
-                    scored_threads.append({
-                        'thread': thread,
-                        'score': score
-                    })
+                    scored_threads.append({"thread": thread, "score": score})
 
             # Trier par score
-            scored_threads.sort(key=lambda x: float(x['score']) if isinstance(x['score'], (int, float, str)) else 0.0, reverse=True)
+            scored_threads.sort(
+                key=lambda x: float(x["score"])
+                if isinstance(x["score"], (int, float, str))
+                else 0.0,
+                reverse=True,
+            )
 
             # Formater résultats
             results = []
             for item in scored_threads[:limit]:
-                thread_data: dict[str, Any] = item['thread']  # type: ignore[assignment]
-                results.append({
-                    'thread_id': thread_data.get('id'),
-                    'title': thread_data.get('title', 'Sans titre'),
-                    'date': self._format_date(thread_data.get('archived_at')),
-                    'summary': thread_data.get('title', '')[:200],
-                    'relevance': item['score']
-                })
+                thread_data: dict[str, Any] = item["thread"]  # type: ignore[assignment]
+                results.append(
+                    {
+                        "thread_id": thread_data.get("id"),
+                        "title": thread_data.get("title", "Sans titre"),
+                        "date": self._format_date(thread_data.get("archived_at")),
+                        "summary": thread_data.get("title", "")[:200],
+                        "relevance": item["score"],
+                    }
+                )
 
             logger.info(
                 f"[UnifiedRetriever] Found {len(results)} relevant archived conversations "
@@ -469,9 +475,22 @@ class UnifiedMemoryRetriever:
         if not iso_date:
             return ""
         try:
-            dt = datetime.fromisoformat(iso_date.replace('Z', '+00:00'))
-            months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
-                     "juil", "août", "sept", "oct", "nov", "déc"]
+            dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
+            months = [
+                "",
+                "janv",
+                "fév",
+                "mars",
+                "avr",
+                "mai",
+                "juin",
+                "juil",
+                "août",
+                "sept",
+                "oct",
+                "nov",
+                "déc",
+            ]
             month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
             return f"{dt.day} {month}"
         except Exception:

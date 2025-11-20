@@ -50,7 +50,9 @@ def mock_db_manager():
 @pytest.fixture
 def analyzer(mock_db_manager, mock_chat_service):
     """Instancier MemoryAnalyzer avec mocks."""
-    analyzer = MemoryAnalyzer(db_manager=mock_db_manager, chat_service=mock_chat_service)
+    analyzer = MemoryAnalyzer(
+        db_manager=mock_db_manager, chat_service=mock_chat_service
+    )
     return analyzer
 
 
@@ -70,7 +72,7 @@ def sample_preferences():
             entities=[],
             source_message_id="msg1",
             thread_id="thread1",
-            captured_at=datetime.now(timezone.utc).isoformat()
+            captured_at=datetime.now(timezone.utc).isoformat(),
         ),
         PreferenceRecord(
             id="pref2",
@@ -84,7 +86,7 @@ def sample_preferences():
             entities=["Cloud Run"],
             source_message_id="msg2",
             thread_id="thread1",
-            captured_at=datetime.now(timezone.utc).isoformat()
+            captured_at=datetime.now(timezone.utc).isoformat(),
         ),
         PreferenceRecord(
             id="pref3",
@@ -98,7 +100,7 @@ def sample_preferences():
             entities=[],
             source_message_id="msg3",
             thread_id="thread1",
-            captured_at=datetime.now(timezone.utc).isoformat()
+            captured_at=datetime.now(timezone.utc).isoformat(),
         ),
     ]
 
@@ -107,8 +109,11 @@ def sample_preferences():
 # Tests unitaires - Sauvegarde préférences
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_save_preferences_to_vector_db_success(analyzer, mock_vector_service, sample_preferences):
+async def test_save_preferences_to_vector_db_success(
+    analyzer, mock_vector_service, sample_preferences
+):
     """Test sauvegarde préférences dans ChromaDB - succès."""
     vector_service, collection = mock_vector_service
 
@@ -117,7 +122,7 @@ async def test_save_preferences_to_vector_db_success(analyzer, mock_vector_servi
         preferences=sample_preferences,
         user_id="test_user_123",
         thread_id="thread_abc",
-        session_id="session_xyz"
+        session_id="session_xyz",
     )
 
     # Vérifications
@@ -163,7 +168,7 @@ async def test_save_preferences_empty_list(analyzer):
         preferences=[],
         user_id="test_user",
         thread_id="thread_1",
-        session_id="session_1"
+        session_id="session_1",
     )
 
     assert saved_count == 0
@@ -189,19 +194,21 @@ async def test_save_preferences_no_vector_service(analyzer):
                 entities=[],
                 source_message_id="msg1",
                 thread_id="thread1",
-                captured_at=datetime.now(timezone.utc).isoformat()
+                captured_at=datetime.now(timezone.utc).isoformat(),
             )
         ],
         user_id="test_user",
         thread_id="thread_1",
-        session_id="session_1"
+        session_id="session_1",
     )
 
     assert saved_count == 0, "Devrait retourner 0 si VectorService absent"
 
 
 @pytest.mark.asyncio
-async def test_save_preferences_partial_failure(analyzer, mock_vector_service, sample_preferences):
+async def test_save_preferences_partial_failure(
+    analyzer, mock_vector_service, sample_preferences
+):
     """Test sauvegarde avec échec partiel - devrait continuer."""
     vector_service, collection = mock_vector_service
 
@@ -219,7 +226,7 @@ async def test_save_preferences_partial_failure(analyzer, mock_vector_service, s
         preferences=sample_preferences,
         user_id="test_user",
         thread_id="thread_1",
-        session_id="session_1"
+        session_id="session_1",
     )
 
     # Devrait sauvegarder 2/3 (1ère et 3ème réussissent)
@@ -243,7 +250,7 @@ async def test_save_preferences_unique_ids(analyzer, mock_vector_service):
         entities=[],
         source_message_id="msg1",
         thread_id="thread1",
-        captured_at=datetime.now(timezone.utc).isoformat()
+        captured_at=datetime.now(timezone.utc).isoformat(),
     )
 
     # Sauvegarder 2 fois la même préférence
@@ -251,14 +258,14 @@ async def test_save_preferences_unique_ids(analyzer, mock_vector_service):
         preferences=[pref1],
         user_id="user_A",
         thread_id="thread_1",
-        session_id="session_1"
+        session_id="session_1",
     )
 
     await analyzer._save_preferences_to_vector_db(
         preferences=[pref1],
         user_id="user_A",
         thread_id="thread_2",
-        session_id="session_2"
+        session_id="session_2",
     )
 
     # Vérifier que les 2 appels ont le MÊME ID (déduplication)
@@ -274,6 +281,7 @@ async def test_save_preferences_unique_ids(analyzer, mock_vector_service):
 # ============================================================================
 # Tests intégration - Workflow complet
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_integration_extraction_and_persistence(analyzer, mock_vector_service):
@@ -294,7 +302,7 @@ async def test_integration_extraction_and_persistence(analyzer, mock_vector_serv
             entities=[],
             source_message_id="msg1",
             thread_id="session_test",
-            captured_at=datetime.now(timezone.utc).isoformat()
+            captured_at=datetime.now(timezone.utc).isoformat(),
         )
     ]
 
@@ -303,7 +311,7 @@ async def test_integration_extraction_and_persistence(analyzer, mock_vector_serv
         preferences=preferences,
         user_id="test_user",
         thread_id="session_test",
-        session_id="session_test"
+        session_id="session_test",
     )
 
     # Vérifications
@@ -331,21 +339,22 @@ async def test_integration_fetch_active_preferences(mock_vector_service):
     mock_session_manager = Mock()
 
     # Mock collection.get pour retourner préférences
-    collection.get = Mock(return_value={
-        "documents": [
-            "programming: Je préfère Python",
-            "deployment: Utilise Docker pour tout"
-        ],
-        "metadatas": [
-            {"user_id": "user_123", "type": "preference", "confidence": 0.85},
-            {"user_id": "user_123", "type": "preference", "confidence": 0.90}
-        ]
-    })
+    collection.get = Mock(
+        return_value={
+            "documents": [
+                "programming: Je préfère Python",
+                "deployment: Utilise Docker pour tout",
+            ],
+            "metadatas": [
+                {"user_id": "user_123", "type": "preference", "confidence": 0.85},
+                {"user_id": "user_123", "type": "preference", "confidence": 0.90},
+            ],
+        }
+    )
 
     # Instancier MemoryContextBuilder
     builder = MemoryContextBuilder(
-        session_manager=mock_session_manager,
-        vector_service=vector_service
+        session_manager=mock_session_manager, vector_service=vector_service
     )
 
     # Récupérer préférences
@@ -387,32 +396,36 @@ async def test_integration_preferences_in_context_rag():
             if any(f.get("type") == "preference" for f in filters):
                 return {
                     "documents": ["programming: Je préfère Python"],
-                    "metadatas": [{"confidence": 0.9, "type": "preference"}]
+                    "metadatas": [{"confidence": 0.9, "type": "preference"}],
                 }
 
         # Sinon concepts génériques
         return {
             "documents": ["Python est un langage de scripting"],
-            "metadatas": [{"created_at": "2025-10-10T12:00:00Z"}]
+            "metadatas": [{"created_at": "2025-10-10T12:00:00Z"}],
         }
 
     collection.get = Mock(side_effect=get_side_effect)
     mock_vector_service.get_or_create_collection = Mock(return_value=collection)
-    mock_vector_service.query = Mock(return_value=[
-        {"text": "Python supporte async/await", "metadata": {"created_at": "2025-10-10T10:00:00Z"}}
-    ])
+    mock_vector_service.query = Mock(
+        return_value=[
+            {
+                "text": "Python supporte async/await",
+                "metadata": {"created_at": "2025-10-10T10:00:00Z"},
+            }
+        ]
+    )
 
     # Instancier builder
     builder = MemoryContextBuilder(
-        session_manager=mock_session_manager,
-        vector_service=mock_vector_service
+        session_manager=mock_session_manager, vector_service=mock_vector_service
     )
 
     # Construire contexte mémoire
     context = await builder.build_memory_context(
         session_id="session_123",
         last_user_message="Comment utiliser async en Python ?",
-        top_k=5
+        top_k=5,
     )
 
     # Vérifications
@@ -423,6 +436,7 @@ async def test_integration_preferences_in_context_rag():
 # ============================================================================
 # Tests edge cases
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_save_preferences_with_special_characters(analyzer, mock_vector_service):
@@ -441,14 +455,14 @@ async def test_save_preferences_with_special_characters(analyzer, mock_vector_se
         entities=[],
         source_message_id="msg1",
         thread_id="thread1",
-        captured_at=datetime.now(timezone.utc).isoformat()
+        captured_at=datetime.now(timezone.utc).isoformat(),
     )
 
     saved_count = await analyzer._save_preferences_to_vector_db(
         preferences=[pref],
         user_id="user_émoji",
         thread_id="thread_1",
-        session_id="session_1"
+        session_id="session_1",
     )
 
     assert saved_count == 1
@@ -478,14 +492,14 @@ async def test_save_preferences_without_topic(analyzer, mock_vector_service):
         entities=[],
         source_message_id="msg1",
         thread_id="thread1",
-        captured_at=datetime.now(timezone.utc).isoformat()
+        captured_at=datetime.now(timezone.utc).isoformat(),
     )
 
     await analyzer._save_preferences_to_vector_db(
         preferences=[pref],
         user_id="user_1",
         thread_id="thread_1",
-        session_id="session_1"
+        session_id="session_1",
     )
 
     # Vérifier métadonnées

@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-SRC_DIR = ROOT_DIR / 'src'
+SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
@@ -14,18 +14,18 @@ from backend.core.database import schema, queries
 
 def test_delete_thread_removes_related_records(tmp_path):
     async def scenario():
-        db_path = tmp_path / 'threads-delete.db'
+        db_path = tmp_path / "threads-delete.db"
         db = DatabaseManager(str(db_path))
         await schema.create_tables(db)
 
-        user_id = 'owner-1'
-        session_id = 'sess-owner-1'
+        user_id = "owner-1"
+        session_id = "sess-owner-1"
         doc_id = await queries.insert_document(
             db,
-            filename='spec.pdf',
-            filepath='spec.pdf',
-            status='ready',
-            uploaded_at='2025-09-24T00:00:00Z',
+            filename="spec.pdf",
+            filepath="spec.pdf",
+            status="ready",
+            uploaded_at="2025-09-24T00:00:00Z",
             session_id=session_id,
             user_id=user_id,
         )
@@ -34,16 +34,16 @@ def test_delete_thread_removes_related_records(tmp_path):
             db,
             session_id=session_id,
             user_id=user_id,
-            type_='chat',
-            title='Conversation to delete',
+            type_="chat",
+            title="Conversation to delete",
         )
         await queries.add_message(
             db,
             thread_id=thread_id,
             session_id=session_id,
             user_id=user_id,
-            role='user',
-            content='Hello world',
+            role="user",
+            content="Hello world",
             agent_id=None,
             tokens=None,
             meta=None,
@@ -52,20 +52,36 @@ def test_delete_thread_removes_related_records(tmp_path):
             db, thread_id, session_id, [doc_id], user_id=user_id
         )
 
-        removed = await queries.delete_thread(db, thread_id, session_id, user_id=user_id)
+        removed = await queries.delete_thread(
+            db, thread_id, session_id, user_id=user_id
+        )
         assert removed is True
 
-        assert await queries.get_thread(
-            db, thread_id, session_id, user_id=user_id
-        ) is None
-        assert await db.fetch_one(
-            'SELECT id FROM messages WHERE thread_id = ? AND session_id = ? AND user_id = ?',
-            (thread_id, session_id, user_id),
-        ) is None
-        assert await db.fetch_one(
-            'SELECT thread_id FROM thread_docs WHERE thread_id = ? AND session_id = ? AND user_id = ?',
-            (thread_id, session_id, user_id),
-        ) is None
+        thread = await queries.get_thread(db, thread_id, session_id, user_id=user_id)
+        assert thread is not None
+        assert thread["archived"] == 1
+        assert thread["archival_reason"] == "user_deleted"
+        assert thread["archived_at"] is not None
+
+        active_threads = await queries.get_threads(
+            db, session_id, user_id=user_id, include_archived=False
+        )
+        assert all(t["id"] != thread_id for t in active_threads)
+
+        assert (
+            await db.fetch_one(
+                "SELECT id FROM messages WHERE thread_id = ? AND session_id = ? AND user_id = ?",
+                (thread_id, session_id, user_id),
+            )
+            is not None
+        )
+        assert (
+            await db.fetch_one(
+                "SELECT thread_id FROM thread_docs WHERE thread_id = ? AND session_id = ? AND user_id = ?",
+                (thread_id, session_id, user_id),
+            )
+            is not None
+        )
 
         await db.disconnect()
 
@@ -74,23 +90,23 @@ def test_delete_thread_removes_related_records(tmp_path):
 
 def test_delete_thread_requires_owner(tmp_path):
     async def scenario():
-        db_path = tmp_path / 'threads-delete-owner.db'
+        db_path = tmp_path / "threads-delete-owner.db"
         db = DatabaseManager(str(db_path))
         await schema.create_tables(db)
 
-        owner_id = 'owner-2'
-        owner_session = 'sess-owner-2'
-        intruder_session = 'intruder-sess'
+        owner_id = "owner-2"
+        owner_session = "sess-owner-2"
+        intruder_session = "intruder-sess"
         thread_id = await queries.create_thread(
             db,
             session_id=owner_session,
             user_id=owner_id,
-            type_='chat',
-            title='Owned thread',
+            type_="chat",
+            title="Owned thread",
         )
 
         removed = await queries.delete_thread(
-            db, thread_id, intruder_session, user_id='intruder'
+            db, thread_id, intruder_session, user_id="intruder"
         )
         assert removed is False
 
@@ -106,29 +122,29 @@ def test_delete_thread_requires_owner(tmp_path):
 
 def test_delete_thread_owner_cross_session_scope(tmp_path):
     async def scenario():
-        db_path = tmp_path / 'threads-delete-cross-session.db'
+        db_path = tmp_path / "threads-delete-cross-session.db"
         db = DatabaseManager(str(db_path))
         await schema.create_tables(db)
 
-        user_id = 'owner-cross'
-        session_primary = 'sess-owner-cross'
-        session_secondary = 'sess-owner-secondary'
+        user_id = "owner-cross"
+        session_primary = "sess-owner-cross"
+        session_secondary = "sess-owner-secondary"
 
         doc_primary = await queries.insert_document(
             db,
-            filename='primary.pdf',
-            filepath='primary.pdf',
-            status='ready',
-            uploaded_at='2025-09-24T00:00:00Z',
+            filename="primary.pdf",
+            filepath="primary.pdf",
+            status="ready",
+            uploaded_at="2025-09-24T00:00:00Z",
             session_id=session_primary,
             user_id=user_id,
         )
         doc_secondary = await queries.insert_document(
             db,
-            filename='secondary.pdf',
-            filepath='secondary.pdf',
-            status='ready',
-            uploaded_at='2025-09-24T00:00:00Z',
+            filename="secondary.pdf",
+            filepath="secondary.pdf",
+            status="ready",
+            uploaded_at="2025-09-24T00:00:00Z",
             session_id=session_secondary,
             user_id=user_id,
         )
@@ -137,15 +153,15 @@ def test_delete_thread_owner_cross_session_scope(tmp_path):
             db,
             session_id=session_primary,
             user_id=user_id,
-            type_='chat',
-            title='Primary thread',
+            type_="chat",
+            title="Primary thread",
         )
         thread_secondary = await queries.create_thread(
             db,
             session_id=session_secondary,
             user_id=user_id,
-            type_='chat',
-            title='Secondary thread',
+            type_="chat",
+            title="Secondary thread",
         )
 
         await queries.add_message(
@@ -153,8 +169,8 @@ def test_delete_thread_owner_cross_session_scope(tmp_path):
             thread_id=thread_primary,
             session_id=session_primary,
             user_id=user_id,
-            role='user',
-            content='Keep me scoped',
+            role="user",
+            content="Keep me scoped",
             agent_id=None,
             tokens=None,
             meta=None,
@@ -164,9 +180,9 @@ def test_delete_thread_owner_cross_session_scope(tmp_path):
             thread_id=thread_secondary,
             session_id=session_secondary,
             user_id=user_id,
-            role='assistant',
-            content='Second thread message',
-            agent_id='neo',
+            role="assistant",
+            content="Second thread message",
+            agent_id="neo",
             tokens=None,
             meta=None,
         )
@@ -193,20 +209,36 @@ def test_delete_thread_owner_cross_session_scope(tmp_path):
         )
         assert removed is True
 
-        assert await queries.get_thread(
+        primary_thread = await queries.get_thread(
             db,
             thread_primary,
             session_primary,
             user_id=user_id,
-        ) is None
-        assert await db.fetch_one(
-            'SELECT id FROM messages WHERE thread_id = ? AND session_id = ?',
-            (thread_primary, session_primary),
-        ) is None
-        assert await db.fetch_one(
-            'SELECT doc_id FROM thread_docs WHERE thread_id = ? AND session_id = ?',
-            (thread_primary, session_primary),
-        ) is None
+        )
+        assert primary_thread is not None
+        assert primary_thread["archived"] == 1
+
+        active_threads_primary = await queries.get_threads(
+            db,
+            session_primary,
+            user_id=user_id,
+            include_archived=False,
+        )
+        assert all(t["id"] != thread_primary for t in active_threads_primary)
+        assert (
+            await db.fetch_one(
+                "SELECT id FROM messages WHERE thread_id = ? AND session_id = ?",
+                (thread_primary, session_primary),
+            )
+            is not None
+        )
+        assert (
+            await db.fetch_one(
+                "SELECT doc_id FROM thread_docs WHERE thread_id = ? AND session_id = ?",
+                (thread_primary, session_primary),
+            )
+            is not None
+        )
 
         remaining_thread = await queries.get_thread(
             db,
@@ -215,14 +247,20 @@ def test_delete_thread_owner_cross_session_scope(tmp_path):
             user_id=user_id,
         )
         assert remaining_thread is not None
-        assert await db.fetch_one(
-            'SELECT id FROM messages WHERE thread_id = ? AND session_id = ?',
-            (thread_secondary, session_secondary),
-        ) is not None
-        assert await db.fetch_one(
-            'SELECT doc_id FROM thread_docs WHERE thread_id = ? AND session_id = ?',
-            (thread_secondary, session_secondary),
-        ) is not None
+        assert (
+            await db.fetch_one(
+                "SELECT id FROM messages WHERE thread_id = ? AND session_id = ?",
+                (thread_secondary, session_secondary),
+            )
+            is not None
+        )
+        assert (
+            await db.fetch_one(
+                "SELECT doc_id FROM thread_docs WHERE thread_id = ? AND session_id = ?",
+                (thread_secondary, session_secondary),
+            )
+            is not None
+        )
 
         await db.disconnect()
 
@@ -231,26 +269,26 @@ def test_delete_thread_owner_cross_session_scope(tmp_path):
 
 def test_delete_thread_session_scope_requires_match(tmp_path):
     async def scenario():
-        db_path = tmp_path / 'threads-delete-session-scope.db'
+        db_path = tmp_path / "threads-delete-session-scope.db"
         db = DatabaseManager(str(db_path))
         await schema.create_tables(db)
 
-        user_id = 'owner-session'
-        session_id = 'sess-owner-session'
+        user_id = "owner-session"
+        session_id = "sess-owner-session"
         thread_id = await queries.create_thread(
             db,
             session_id=session_id,
             user_id=user_id,
-            type_='chat',
-            title='Scoped thread',
+            type_="chat",
+            title="Scoped thread",
         )
         await queries.add_message(
             db,
             thread_id=thread_id,
             session_id=session_id,
             user_id=user_id,
-            role='user',
-            content='Message to remove',
+            role="user",
+            content="Message to remove",
             agent_id=None,
             tokens=None,
             meta=None,
@@ -262,15 +300,18 @@ def test_delete_thread_session_scope_requires_match(tmp_path):
             db,
             thread_id,
             session_id,
-            user_id='different-user',
+            user_id="different-user",
         )
         assert removed_wrong_user is False
-        assert await queries.get_thread(
-            db,
-            thread_id,
-            session_id,
-            user_id=user_id,
-        ) is not None
+        assert (
+            await queries.get_thread(
+                db,
+                thread_id,
+                session_id,
+                user_id=user_id,
+            )
+            is not None
+        )
 
         removed_correct_scope = await queries.delete_thread(
             db,
@@ -279,19 +320,29 @@ def test_delete_thread_session_scope_requires_match(tmp_path):
             user_id=user_id,
         )
         assert removed_correct_scope is True
-        assert await queries.get_thread(
+        deleted_thread = await queries.get_thread(
             db,
             thread_id,
             session_id,
             user_id=user_id,
-        ) is None
-        assert await db.fetch_one(
-            'SELECT id FROM messages WHERE thread_id = ? AND session_id = ?',
-            (thread_id, session_id),
-        ) is None
+        )
+        assert deleted_thread is not None
+        assert deleted_thread["archived"] == 1
+        active_threads = await queries.get_threads(
+            db,
+            session_id,
+            user_id=user_id,
+            include_archived=False,
+        )
+        assert all(t["id"] != thread_id for t in active_threads)
+        assert (
+            await db.fetch_one(
+                "SELECT id FROM messages WHERE thread_id = ? AND session_id = ?",
+                (thread_id, session_id),
+            )
+            is not None
+        )
 
         await db.disconnect()
 
     asyncio.run(scenario())
-
-

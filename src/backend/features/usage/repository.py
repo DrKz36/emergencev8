@@ -282,9 +282,7 @@ class UsageRepository:
 
     # ---- Aggregation methods (pour UsageGuardian) ----
 
-    async def get_active_users_count(
-        self, start: datetime, end: datetime
-    ) -> int:
+    async def get_active_users_count(self, start: datetime, end: datetime) -> int:
         """Compte utilisateurs actifs sur période"""
         try:
             row = await self.db.fetch_one(

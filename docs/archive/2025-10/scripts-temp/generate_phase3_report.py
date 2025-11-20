@@ -9,13 +9,10 @@ from datetime import datetime
 
 # Fix Windows console encoding
 if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding="utf-8")
 
 BASE_URL = "http://127.0.0.1:8000"
-HEADERS = {
-    "X-Dev-Bypass": "1",
-    "X-User-ID": "test_user_local"
-}
+HEADERS = {"X-Dev-Bypass": "1", "X-User-ID": "test_user_local"}
 
 print("=" * 80)
 print("📊 RAPPORT DE VALIDATION PHASE 3 - GROUPEMENT THÉMATIQUE")
@@ -29,7 +26,7 @@ queries = {
     "Philosophie": ["philosophie", "matérialisme", "engels"],
     "Littérature & Poésie": ["poème", "symbolisme", "littérature"],
     "Médecine & Sciences": ["vaccin", "médecine", "ferritine"],
-    "Musique & Création": ["musique", "punk", "garance"]
+    "Musique & Création": ["musique", "punk", "garance"],
 }
 
 all_concepts = {}
@@ -57,7 +54,9 @@ for theme, keywords in queries.items():
                         theme_concepts.add(concept_text)
                         score = result.get("similarity_score", 0)
                         mentions = result.get("mention_count", 0)
-                        print(f"   ✓ {concept_text} (score: {score:.3f}, mentions: {mentions})")
+                        print(
+                            f"   ✓ {concept_text} (score: {score:.3f}, mentions: {mentions})"
+                        )
                         total_concepts += 1
             else:
                 print(f"   ⚠️  Erreur pour '{keyword}': HTTP {response.status_code}")
@@ -71,10 +70,12 @@ for theme, keywords in queries.items():
 print("\n" + "=" * 80)
 print("📈 RÉSUMÉ DE LA VALIDATION")
 print("=" * 80)
-print(f"✅ Messages injectés: 25 (5 thèmes × 5 messages)")
-print(f"✅ Consolidation: SUCCESS (12 concepts extraits)")
+print("✅ Messages injectés: 25 (5 thèmes × 5 messages)")
+print("✅ Consolidation: SUCCESS (12 concepts extraits)")
 print(f"✅ Concepts recherchés: {total_concepts}")
-print(f"✅ Thèmes détectés: {len([t for t in all_concepts if all_concepts[t]])}/{len(queries)}")
+print(
+    f"✅ Thèmes détectés: {len([t for t in all_concepts if all_concepts[t]])}/{len(queries)}"
+)
 print()
 
 # Validation des critères Phase 3
@@ -86,7 +87,7 @@ criteria = {
     "Groupement thématique activé (5+ concepts)": total_concepts >= 5,
     "Horodatages temporels cohérents": True,  # Vérifié dans l'injection
     "Consolidation LTM visible via API": total_concepts > 0,
-    "Recherche sémantique fonctionnelle": total_concepts > 0
+    "Recherche sémantique fonctionnelle": total_concepts > 0,
 }
 
 for criterion, passed in criteria.items():
@@ -112,7 +113,7 @@ report_data = {
     "total_concepts_found": total_concepts,
     "themes": all_concepts,
     "criteria": criteria,
-    "validation_status": "PASS" if all_passed else "PARTIAL"
+    "validation_status": "PASS" if all_passed else "PARTIAL",
 }
 
 with open("reports/memory_phase3_validation_report.json", "w", encoding="utf-8") as f:

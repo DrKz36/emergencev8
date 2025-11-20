@@ -94,7 +94,7 @@ class DebateService:
             agent_txt = agent_id or role or "intervenant"
             prefix = f"{round_txt} - " if round_txt else ""
             return f"{prefix}{agent_txt} intervient."
-        return stage.replace("_", " " ).capitalize() or "Progression en cours."
+        return stage.replace("_", " ").capitalize() or "Progression en cours."
 
     async def _emit(self, session_id: str, type_: str, payload: Dict[str, Any]) -> None:
         try:
@@ -169,7 +169,9 @@ class DebateService:
         return payload
 
     @staticmethod
-    def _normalize_config(config: Optional[DebateConfig], kwargs: Dict[str, Any]) -> DebateConfig:
+    def _normalize_config(
+        config: Optional[DebateConfig], kwargs: Dict[str, Any]
+    ) -> DebateConfig:
         if isinstance(config, DebateConfig):
             return config
         topic = (kwargs.get("topic") or "").strip()
@@ -177,8 +179,12 @@ class DebateService:
         agent_order = kwargs.get("agentOrder") or kwargs.get("agent_order") or []
         if not isinstance(agent_order, list):
             agent_order = []
-        use_rag = bool(kwargs.get("useRag") if "useRag" in kwargs else kwargs.get("use_rag", False))
-        raw_doc_ids = kwargs.get("doc_ids") if "doc_ids" in kwargs else kwargs.get("docIds")
+        use_rag = bool(
+            kwargs.get("useRag") if "useRag" in kwargs else kwargs.get("use_rag", False)
+        )
+        raw_doc_ids = (
+            kwargs.get("doc_ids") if "doc_ids" in kwargs else kwargs.get("docIds")
+        )
         if isinstance(raw_doc_ids, (set, tuple)):
             raw_doc_ids = list(raw_doc_ids)
         elif isinstance(raw_doc_ids, str):
@@ -197,9 +203,17 @@ class DebateService:
                         doc_ids.append(text)
             if not doc_ids:
                 doc_ids = None
-        return DebateConfig(topic=topic, rounds=rounds, agent_order=agent_order, use_rag=use_rag, doc_ids=doc_ids)
+        return DebateConfig(
+            topic=topic,
+            rounds=rounds,
+            agent_order=agent_order,
+            use_rag=use_rag,
+            doc_ids=doc_ids,
+        )
 
-    async def run(self, session_id: str, config: Optional[DebateConfig] = None, **kwargs: Any) -> Dict[str, Any]:
+    async def run(
+        self, session_id: str, config: Optional[DebateConfig] = None, **kwargs: Any
+    ) -> Dict[str, Any]:
         cfg = self._normalize_config(config, kwargs)
         topic = (cfg.topic or "").strip()
         attacker, challenger, mediator = (cfg.agent_order + ["", "", ""])[:3]
@@ -254,7 +268,11 @@ class DebateService:
             "ws:debate_started",
             {
                 "topic": topic,
-                "config": {"rounds": rounds, "agentOrder": [attacker, challenger, mediator], "useRag": use_rag},
+                "config": {
+                    "rounds": rounds,
+                    "agentOrder": [attacker, challenger, mediator],
+                    "useRag": use_rag,
+                },
             },
         )
         await self._status(
@@ -290,29 +308,56 @@ class DebateService:
                     status_label="speaking",
                 )
 
-                prompt_attacker = self._build_turn_prompt(topic, turns, speaker="attacker", agent=attacker)
-                prompt_challenger = self._build_turn_prompt(topic, turns, speaker="challenger", agent=challenger)
+                prompt_attacker = self._build_turn_prompt(
+                    topic, turns, speaker="attacker", agent=attacker
+                )
+                prompt_challenger = self._build_turn_prompt(
+                    topic, turns, speaker="challenger", agent=challenger
+                )
 
                 # Appels parallèles avec asyncio.gather
                 import asyncio
+
                 results = await asyncio.gather(
-                    self._say_once(session_id, attacker, prompt_attacker, use_rag=use_rag, doc_ids=selected_doc_ids),
-                    self._say_once(session_id, challenger, prompt_challenger, use_rag=use_rag, doc_ids=selected_doc_ids),
-                    return_exceptions=True
+                    self._say_once(
+                        session_id,
+                        attacker,
+                        prompt_attacker,
+                        use_rag=use_rag,
+                        doc_ids=selected_doc_ids,
+                    ),
+                    self._say_once(
+                        session_id,
+                        challenger,
+                        prompt_challenger,
+                        use_rag=use_rag,
+                        doc_ids=selected_doc_ids,
+                    ),
+                    return_exceptions=True,
                 )
                 attacker_response_raw, challenger_response_raw = results
 
                 # Gérer les erreurs individuelles
                 if isinstance(attacker_response_raw, Exception):
-                    logger.error(f"Erreur attacker round {r}: {attacker_response_raw}", exc_info=attacker_response_raw)
+                    logger.error(
+                        f"Erreur attacker round {r}: {attacker_response_raw}",
+                        exc_info=attacker_response_raw,
+                    )
                     raise attacker_response_raw
                 if isinstance(challenger_response_raw, Exception):
-                    logger.error(f"Erreur challenger round {r}: {challenger_response_raw}", exc_info=challenger_response_raw)
+                    logger.error(
+                        f"Erreur challenger round {r}: {challenger_response_raw}",
+                        exc_info=challenger_response_raw,
+                    )
                     raise challenger_response_raw
 
                 # Type narrowing après vérification des exceptions (cast pour mypy)
-                attacker_response: Dict[str, Any] = cast(Dict[str, Any], attacker_response_raw)
-                challenger_response: Dict[str, Any] = cast(Dict[str, Any], challenger_response_raw)
+                attacker_response: Dict[str, Any] = cast(
+                    Dict[str, Any], attacker_response_raw
+                )
+                challenger_response: Dict[str, Any] = cast(
+                    Dict[str, Any], challenger_response_raw
+                )
 
                 turn_a = {
                     "round": r,
@@ -329,7 +374,11 @@ class DebateService:
                 }
                 turns.append(turn_a)
                 accumulate_cost(attacker, attacker_response.get("cost_info"))
-                await self._emit(session_id, "ws:debate_turn_update", {**turn_a, "speaker": "attacker"})
+                await self._emit(
+                    session_id,
+                    "ws:debate_turn_update",
+                    {**turn_a, "speaker": "attacker"},
+                )
 
                 turn_c = {
                     "round": r,
@@ -346,7 +395,11 @@ class DebateService:
                 }
                 turns.append(turn_c)
                 accumulate_cost(challenger, challenger_response.get("cost_info"))
-                await self._emit(session_id, "ws:debate_turn_update", {**turn_c, "speaker": "challenger"})
+                await self._emit(
+                    session_id,
+                    "ws:debate_turn_update",
+                    {**turn_c, "speaker": "challenger"},
+                )
 
             else:
                 # Rounds suivants: séquentiel (challenger répond à attacker)
@@ -359,7 +412,9 @@ class DebateService:
                     role="attacker",
                     status_label="speaking",
                 )
-                prompt_attacker = self._build_turn_prompt(topic, turns, speaker="attacker", agent=attacker)
+                prompt_attacker = self._build_turn_prompt(
+                    topic, turns, speaker="attacker", agent=attacker
+                )
                 attacker_response = await self._say_once(
                     session_id,
                     attacker,
@@ -382,7 +437,11 @@ class DebateService:
                 }
                 turns.append(turn_a)
                 accumulate_cost(attacker, attacker_response.get("cost_info"))
-                await self._emit(session_id, "ws:debate_turn_update", {**turn_a, "speaker": "attacker"})
+                await self._emit(
+                    session_id,
+                    "ws:debate_turn_update",
+                    {**turn_a, "speaker": "attacker"},
+                )
 
                 await self._status(
                     session_id,
@@ -393,7 +452,9 @@ class DebateService:
                     role="challenger",
                     status_label="speaking",
                 )
-                prompt_challenger = self._build_turn_prompt(topic, turns, speaker="challenger", agent=challenger)
+                prompt_challenger = self._build_turn_prompt(
+                    topic, turns, speaker="challenger", agent=challenger
+                )
                 challenger_response = await self._say_once(
                     session_id,
                     challenger,
@@ -416,7 +477,11 @@ class DebateService:
                 }
                 turns.append(turn_c)
                 accumulate_cost(challenger, challenger_response.get("cost_info"))
-                await self._emit(session_id, "ws:debate_turn_update", {**turn_c, "speaker": "challenger"})
+                await self._emit(
+                    session_id,
+                    "ws:debate_turn_update",
+                    {**turn_c, "speaker": "challenger"},
+                )
 
         await self._status(
             session_id,
@@ -479,7 +544,9 @@ class DebateService:
         }
 
         await self._emit(session_id, "ws:debate_result", payload)
-        await self._emit(session_id, "ws:debate_ended", {"topic": topic, "rounds": rounds})
+        await self._emit(
+            session_id, "ws:debate_ended", {"topic": topic, "rounds": rounds}
+        )
         await self._status(
             session_id,
             "completed",
@@ -489,7 +556,9 @@ class DebateService:
         )
         return payload
 
-    def _build_turn_prompt(self, topic: str, turns: List[Dict[str, Any]], *, speaker: str, agent: str) -> str:
+    def _build_turn_prompt(
+        self, topic: str, turns: List[Dict[str, Any]], *, speaker: str, agent: str
+    ) -> str:
         assert speaker in ("attacker", "challenger")
         if not turns:
             return f"Sujet: {topic}\n\nTon rôle ({agent}) : ouvre le débat de manière concise et percutante en 4-6 phrases."
@@ -502,14 +571,14 @@ class DebateService:
             f"Ton rôle ({agent}) : réponds précisément, 4-6 phrases, pas de résumé global."
         )
 
-    def _build_synthesis_prompt(self, topic: str, turns: List[Dict[str, Any]], mediator: str) -> str:
+    def _build_synthesis_prompt(
+        self, topic: str, turns: List[Dict[str, Any]], mediator: str
+    ) -> str:
         lines = [f"Sujet: {topic}", "Débat (chronologique):"]
         for t in turns:
-            lines.append(f"- {t.get('agent','?')}: {t.get('text','').strip()}")
+            lines.append(f"- {t.get('agent', '?')}: {t.get('text', '').strip()}")
         lines.append(
             "\nConsigne (médiateur): fournis une synthèse neutre, structurée, 6-10 phrases maximum, "
             "pas de répétitions, pas de nouvelles idées, conclure par 1 phrase d'ouverture constructive."
         )
         return "\n".join(lines)
-
-

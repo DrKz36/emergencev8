@@ -19,6 +19,7 @@ from backend.features.memory.analyzer import MemoryAnalyzer
 # Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_llm_client():
     """Mock LLM client pour PreferenceExtractor"""
@@ -33,7 +34,7 @@ def mock_llm_client():
             "timeframe": "ongoing",
             "sentiment": "positive",
             "confidence": 0.85,
-            "entities": ["Python", "FastAPI"]
+            "entities": ["Python", "FastAPI"],
         }
 
     client.get_structured_llm_response = mock_classify
@@ -48,20 +49,20 @@ def messages_with_preferences():
             "id": "msg_1",
             "role": "user",
             "content": "Je préfère utiliser Python avec FastAPI pour mes APIs",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         },
         {
             "id": "msg_2",
             "role": "assistant",
             "content": "Excellent choix ! Python et FastAPI sont parfaits.",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         },
         {
             "id": "msg_3",
             "role": "user",
             "content": "J'aime beaucoup TypeScript pour le frontend",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat(),
+        },
     ]
 
 
@@ -73,14 +74,14 @@ def messages_without_preferences():
             "id": "msg_1",
             "role": "user",
             "content": "Quelle heure est-il ?",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         },
         {
             "id": "msg_2",
             "role": "assistant",
             "content": "Il est 14h30.",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat(),
+        },
     ]
 
 
@@ -88,8 +89,11 @@ def messages_without_preferences():
 # Test 1 : Extraction avec user_sub présent
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_extract_preferences_with_user_sub(mock_llm_client, messages_with_preferences):
+async def test_extract_preferences_with_user_sub(
+    mock_llm_client, messages_with_preferences
+):
     """
     Test extraction normale avec user_sub fourni.
     Doit extraire les préférences et les associer au bon user_sub.
@@ -100,7 +104,7 @@ async def test_extract_preferences_with_user_sub(mock_llm_client, messages_with_
         messages=messages_with_preferences,
         user_sub="auth0|user_123",
         user_id="user_123",
-        thread_id="thread_abc"
+        thread_id="thread_abc",
     )
 
     # Vérifications
@@ -124,8 +128,11 @@ async def test_extract_preferences_with_user_sub(mock_llm_client, messages_with_
 # Test 2 : Extraction avec fallback user_id (user_sub absent)
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_extract_preferences_fallback_user_id(mock_llm_client, messages_with_preferences):
+async def test_extract_preferences_fallback_user_id(
+    mock_llm_client, messages_with_preferences
+):
     """
     Test extraction avec user_id en fallback (user_sub absent).
     Doit fonctionner et logger un warning.
@@ -138,7 +145,7 @@ async def test_extract_preferences_fallback_user_id(mock_llm_client, messages_wi
             messages=messages_with_preferences,
             user_sub=None,  # ❌ Absent
             user_id="user_456",  # ✅ Fallback
-            thread_id="thread_xyz"
+            thread_id="thread_xyz",
         )
 
     # Vérifier qu'un warning a été loggé
@@ -155,8 +162,11 @@ async def test_extract_preferences_fallback_user_id(mock_llm_client, messages_wi
 # Test 3 : Échec si aucun identifiant utilisateur
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_extract_preferences_no_user_identifier(mock_llm_client, messages_with_preferences):
+async def test_extract_preferences_no_user_identifier(
+    mock_llm_client, messages_with_preferences
+):
     """
     Test échec graceful si ni user_sub ni user_id fournis.
     Doit lever ValueError avec message explicite.
@@ -167,8 +177,8 @@ async def test_extract_preferences_no_user_identifier(mock_llm_client, messages_
         await extractor.extract(
             messages=messages_with_preferences,
             user_sub=None,  # ❌ Absent
-            user_id=None,   # ❌ Absent
-            thread_id="thread_test"
+            user_id=None,  # ❌ Absent
+            thread_id="thread_test",
         )
 
     # Vérifier message d'erreur
@@ -181,8 +191,11 @@ async def test_extract_preferences_no_user_identifier(mock_llm_client, messages_
 # Test 4 : Messages sans préférences (filtrage lexical)
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_extract_preferences_no_preferences_found(mock_llm_client, messages_without_preferences):
+async def test_extract_preferences_no_preferences_found(
+    mock_llm_client, messages_without_preferences
+):
     """
     Test que les messages sans mots-clés de préférences sont filtrés.
     Doit retourner liste vide sans appeler le LLM.
@@ -193,7 +206,7 @@ async def test_extract_preferences_no_preferences_found(mock_llm_client, message
         messages=messages_without_preferences,
         user_sub="auth0|user_789",
         user_id="user_789",
-        thread_id="thread_neutral"
+        thread_id="thread_neutral",
     )
 
     # Aucune préférence extraite
@@ -206,6 +219,7 @@ async def test_extract_preferences_no_preferences_found(mock_llm_client, message
 # ============================================================================
 # Test 5 : Métriques échecs incrémentées (MemoryAnalyzer)
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_analyzer_metrics_on_missing_user_identifier():
@@ -234,7 +248,9 @@ async def test_analyzer_metrics_on_missing_user_identifier():
     analyzer._ensure_ready = Mock()
 
     # Simuler extraction avec session sans user_id
-    with patch("backend.features.memory.analyzer.PREFERENCE_EXTRACTION_FAILURES") as mock_metric:
+    with patch(
+        "backend.features.memory.analyzer.PREFERENCE_EXTRACTION_FAILURES"
+    ) as mock_metric:
         with patch("backend.features.memory.analyzer.PROMETHEUS_AVAILABLE", True):
             # Simuler le bloc try/except d'extraction
             try:
@@ -255,6 +271,7 @@ async def test_analyzer_metrics_on_missing_user_identifier():
 # ============================================================================
 # Test 6 : Génération ID unique basé sur user_identifier
 # ============================================================================
+
 
 def test_preference_record_generate_id_consistency():
     """
@@ -285,8 +302,11 @@ def test_preference_record_generate_id_consistency():
 # Test 7 : Fallback thread_id si None
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_extract_preferences_thread_id_fallback(mock_llm_client, messages_with_preferences):
+async def test_extract_preferences_thread_id_fallback(
+    mock_llm_client, messages_with_preferences
+):
     """
     Test que si thread_id=None, il est remplacé par 'unknown' sans erreur.
     """
@@ -296,7 +316,7 @@ async def test_extract_preferences_thread_id_fallback(mock_llm_client, messages_
         messages=messages_with_preferences,
         user_sub="auth0|user_999",
         user_id="user_999",
-        thread_id=None  # ❌ Absent
+        thread_id=None,  # ❌ Absent
     )
 
     # Vérifier que thread_id = "unknown" dans les préférences extraites
@@ -307,6 +327,7 @@ async def test_extract_preferences_thread_id_fallback(mock_llm_client, messages_
 # ============================================================================
 # Test 8 : Integration avec MemoryAnalyzer (user_id fallback)
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_analyzer_uses_user_id_fallback():
@@ -338,9 +359,7 @@ async def test_analyzer_uses_user_id_fallback():
 
     # Simuler appel extraction (simplifié)
     session_id = "session_test"
-    history = [
-        {"role": "user", "content": "Je préfère Python", "id": "msg1"}
-    ]
+    history = [{"role": "user", "content": "Je préfère Python", "id": "msg1"}]
 
     # Simuler le bloc d'extraction du analyzer
     user_sub = mock_session.metadata.get("user_sub")
@@ -348,10 +367,7 @@ async def test_analyzer_uses_user_id_fallback():
 
     if user_sub or user_id:
         await analyzer.preference_extractor.extract(
-            messages=history,
-            user_sub=user_sub,
-            user_id=user_id,
-            thread_id=session_id
+            messages=history, user_sub=user_sub, user_id=user_id, thread_id=session_id
         )
 
     # Vérifier que extract() a bien été appelé avec user_id en fallback

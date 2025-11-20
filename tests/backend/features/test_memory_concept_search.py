@@ -28,7 +28,7 @@ async def authenticated_user(client):
         "headers": {
             "Authorization": "Bearer test_token_123",
             "X-Session-Id": "test_session_concepts",
-        }
+        },
     }
 
 
@@ -54,7 +54,7 @@ async def seed_test_concepts(vector_service, authenticated_user):
                 "thread_ids": ["thread_docker_1", "thread_docker_2"],
                 "mention_count": 2,
                 "vitality": 0.9,
-            }
+            },
         },
         {
             "id": "concept_k8s_1",
@@ -69,7 +69,7 @@ async def seed_test_concepts(vector_service, authenticated_user):
                 "thread_ids": ["thread_k8s_1"],
                 "mention_count": 1,
                 "vitality": 0.85,
-            }
+            },
         },
         {
             "id": "concept_cicd_1",
@@ -84,15 +84,15 @@ async def seed_test_concepts(vector_service, authenticated_user):
                 "thread_ids": ["thread_cicd_1", "thread_cicd_2", "thread_cicd_3"],
                 "mention_count": 3,
                 "vitality": 0.95,
-            }
-        }
+            },
+        },
     ]
 
     for concept in concepts:
         collection.add(
             ids=[concept["id"]],
             documents=[concept["text"]],
-            metadatas=[concept["metadata"]]
+            metadatas=[concept["metadata"]],
         )
 
     yield concepts
@@ -106,14 +106,16 @@ async def seed_test_concepts(vector_service, authenticated_user):
 
 
 @pytest.mark.asyncio
-async def test_search_concepts_valid_query(client, authenticated_user, seed_test_concepts):
+async def test_search_concepts_valid_query(
+    client, authenticated_user, seed_test_concepts
+):
     """
     Test valid concept search query.
     """
     response = client.get(
         "/api/memory/concepts/search",
         params={"q": "containerization", "limit": 10},
-        headers=authenticated_user["headers"]
+        headers=authenticated_user["headers"],
     )
 
     assert response.status_code == 200
@@ -135,7 +137,7 @@ async def test_search_concepts_short_query(client, authenticated_user):
     response = client.get(
         "/api/memory/concepts/search",
         params={"q": "xy", "limit": 10},
-        headers=authenticated_user["headers"]
+        headers=authenticated_user["headers"],
     )
 
     assert response.status_code == 422  # Validation error
@@ -149,7 +151,7 @@ async def test_search_concepts_missing_query(client, authenticated_user):
     response = client.get(
         "/api/memory/concepts/search",
         params={"limit": 10},
-        headers=authenticated_user["headers"]
+        headers=authenticated_user["headers"],
     )
 
     assert response.status_code == 422
@@ -164,7 +166,7 @@ async def test_search_concepts_limit_validation(client, authenticated_user):
     response = client.get(
         "/api/memory/concepts/search",
         params={"q": "docker", "limit": 0},
-        headers=authenticated_user["headers"]
+        headers=authenticated_user["headers"],
     )
     assert response.status_code == 422
 
@@ -172,7 +174,7 @@ async def test_search_concepts_limit_validation(client, authenticated_user):
     response = client.get(
         "/api/memory/concepts/search",
         params={"q": "docker", "limit": 51},
-        headers=authenticated_user["headers"]
+        headers=authenticated_user["headers"],
     )
     assert response.status_code == 422
 
@@ -180,7 +182,7 @@ async def test_search_concepts_limit_validation(client, authenticated_user):
     response = client.get(
         "/api/memory/concepts/search",
         params={"q": "docker", "limit": 25},
-        headers=authenticated_user["headers"]
+        headers=authenticated_user["headers"],
     )
     assert response.status_code in [200, 401]  # Either success or auth required
 
@@ -199,14 +201,16 @@ async def test_search_concepts_unauthenticated(client):
 
 
 @pytest.mark.asyncio
-async def test_search_concepts_results_sorted_by_similarity(client, authenticated_user, seed_test_concepts):
+async def test_search_concepts_results_sorted_by_similarity(
+    client, authenticated_user, seed_test_concepts
+):
     """
     Test that search results are sorted by similarity score (highest first).
     """
     response = client.get(
         "/api/memory/concepts/search",
         params={"q": "containerization", "limit": 10},
-        headers=authenticated_user["headers"]
+        headers=authenticated_user["headers"],
     )
 
     if response.status_code == 200:
@@ -216,18 +220,22 @@ async def test_search_concepts_results_sorted_by_similarity(client, authenticate
         if len(results) >= 2:
             # Verify results are sorted by similarity (descending)
             for i in range(len(results) - 1):
-                assert results[i]["similarity_score"] >= results[i + 1]["similarity_score"]
+                assert (
+                    results[i]["similarity_score"] >= results[i + 1]["similarity_score"]
+                )
 
 
 @pytest.mark.asyncio
-async def test_search_concepts_metadata_structure(client, authenticated_user, seed_test_concepts):
+async def test_search_concepts_metadata_structure(
+    client, authenticated_user, seed_test_concepts
+):
     """
     Test that returned concept metadata has expected structure.
     """
     response = client.get(
         "/api/memory/concepts/search",
         params={"q": "Docker", "limit": 10},
-        headers=authenticated_user["headers"]
+        headers=authenticated_user["headers"],
     )
 
     if response.status_code == 200:

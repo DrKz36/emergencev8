@@ -22,8 +22,7 @@ import logging
 
 # Configuration logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -44,21 +43,23 @@ class TestScenario:
 
     async def test_1_extraction_with_user_sub(self):
         """Test 1: Extraction normale avec user_sub présent"""
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("TEST 1: Extraction avec user_sub présent")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         # Mock LLM client
         mock_llm = AsyncMock()
-        mock_llm.get_structured_llm_response = AsyncMock(return_value={
-            "type": "preference",
-            "topic": "programmation",
-            "action": "utiliser",
-            "timeframe": "ongoing",
-            "sentiment": "positive",
-            "confidence": 0.85,
-            "entities": ["Python", "FastAPI"]
-        })
+        mock_llm.get_structured_llm_response = AsyncMock(
+            return_value={
+                "type": "preference",
+                "topic": "programmation",
+                "action": "utiliser",
+                "timeframe": "ongoing",
+                "sentiment": "positive",
+                "confidence": 0.85,
+                "entities": ["Python", "FastAPI"],
+            }
+        )
 
         # Créer extractor
         extractor = PreferenceExtractor(llm_client=mock_llm)
@@ -68,7 +69,7 @@ class TestScenario:
             {
                 "id": "msg_1",
                 "role": "user",
-                "content": "Je préfère utiliser Python avec FastAPI pour mes APIs"
+                "content": "Je préfère utiliser Python avec FastAPI pour mes APIs",
             }
         ]
 
@@ -78,7 +79,7 @@ class TestScenario:
                 messages=messages,
                 user_sub="auth0|user_test_123",
                 user_id="user_test_123",
-                thread_id="thread_test_1"
+                thread_id="thread_test_1",
             )
 
             passed = len(preferences) > 0
@@ -90,21 +91,23 @@ class TestScenario:
 
     async def test_2_extraction_fallback_user_id(self):
         """Test 2: Extraction avec fallback user_id (user_sub absent)"""
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("TEST 2: Extraction avec fallback user_id")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         # Mock LLM client
         mock_llm = AsyncMock()
-        mock_llm.get_structured_llm_response = AsyncMock(return_value={
-            "type": "preference",
-            "topic": "frontend",
-            "action": "utiliser",
-            "timeframe": "ongoing",
-            "sentiment": "positive",
-            "confidence": 0.90,
-            "entities": ["TypeScript", "React"]
-        })
+        mock_llm.get_structured_llm_response = AsyncMock(
+            return_value={
+                "type": "preference",
+                "topic": "frontend",
+                "action": "utiliser",
+                "timeframe": "ongoing",
+                "sentiment": "positive",
+                "confidence": 0.90,
+                "entities": ["TypeScript", "React"],
+            }
+        )
 
         extractor = PreferenceExtractor(llm_client=mock_llm)
 
@@ -112,7 +115,7 @@ class TestScenario:
             {
                 "id": "msg_2",
                 "role": "user",
-                "content": "J'aime beaucoup TypeScript pour le frontend"
+                "content": "J'aime beaucoup TypeScript pour le frontend",
             }
         ]
 
@@ -122,7 +125,7 @@ class TestScenario:
                 messages=messages,
                 user_sub=None,  # ❌ Absent
                 user_id="user_fallback_456",  # ✅ Fallback
-                thread_id="thread_test_2"
+                thread_id="thread_test_2",
             )
 
             passed = len(preferences) > 0
@@ -134,19 +137,15 @@ class TestScenario:
 
     async def test_3_extraction_no_identifier(self):
         """Test 3: Échec si aucun identifiant"""
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("TEST 3: Échec si aucun identifiant")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         mock_llm = AsyncMock()
         extractor = PreferenceExtractor(llm_client=mock_llm)
 
         messages = [
-            {
-                "id": "msg_3",
-                "role": "user",
-                "content": "Je veux apprendre Rust"
-            }
+            {"id": "msg_3", "role": "user", "content": "Je veux apprendre Rust"}
         ]
 
         try:
@@ -154,15 +153,15 @@ class TestScenario:
             await extractor.extract(
                 messages=messages,
                 user_sub=None,  # ❌ Absent
-                user_id=None,   # ❌ Absent
-                thread_id="thread_test_3"
+                user_id=None,  # ❌ Absent
+                thread_id="thread_test_3",
             )
 
             # Si on arrive ici, c'est un échec (devrait lever ValueError)
             self.log_result(
                 "Test 3: no identifier → ValueError",
                 False,
-                "Should have raised ValueError but didn't"
+                "Should have raised ValueError but didn't",
             )
 
         except ValueError as e:
@@ -175,14 +174,14 @@ class TestScenario:
             self.log_result(
                 "Test 3: no identifier → ValueError",
                 False,
-                f"Wrong exception type: {type(e).__name__}: {e}"
+                f"Wrong exception type: {type(e).__name__}: {e}",
             )
 
     async def test_4_analyzer_integration(self):
         """Test 4: Integration MemoryAnalyzer avec fallback"""
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("TEST 4: Integration MemoryAnalyzer")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         # Mock DatabaseManager
         mock_db = AsyncMock()
@@ -205,13 +204,11 @@ class TestScenario:
 
         # Mock PreferenceExtractor
         mock_extractor = AsyncMock()
-        mock_extractor.extract = AsyncMock(return_value=[
-            MagicMock(
-                type="preference",
-                topic="database",
-                confidence=0.88
-            )
-        ])
+        mock_extractor.extract = AsyncMock(
+            return_value=[
+                MagicMock(type="preference", topic="database", confidence=0.88)
+            ]
+        )
         analyzer.preference_extractor = mock_extractor
 
         try:
@@ -230,7 +227,7 @@ class TestScenario:
                     messages=history,
                     user_sub=user_sub,
                     user_id=user_id,
-                    thread_id=session_id
+                    thread_id=session_id,
                 )
 
             # Vérifier que extract() a été appelé avec user_id fallback
@@ -238,31 +235,35 @@ class TestScenario:
             call_kwargs = mock_extractor.extract.call_args.kwargs
 
             passed = (
-                call_kwargs["user_sub"] is None and
-                call_kwargs["user_id"] == "user_integration_789"
+                call_kwargs["user_sub"] is None
+                and call_kwargs["user_id"] == "user_integration_789"
             )
             details = f"extract() called with user_sub={call_kwargs['user_sub']}, user_id={call_kwargs['user_id']}"
             self.log_result("Test 4: MemoryAnalyzer integration", passed, details)
 
         except Exception as e:
-            self.log_result("Test 4: MemoryAnalyzer integration", False, f"Exception: {e}")
+            self.log_result(
+                "Test 4: MemoryAnalyzer integration", False, f"Exception: {e}"
+            )
 
     async def test_5_thread_id_fallback(self):
         """Test 5: Fallback thread_id=None → "unknown" """
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("TEST 5: Fallback thread_id=None")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         mock_llm = AsyncMock()
-        mock_llm.get_structured_llm_response = AsyncMock(return_value={
-            "type": "constraint",
-            "topic": "sécurité",
-            "action": "éviter",
-            "timeframe": "ongoing",
-            "sentiment": "negative",
-            "confidence": 0.75,
-            "entities": ["SQL injection"]
-        })
+        mock_llm.get_structured_llm_response = AsyncMock(
+            return_value={
+                "type": "constraint",
+                "topic": "sécurité",
+                "action": "éviter",
+                "timeframe": "ongoing",
+                "sentiment": "negative",
+                "confidence": 0.75,
+                "entities": ["SQL injection"],
+            }
+        )
 
         extractor = PreferenceExtractor(llm_client=mock_llm)
 
@@ -270,7 +271,7 @@ class TestScenario:
             {
                 "id": "msg_5",
                 "role": "user",
-                "content": "J'évite toujours les SQL injections"
+                "content": "J'évite toujours les SQL injections",
             }
         ]
 
@@ -280,7 +281,7 @@ class TestScenario:
                 messages=messages,
                 user_sub="auth0|user_thread_test",
                 user_id="user_thread_test",
-                thread_id=None  # ❌ Absent
+                thread_id=None,  # ❌ Absent
             )
 
             # Vérifier que thread_id est "unknown"
@@ -293,9 +294,9 @@ class TestScenario:
 
     def print_summary(self):
         """Affiche résumé des tests"""
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("RÉSUMÉ DES TESTS")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         total = len(self.results)
         passed = sum(1 for _, p, _ in self.results if p)
@@ -313,7 +314,7 @@ class TestScenario:
                     if details:
                         logger.info(f"    {details}")
 
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
 
         return failed == 0
 
@@ -321,7 +322,7 @@ class TestScenario:
 async def main():
     """Point d'entrée principal"""
     logger.info("🔬 DÉBUT TESTS HOTFIX P1.3")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     scenario = TestScenario()
 

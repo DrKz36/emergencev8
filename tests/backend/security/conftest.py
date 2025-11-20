@@ -13,8 +13,10 @@ if str(SRC_DIR) not in sys.path:
 
 _httpx_init = httpx.Client.__init__
 if "app" not in _httpx_init.__code__.co_varnames:
+
     def _httpx_init_compat(self, *args, app=None, **kwargs):
         return _httpx_init(self, *args, **kwargs)
+
     httpx.Client.__init__ = _httpx_init_compat  # type: ignore[assignment]
 
 
@@ -24,6 +26,7 @@ def auth_app_factory():
     Factory simplifié pour créer une app FastAPI de test
     Compatible avec tests synchrones (pas d'async)
     """
+
     def _create(name: str = "security_test", **kwargs) -> FastAPI:
         app = FastAPI()
         # App minimaliste pour tests sécurité
@@ -50,9 +53,14 @@ def client(auth_app_factory):
             password = body.get("password", "")
 
             if not email or not password:
-                return Response(status_code=422, content='{"error": "Missing credentials"}')
+                return Response(
+                    status_code=422, content='{"error": "Missing credentials"}'
+                )
 
-            if any(pattern in email.lower() for pattern in ["'", "or", "union", "drop", "select"]):
+            if any(
+                pattern in email.lower()
+                for pattern in ["'", "or", "union", "drop", "select"]
+            ):
                 return Response(status_code=422, content='{"error": "Invalid input"}')
 
             return Response(status_code=401, content='{"error": "Unauthorized"}')

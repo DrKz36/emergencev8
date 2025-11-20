@@ -20,7 +20,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend.core.database.manager import DatabaseManager
-from backend.features.auth.service import AuthService
 
 
 async def main():
@@ -90,7 +89,9 @@ async def main():
         total = dict(total_row)["count"] if total_row else 0
 
         if count > 0:
-            print(f"   ⚠️  {count}/{total} sessions SANS user_id ({count*100//total if total else 0}%)")
+            print(
+                f"   ⚠️  {count}/{total} sessions SANS user_id ({count * 100 // total if total else 0}%)"
+            )
             print("      → Ces sessions ne peuvent pas résoudre le user_id")
             print("      → FIX: Backfill nécessaire")
         else:
@@ -111,7 +112,9 @@ async def main():
         total = dict(total_row)["count"] if total_row else 0
 
         if count > 0:
-            print(f"   ⚠️  {count}/{total} threads SANS user_id ({count*100//total if total else 0}%)")
+            print(
+                f"   ⚠️  {count}/{total} threads SANS user_id ({count * 100 // total if total else 0}%)"
+            )
             print("      → Ces threads ne sont PAS partagés cross-device")
             print("      → FIX: Backfill nécessaire")
         else:
@@ -132,7 +135,9 @@ async def main():
         total = dict(total_row)["count"] if total_row else 0
 
         if count > 0:
-            print(f"   ⚠️  {count}/{total} documents SANS user_id ({count*100//total if total else 0}%)")
+            print(
+                f"   ⚠️  {count}/{total} documents SANS user_id ({count * 100 // total if total else 0}%)"
+            )
             print("      → Ces documents ne sont PAS partagés cross-device")
             print("      → FIX: Backfill nécessaire")
         else:
@@ -156,17 +161,20 @@ async def main():
 
             # Calculer le hash attendu
             import hashlib
+
             expected_user_id = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()
 
             if stored_user_id == expected_user_id:
-                print(f"   ✅ Hash email → user_id CORRECT")
+                print("   ✅ Hash email → user_id CORRECT")
                 print(f"      Email: {email}")
                 print(f"      user_id: {stored_user_id[:16]}...")
             else:
-                print(f"   ❌ Hash email → user_id INCORRECT !")
+                print("   ❌ Hash email → user_id INCORRECT !")
                 print(f"      Email: {email}")
                 print(f"      Attendu: {expected_user_id[:16]}...")
-                print(f"      Trouvé: {stored_user_id[:16] if stored_user_id else 'NULL'}...")
+                print(
+                    f"      Trouvé: {stored_user_id[:16] if stored_user_id else 'NULL'}..."
+                )
                 print("      → CRITIQUE: Le hash ne correspond pas !")
         else:
             print("   ⚠️  Aucune session trouvée pour tester")

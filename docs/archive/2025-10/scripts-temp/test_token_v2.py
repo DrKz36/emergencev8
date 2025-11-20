@@ -1,6 +1,7 @@
 """
 Script de test v2 - Endpoints corrects pour EmergenceV8
 """
+
 import requests
 import json
 from typing import Any
@@ -13,14 +14,16 @@ SESSION_ID = "a24eefc9-10f1-453f-9fff-6d1b75d94e8e"
 # Headers avec le token
 HEADERS = {
     "Content-Type": "application/json",
-    "Cookie": f"id_token={ID_TOKEN}; emergence_session_id={SESSION_ID}"
+    "Cookie": f"id_token={ID_TOKEN}; emergence_session_id={SESSION_ID}",
 }
+
 
 def print_test_header(test_name: str):
     """Affiche un en-tête de test"""
     print("\n" + "=" * 80)
     print(f"TEST: {test_name}")
     print("=" * 80)
+
 
 def print_result(success: bool, message: str, details: Any = None):
     """Affiche le résultat d'un test"""
@@ -31,6 +34,7 @@ def print_result(success: bool, message: str, details: Any = None):
             print(f"Details: {json.dumps(details, indent=2, ensure_ascii=False)}")
         else:
             print(f"Details: {details}")
+
 
 def test_health():
     """Test 1: Health endpoint"""
@@ -45,6 +49,7 @@ def test_health():
         print_result(False, f"Erreur: {str(e)}")
         return False
 
+
 def test_debate_list():
     """Test 2: Liste des débats actifs"""
     print_test_header("Liste des Debats")
@@ -58,25 +63,38 @@ def test_debate_list():
         print_result(False, f"Erreur: {str(e)}")
         return False
 
+
 def test_dashboard():
     """Test 3: Dashboard endpoint"""
     print_test_header("Dashboard")
     try:
-        response = requests.get(f"{BASE_URL}/api/dashboard/stats", headers=HEADERS, timeout=5)
-        success = response.status_code in [200, 404]  # 404 acceptable si pas encore implementé
+        response = requests.get(
+            f"{BASE_URL}/api/dashboard/stats", headers=HEADERS, timeout=5
+        )
+        success = response.status_code in [
+            200,
+            404,
+        ]  # 404 acceptable si pas encore implementé
 
         if response.status_code == 200:
             data = response.json()
             print_result(True, "Dashboard stats accessible", data)
         elif response.status_code == 404:
-            print_result(True, "Dashboard stats non trouvé (normal si pas encore implémenté)", {"status": 404})
+            print_result(
+                True,
+                "Dashboard stats non trouvé (normal si pas encore implémenté)",
+                {"status": 404},
+            )
         else:
-            print_result(False, f"Erreur {response.status_code}", {"body": response.text[:200]})
+            print_result(
+                False, f"Erreur {response.status_code}", {"body": response.text[:200]}
+            )
 
         return success
     except Exception as e:
         print_result(False, f"Erreur: {str(e)}")
         return False
+
 
 def test_threads():
     """Test 4: Threads endpoint"""
@@ -89,34 +107,50 @@ def test_threads():
             data = response.json()
             print_result(True, "Threads endpoint accessible", data)
         elif response.status_code == 404:
-            print_result(True, "Threads endpoint non trouvé (normal si pas encore implémenté)", {"status": 404})
+            print_result(
+                True,
+                "Threads endpoint non trouvé (normal si pas encore implémenté)",
+                {"status": 404},
+            )
         else:
-            print_result(False, f"Erreur {response.status_code}", {"body": response.text[:200]})
+            print_result(
+                False, f"Erreur {response.status_code}", {"body": response.text[:200]}
+            )
 
         return success
     except Exception as e:
         print_result(False, f"Erreur: {str(e)}")
         return False
 
+
 def test_memory():
     """Test 5: Memory endpoint"""
     print_test_header("Memory")
     try:
-        response = requests.get(f"{BASE_URL}/api/memory/stats", headers=HEADERS, timeout=5)
+        response = requests.get(
+            f"{BASE_URL}/api/memory/stats", headers=HEADERS, timeout=5
+        )
         success = response.status_code in [200, 404]
 
         if response.status_code == 200:
             data = response.json()
             print_result(True, "Memory stats accessible", data)
         elif response.status_code == 404:
-            print_result(True, "Memory stats non trouvé (normal si pas encore implémenté)", {"status": 404})
+            print_result(
+                True,
+                "Memory stats non trouvé (normal si pas encore implémenté)",
+                {"status": 404},
+            )
         else:
-            print_result(False, f"Erreur {response.status_code}", {"body": response.text[:200]})
+            print_result(
+                False, f"Erreur {response.status_code}", {"body": response.text[:200]}
+            )
 
         return success
     except Exception as e:
         print_result(False, f"Erreur: {str(e)}")
         return False
+
 
 def test_metrics():
     """Test 6: Metrics endpoint (Prometheus)"""
@@ -132,18 +166,23 @@ def test_metrics():
         elif response.status_code == 404:
             print_result(True, "Metrics endpoint non trouvé", {"status": 404})
         else:
-            print_result(False, f"Erreur {response.status_code}", {"body": response.text[:200]})
+            print_result(
+                False, f"Erreur {response.status_code}", {"body": response.text[:200]}
+            )
 
         return success
     except Exception as e:
         print_result(False, f"Erreur: {str(e)}")
         return False
 
+
 def test_monitoring():
     """Test 7: Monitoring endpoint"""
     print_test_header("Monitoring")
     try:
-        response = requests.get(f"{BASE_URL}/api/monitoring/health", headers=HEADERS, timeout=5)
+        response = requests.get(
+            f"{BASE_URL}/api/monitoring/health", headers=HEADERS, timeout=5
+        )
         success = response.status_code in [200, 404]
 
         if response.status_code == 200:
@@ -152,12 +191,15 @@ def test_monitoring():
         elif response.status_code == 404:
             print_result(True, "Monitoring health non trouvé", {"status": 404})
         else:
-            print_result(False, f"Erreur {response.status_code}", {"body": response.text[:200]})
+            print_result(
+                False, f"Erreur {response.status_code}", {"body": response.text[:200]}
+            )
 
         return success
     except Exception as e:
         print_result(False, f"Erreur: {str(e)}")
         return False
+
 
 def test_documents():
     """Test 8: Documents endpoint"""
@@ -172,38 +214,52 @@ def test_documents():
         elif response.status_code == 404:
             print_result(True, "Documents endpoint non trouvé", {"status": 404})
         else:
-            print_result(False, f"Erreur {response.status_code}", {"body": response.text[:200]})
+            print_result(
+                False, f"Erreur {response.status_code}", {"body": response.text[:200]}
+            )
 
         return success
     except Exception as e:
         print_result(False, f"Erreur: {str(e)}")
         return False
 
+
 def test_benchmarks():
     """Test 9: Benchmarks endpoint"""
     print_test_header("Benchmarks")
     try:
-        response = requests.get(f"{BASE_URL}/api/benchmarks", headers=HEADERS, timeout=5)
+        response = requests.get(
+            f"{BASE_URL}/api/benchmarks", headers=HEADERS, timeout=5
+        )
         success = response.status_code in [200, 404, 405]
 
         if response.status_code == 200:
             data = response.json()
             print_result(True, "Benchmarks endpoint accessible", data)
         elif response.status_code in [404, 405]:
-            print_result(True, f"Benchmarks endpoint status={response.status_code}", {"status": response.status_code})
+            print_result(
+                True,
+                f"Benchmarks endpoint status={response.status_code}",
+                {"status": response.status_code},
+            )
         else:
-            print_result(False, f"Erreur {response.status_code}", {"body": response.text[:200]})
+            print_result(
+                False, f"Erreur {response.status_code}", {"body": response.text[:200]}
+            )
 
         return success
     except Exception as e:
         print_result(False, f"Erreur: {str(e)}")
         return False
 
+
 def test_sync():
     """Test 10: Sync endpoint"""
     print_test_header("Sync")
     try:
-        response = requests.get(f"{BASE_URL}/api/sync/status", headers=HEADERS, timeout=5)
+        response = requests.get(
+            f"{BASE_URL}/api/sync/status", headers=HEADERS, timeout=5
+        )
         success = response.status_code in [200, 404]
 
         if response.status_code == 200:
@@ -212,19 +268,23 @@ def test_sync():
         elif response.status_code == 404:
             print_result(True, "Sync status non trouvé", {"status": 404})
         else:
-            print_result(False, f"Erreur {response.status_code}", {"body": response.text[:200]})
+            print_result(
+                False, f"Erreur {response.status_code}", {"body": response.text[:200]}
+            )
 
         return success
     except Exception as e:
         print_result(False, f"Erreur: {str(e)}")
         return False
 
+
 def decode_jwt():
     """Bonus: Décoder le JWT"""
     print_test_header("JWT Decode")
     try:
         import base64
-        parts = ID_TOKEN.split('.')
+
+        parts = ID_TOKEN.split(".")
         if len(parts) != 3:
             print_result(False, "Format JWT invalide")
             return False
@@ -232,23 +292,24 @@ def decode_jwt():
         payload = parts[1]
         padding = 4 - len(payload) % 4
         if padding != 4:
-            payload += '=' * padding
+            payload += "=" * padding
 
         decoded = base64.urlsafe_b64decode(payload)
         payload_data = json.loads(decoded)
 
         # Vérifier l'expiration
         import time
-        exp = payload_data.get('exp', 0)
+
+        exp = payload_data.get("exp", 0)
         now = int(time.time())
 
         is_valid = now < exp
         time_left = exp - now
 
-        payload_data['_computed'] = {
-            'is_expired': not is_valid,
-            'time_left_seconds': time_left,
-            'time_left_hours': round(time_left / 3600, 2)
+        payload_data["_computed"] = {
+            "is_expired": not is_valid,
+            "time_left_seconds": time_left,
+            "time_left_hours": round(time_left / 3600, 2),
         }
 
         print_result(True, f"JWT décodé - Valide: {is_valid}", payload_data)
@@ -256,6 +317,7 @@ def decode_jwt():
     except Exception as e:
         print_result(False, f"Erreur: {str(e)}")
         return False
+
 
 def main():
     """Exécute tous les tests"""
@@ -294,7 +356,7 @@ def main():
         print(f"{status} {test_name}")
 
     print("\n" + "-" * 80)
-    print(f"Total: {passed}/{total} tests reussis ({passed*100//total}%)")
+    print(f"Total: {passed}/{total} tests reussis ({passed * 100 // total}%)")
     print("=" * 80)
 
     # Recommendations
@@ -310,6 +372,7 @@ def main():
     print(f"1. Token: Cookie 'id_token={ID_TOKEN[:20]}...'")
     print(f"2. Session: Cookie 'emergence_session_id={SESSION_ID}'")
     print("3. WebSocket: ws://localhost:8000/ws/{session_id}")
+
 
 if __name__ == "__main__":
     main()

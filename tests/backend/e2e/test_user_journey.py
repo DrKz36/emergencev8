@@ -10,7 +10,6 @@ import time
 class TestCompleteUserJourney:
     """Parcours utilisateur complet du début à la fin"""
 
-    
     def test_new_user_onboarding_to_chat(self, auth_app_factory):
         """
         Scénario: Nouvel utilisateur s'inscrit et utilise le chat
@@ -90,7 +89,6 @@ class TestCompleteUserJourney:
 class TestMultiThreadConversation:
     """Test de gestion de conversations multi-threads"""
 
-    
     def test_user_manages_multiple_conversations(self, client, authenticated_user):
         """
         Scénario: Utilisateur jongle entre plusieurs conversations
@@ -100,7 +98,7 @@ class TestMultiThreadConversation:
         for i in range(3):
             response = client.post(
                 "/api/threads",
-                json={"title": f"Thread {i+1}"},
+                json={"title": f"Thread {i + 1}"},
             )
             assert response.status_code == 200
             threads.append(response.json()["id"])
@@ -110,7 +108,7 @@ class TestMultiThreadConversation:
             response = client.post(
                 "/api/chat",
                 json={
-                    "message": f"Message dans thread {i+1}",
+                    "message": f"Message dans thread {i + 1}",
                     "thread_id": thread_id,
                 },
             )
@@ -121,13 +119,12 @@ class TestMultiThreadConversation:
             response = client.get(f"/api/threads/{thread_id}/messages")
             messages = response.json()
             # Chaque thread doit contenir uniquement ses messages
-            assert any(f"thread {i+1}" in msg["content"].lower() for msg in messages)
+            assert any(f"thread {i + 1}" in msg["content"].lower() for msg in messages)
 
 
 class TestMemoryAndContext:
     """Test de la mémoire et du contexte conversationnel"""
 
-    
     def test_conversation_with_memory_recall(self, client, authenticated_user):
         """
         Scénario: L'IA se souvient des informations précédentes
@@ -164,7 +161,6 @@ class TestMemoryAndContext:
 class TestErrorRecovery:
     """Test de récupération d'erreurs"""
 
-    
     def test_graceful_degradation_on_ai_failure(self, client, authenticated_user):
         """
         Scénario: L'application gère gracieusement les erreurs de l'IA
@@ -186,7 +182,6 @@ class TestErrorRecovery:
 class TestDataPersistence:
     """Test de persistence des données"""
 
-    
     def test_data_survives_session(self, auth_app_factory):
         """
         Scénario: Les données persistent entre sessions
@@ -199,7 +194,9 @@ class TestDataPersistence:
         password = "TestPass123!"
 
         client.post("/api/auth/register", json={"email": email, "password": password})
-        login1 = client.post("/api/auth/login", json={"email": email, "password": password})
+        login1 = client.post(
+            "/api/auth/login", json={"email": email, "password": password}
+        )
         token1 = login1.json()["access_token"]
 
         thread_response = client.post(
@@ -212,7 +209,9 @@ class TestDataPersistence:
         client.post("/api/auth/logout", headers={"Authorization": f"Bearer {token1}"})
 
         # Session 2: Vérifier que les données existent toujours
-        login2 = client.post("/api/auth/login", json={"email": email, "password": password})
+        login2 = client.post(
+            "/api/auth/login", json={"email": email, "password": password}
+        )
         token2 = login2.json()["access_token"]
 
         threads_response = client.get(
@@ -220,7 +219,9 @@ class TestDataPersistence:
             headers={"Authorization": f"Bearer {token2}"},
         )
 
-        assert threads_response.status_code == 200, f"Erreur récupération threads: {threads_response.status_code} - {threads_response.text}"
+        assert threads_response.status_code == 200, (
+            f"Erreur récupération threads: {threads_response.status_code} - {threads_response.text}"
+        )
         threads = threads_response.json()
         thread_ids = [t["id"] for t in threads]
         assert thread_id in thread_ids, "Thread perdu entre sessions"
@@ -229,7 +230,6 @@ class TestDataPersistence:
 class TestConcurrentUsers:
     """Test d'utilisation concurrente"""
 
-    
     def test_multiple_users_isolated(self, auth_app_factory):
         """
         Scénario: Deux utilisateurs ne voient pas les données de l'autre
@@ -243,13 +243,17 @@ class TestConcurrentUsers:
         # User 1
         email1 = f"user1_{int(time.time())}@test.com"
         client1.post("/api/auth/register", json={"email": email1, "password": "Pass1!"})
-        login1 = client1.post("/api/auth/login", json={"email": email1, "password": "Pass1!"})
+        login1 = client1.post(
+            "/api/auth/login", json={"email": email1, "password": "Pass1!"}
+        )
         token1 = login1.json()["access_token"]
 
         # User 2
         email2 = f"user2_{int(time.time())}@test.com"
         client2.post("/api/auth/register", json={"email": email2, "password": "Pass2!"})
-        login2 = client2.post("/api/auth/login", json={"email": email2, "password": "Pass2!"})
+        login2 = client2.post(
+            "/api/auth/login", json={"email": email2, "password": "Pass2!"}
+        )
         token2 = login2.json()["access_token"]
 
         # User 1 crée un thread

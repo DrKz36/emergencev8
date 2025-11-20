@@ -12,10 +12,9 @@ Tests:
 Usage:
     python scripts/benchmark_chroma_upgrade.py
 """
-import os
+
 import sys
 import time
-import asyncio
 import logging
 from pathlib import Path
 from typing import List, Dict, Any
@@ -29,8 +28,7 @@ SRC_DIR = REPO_ROOT / "src"
 sys.path.insert(0, str(SRC_DIR))
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -41,19 +39,22 @@ from backend.features.memory.vector_service import VectorService
 def generate_test_data(count: int) -> List[Dict[str, Any]]:
     """Generate synthetic test data for benchmarking."""
     import uuid
+
     data = []
     for i in range(count):
-        data.append({
-            "id": f"doc_{uuid.uuid4().hex[:8]}_{i}",
-            "text": f"This is test document number {i} with some random content for embedding. "
-                    f"It contains information about topic {i % 10} and category {i % 5}.",
-            "metadata": {
-                "user_id": f"user_{i % 100}",
-                "type": f"type_{i % 5}",
-                "confidence": round(0.5 + (i % 50) / 100, 2),
-                "timestamp": time.time() - (i * 3600),
+        data.append(
+            {
+                "id": f"doc_{uuid.uuid4().hex[:8]}_{i}",
+                "text": f"This is test document number {i} with some random content for embedding. "
+                f"It contains information about topic {i % 10} and category {i % 5}.",
+                "metadata": {
+                    "user_id": f"user_{i % 100}",
+                    "type": f"type_{i % 5}",
+                    "confidence": round(0.5 + (i % 50) / 100, 2),
+                    "timestamp": time.time() - (i * 3600),
+                },
             }
-        })
+        )
     return data
 
 
@@ -74,7 +75,9 @@ class ChromaBenchmark:
         )
         return service
 
-    def benchmark_upsert(self, service: VectorService, batch_size: int) -> Dict[str, float]:
+    def benchmark_upsert(
+        self, service: VectorService, batch_size: int
+    ) -> Dict[str, float]:
         """Benchmark upsert operation."""
         logger.info(f"Benchmarking upsert with {batch_size} items...")
 
@@ -87,7 +90,7 @@ class ChromaBenchmark:
             metadata={
                 "hnsw:space": "cosine",
                 "hnsw:M": 16,
-            }
+            },
         )
 
         # Benchmark add_items (uses upsert internally)
@@ -103,21 +106,23 @@ class ChromaBenchmark:
             "items_per_sec": round(items_per_sec, 2),
         }
 
-        logger.info(f"  ✓ Duration: {result['duration_sec']}s | "
-                   f"Speed: {result['items_per_sec']} items/sec")
+        logger.info(
+            f"  ✓ Duration: {result['duration_sec']}s | "
+            f"Speed: {result['items_per_sec']} items/sec"
+        )
 
         return result
 
-    def benchmark_query(self, service: VectorService, collection_name: str, n_queries: int = 100) -> Dict[str, float]:
+    def benchmark_query(
+        self, service: VectorService, collection_name: str, n_queries: int = 100
+    ) -> Dict[str, float]:
         """Benchmark query performance with filters."""
         logger.info(f"Benchmarking query on {collection_name} ({n_queries} queries)...")
 
         collection = service.get_or_create_collection(name=collection_name)
 
         # Query with metadata filter
-        queries = [
-            f"Find information about topic {i % 10}" for i in range(n_queries)
-        ]
+        queries = [f"Find information about topic {i % 10}" for i in range(n_queries)]
 
         start = time.perf_counter()
         for i, query_text in enumerate(queries):
@@ -142,9 +147,11 @@ class ChromaBenchmark:
             "avg_latency_ms": round((duration / n_queries) * 1000, 2),
         }
 
-        logger.info(f"  ✓ Duration: {result['duration_sec']}s | "
-                   f"Speed: {result['queries_per_sec']} queries/sec | "
-                   f"Avg latency: {result['avg_latency_ms']}ms")
+        logger.info(
+            f"  ✓ Duration: {result['duration_sec']}s | "
+            f"Speed: {result['queries_per_sec']} queries/sec | "
+            f"Avg latency: {result['avg_latency_ms']}ms"
+        )
 
         return result
 
@@ -159,17 +166,17 @@ class ChromaBenchmark:
             {
                 "id": "doc_regex_1",
                 "text": "Email: user@example.com, phone: 555-1234",
-                "metadata": {"type": "contact"}
+                "metadata": {"type": "contact"},
             },
             {
                 "id": "doc_regex_2",
                 "text": "Support email: support@test.org",
-                "metadata": {"type": "support"}
+                "metadata": {"type": "support"},
             },
             {
                 "id": "doc_regex_3",
                 "text": "No contact info here",
-                "metadata": {"type": "other"}
+                "metadata": {"type": "other"},
             },
         ]
 
@@ -196,8 +203,10 @@ class ChromaBenchmark:
                 "operators_tested": ["$in"],
             }
 
-            logger.info(f"  ✓ Regex test: {result['regex_support']} | "
-                       f"Results: {result['test_query_results']}")
+            logger.info(
+                f"  ✓ Regex test: {result['regex_support']} | "
+                f"Results: {result['test_query_results']}"
+            )
 
         except Exception as e:
             result = {
@@ -228,8 +237,7 @@ class ChromaBenchmark:
 
             # Create collection with config
             collection = service.get_or_create_collection(
-                name=collection_name,
-                metadata=config
+                name=collection_name, metadata=config
             )
 
             # Add data
@@ -245,13 +253,17 @@ class ChromaBenchmark:
                 )
             duration = time.perf_counter() - start
 
-            results.append({
-                "hnsw_M": m_value,
-                "duration_sec": round(duration, 3),
-                "queries_per_sec": round(50 / duration, 2),
-            })
+            results.append(
+                {
+                    "hnsw_M": m_value,
+                    "duration_sec": round(duration, 3),
+                    "queries_per_sec": round(50 / duration, 2),
+                }
+            )
 
-            logger.info(f"  ✓ HNSW M={m_value}: {results[-1]['queries_per_sec']} queries/sec")
+            logger.info(
+                f"  ✓ HNSW M={m_value}: {results[-1]['queries_per_sec']} queries/sec"
+            )
 
         return {
             "hnsw_configs_tested": results,
@@ -260,9 +272,9 @@ class ChromaBenchmark:
 
     def run_all(self) -> Dict[str, Any]:
         """Run all benchmarks."""
-        logger.info("="*60)
+        logger.info("=" * 60)
         logger.info("Starting Chroma upgrade benchmark suite")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         service = self.setup_service()
 
@@ -285,22 +297,24 @@ class ChromaBenchmark:
         # 4. HNSW optimization test
         self.results["hnsw_optimization"] = self.test_hnsw_optimization(service)
 
-        logger.info("="*60)
+        logger.info("=" * 60)
         logger.info("Benchmark suite completed")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         return self.results
 
     def print_summary(self):
         """Print benchmark summary."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("BENCHMARK RESULTS SUMMARY")
-        print("="*60)
+        print("=" * 60)
 
         print("\n📊 UPSERT PERFORMANCE:")
         for r in self.results["upsert_benchmarks"]:
-            print(f"  • {r['batch_size']} items: {r['duration_sec']}s "
-                  f"({r['items_per_sec']} items/sec)")
+            print(
+                f"  • {r['batch_size']} items: {r['duration_sec']}s "
+                f"({r['items_per_sec']} items/sec)"
+            )
 
         print("\n🔍 QUERY PERFORMANCE:")
         q = self.results["query_benchmarks"]
@@ -317,7 +331,7 @@ class ChromaBenchmark:
         for cfg in self.results["hnsw_optimization"]["hnsw_configs_tested"]:
             print(f"  • M={cfg['hnsw_M']}: {cfg['queries_per_sec']} queries/sec")
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
 
 
 def main():

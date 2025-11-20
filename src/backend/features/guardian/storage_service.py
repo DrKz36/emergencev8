@@ -3,6 +3,7 @@ Guardian Cloud Storage Service
 Gère upload/download des rapports Guardian vers Cloud Storage
 Permet persistence des rapports entre redémarrages Cloud Run
 """
+
 import json
 import logging
 from pathlib import Path
@@ -18,6 +19,7 @@ PROJECT_ID = os.getenv("GCP_PROJECT_ID", "emergence-469005")
 # Try to import Cloud Storage (optional dependency)
 try:
     from google.cloud import storage  # type: ignore[attr-defined]
+
     GCS_AVAILABLE = True
 except ImportError:
     logger.warning("google-cloud-storage not installed - Cloud Storage disabled")
@@ -41,13 +43,17 @@ class GuardianStorageService:
         self.bucket = None
 
         # Local fallback directory
-        self.local_reports_dir = Path(__file__).parent.parent.parent.parent.parent / "reports"
+        self.local_reports_dir = (
+            Path(__file__).parent.parent.parent.parent.parent / "reports"
+        )
 
         if GCS_AVAILABLE:
             try:
                 self.client = storage.Client(project=PROJECT_ID)
                 self.bucket = self.client.bucket(bucket_name)
-                logger.info(f"GuardianStorageService initialized with bucket: {bucket_name}")
+                logger.info(
+                    f"GuardianStorageService initialized with bucket: {bucket_name}"
+                )
             except Exception as e:
                 logger.error(f"Failed to initialize GCS client: {e}")
                 if not use_local_fallback:
@@ -71,24 +77,25 @@ class GuardianStorageService:
             if self.bucket:
                 blob = self.bucket.blob(f"reports/{report_name}")
                 json_data = json.dumps(report_data, indent=2, ensure_ascii=False)
-                blob.upload_from_string(
-                    json_data,
-                    content_type="application/json"
+                blob.upload_from_string(json_data, content_type="application/json")
+                logger.info(
+                    f"✅ Uploaded {report_name} to gs://{self.bucket_name}/reports/"
                 )
-                logger.info(f"✅ Uploaded {report_name} to gs://{self.bucket_name}/reports/")
                 return True
 
             # Fallback to local
             elif self.use_local_fallback:
                 self.local_reports_dir.mkdir(parents=True, exist_ok=True)
                 local_path = self.local_reports_dir / report_name
-                with open(local_path, 'w', encoding='utf-8') as f:
+                with open(local_path, "w", encoding="utf-8") as f:
                     json.dump(report_data, f, indent=2, ensure_ascii=False)
                 logger.info(f"✅ Saved {report_name} locally (GCS unavailable)")
                 return True
 
             else:
-                logger.error(f"Cannot upload {report_name} - no storage backend available")
+                logger.error(
+                    f"Cannot upload {report_name} - no storage backend available"
+                )
                 return False
 
         except Exception as e:
@@ -99,7 +106,7 @@ class GuardianStorageService:
                 try:
                     self.local_reports_dir.mkdir(parents=True, exist_ok=True)
                     local_path = self.local_reports_dir / report_name
-                    with open(local_path, 'w', encoding='utf-8') as f:
+                    with open(local_path, "w", encoding="utf-8") as f:
                         json.dump(report_data, f, indent=2, ensure_ascii=False)
                     logger.info(f"✅ Saved {report_name} locally (GCS error fallback)")
                     return True
@@ -130,7 +137,7 @@ class GuardianStorageService:
                         return self._load_local_report(report_name)
                     return None
 
-                json_data = blob.download_as_text(encoding='utf-8')
+                json_data = blob.download_as_text(encoding="utf-8")
                 data = json.loads(json_data)
                 logger.info(f"✅ Downloaded {report_name} from Cloud Storage")
                 return cast(dict[str, Any], data)
@@ -140,7 +147,9 @@ class GuardianStorageService:
                 return self._load_local_report(report_name)
 
             else:
-                logger.error(f"Cannot download {report_name} - no storage backend available")
+                logger.error(
+                    f"Cannot download {report_name} - no storage backend available"
+                )
                 return None
 
         except Exception as e:
@@ -161,7 +170,7 @@ class GuardianStorageService:
             return None
 
         try:
-            with open(local_path, 'r', encoding='utf-8') as f:
+            with open(local_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             logger.info(f"✅ Loaded {report_name} from local filesystem")
             return cast(dict[str, Any], data)
@@ -183,7 +192,7 @@ class GuardianStorageService:
             if self.bucket and self.client:
                 blobs = self.client.list_blobs(self.bucket_name, prefix="reports/")
                 for blob in blobs:
-                    if blob.name.endswith('.json'):
+                    if blob.name.endswith(".json"):
                         filename = blob.name.replace("reports/", "")
                         reports.append(filename)
                 logger.info(f"Found {len(reports)} reports in Cloud Storage")

@@ -151,7 +151,9 @@ def push_to_secret_manager(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Generate AUTH_ALLOWLIST_SEED payload.")
+    parser = argparse.ArgumentParser(
+        description="Generate AUTH_ALLOWLIST_SEED payload."
+    )
     parser.add_argument(
         "--db",
         action="append",
@@ -200,7 +202,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         include_revoked=args.include_revoked,
     )
     if not entries:
-        print("❌ No allowlist entries found. Specify --db to point to a valid database file.", file=sys.stderr)
+        print(
+            "❌ No allowlist entries found. Specify --db to point to a valid database file.",
+            file=sys.stderr,
+        )
         return 1
 
     payload = build_seed_payload(entries, args.password_length)
@@ -221,7 +226,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         print(f"✅ Secret version added to {args.push} (project {args.project})")
 
-    print("\n[INFO] Remember to redeploy Cloud Run so the new allowlist seed is applied.")
+    print(
+        "\n[INFO] Remember to redeploy Cloud Run so the new allowlist seed is applied."
+    )
     return 0
 
 

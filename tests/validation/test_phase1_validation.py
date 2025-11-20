@@ -10,18 +10,17 @@ import pytest
 requests = pytest.importorskip(
     "requests", reason="Phase 1 validation suite requires the requests package"
 )
-import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
+from datetime import datetime
 import sys
 import os
 
 # Fix Windows console encoding
 if sys.platform == "win32":
     os.system("chcp 65001 > nul")
-    if sys.stdout.encoding != 'utf-8':
+    if sys.stdout.encoding != "utf-8":
         import io
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_URL = "http://localhost:8000"
 
@@ -29,8 +28,10 @@ BASE_URL = "http://localhost:8000"
 TEST_USER_EMAIL = "test@example.com"
 ADMIN_USER_EMAIL = "admin@example.com"
 
+
 class Colors:
     """ANSI color codes for terminal output"""
+
     RESET = "\033[0m"
     GREEN = "\033[92m"
     RED = "\033[91m"
@@ -38,34 +39,42 @@ class Colors:
     BLUE = "\033[94m"
     BOLD = "\033[1m"
 
+
 def print_header(text: str):
     """Print a formatted header"""
-    print(f"\n{Colors.BOLD}{Colors.BLUE}{'='*80}{Colors.RESET}")
+    print(f"\n{Colors.BOLD}{Colors.BLUE}{'=' * 80}{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.BLUE}{text.center(80)}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.BLUE}{'='*80}{Colors.RESET}\n")
+    print(f"{Colors.BOLD}{Colors.BLUE}{'=' * 80}{Colors.RESET}\n")
+
 
 def print_test(test_name: str):
     """Print test name"""
     print(f"{Colors.BOLD}Test: {test_name}{Colors.RESET}")
 
+
 def print_success(message: str):
     """Print success message"""
     print(f"{Colors.GREEN}✓ {message}{Colors.RESET}")
+
 
 def print_error(message: str):
     """Print error message"""
     print(f"{Colors.RED}✗ {message}{Colors.RESET}")
 
+
 def print_warning(message: str):
     """Print warning message"""
     print(f"{Colors.YELLOW}⚠ {message}{Colors.RESET}")
+
 
 def print_info(message: str):
     """Print info message"""
     print(f"  {message}")
 
+
 class TestResults:
     """Track test results"""
+
     def __init__(self):
         self.total = 0
         self.passed = 0
@@ -105,7 +114,9 @@ class TestResults:
         else:
             print_error("SOME TESTS FAILED ✗")
 
+
 results = TestResults()
+
 
 def test_timeline_activity():
     """Test 1: Timeline Activity Endpoint"""
@@ -114,10 +125,7 @@ def test_timeline_activity():
     try:
         url = f"{BASE_URL}/api/dashboard/timeline/activity"
         params = {"period": "30d"}
-        headers = {
-            "X-User-Id": TEST_USER_EMAIL,
-            "X-Dev-Bypass": "1"
-        }
+        headers = {"X-User-Id": TEST_USER_EMAIL, "X-Dev-Bypass": "1"}
 
         response = requests.get(url, params=params, headers=headers)
 
@@ -160,6 +168,7 @@ def test_timeline_activity():
         print_error(f"Exception: {str(e)}")
         results.add_fail(f"Timeline Activity: {str(e)}")
 
+
 def test_timeline_tokens():
     """Test 2: Timeline Tokens Endpoint"""
     print_test("Timeline Tokens Endpoint")
@@ -167,10 +176,7 @@ def test_timeline_tokens():
     try:
         url = f"{BASE_URL}/api/dashboard/timeline/tokens"
         params = {"period": "30d"}
-        headers = {
-            "X-User-Id": TEST_USER_EMAIL,
-            "X-Dev-Bypass": "1"
-        }
+        headers = {"X-User-Id": TEST_USER_EMAIL, "X-Dev-Bypass": "1"}
 
         response = requests.get(url, params=params, headers=headers)
 
@@ -217,6 +223,7 @@ def test_timeline_tokens():
         print_error(f"Exception: {str(e)}")
         results.add_fail(f"Timeline Tokens: {str(e)}")
 
+
 def test_timeline_costs():
     """Test 3: Timeline Costs Endpoint"""
     print_test("Timeline Costs Endpoint")
@@ -224,10 +231,7 @@ def test_timeline_costs():
     try:
         url = f"{BASE_URL}/api/dashboard/timeline/costs"
         params = {"period": "30d"}
-        headers = {
-            "X-User-Id": TEST_USER_EMAIL,
-            "X-Dev-Bypass": "1"
-        }
+        headers = {"X-User-Id": TEST_USER_EMAIL, "X-Dev-Bypass": "1"}
 
         response = requests.get(url, params=params, headers=headers)
 
@@ -269,6 +273,7 @@ def test_timeline_costs():
         print_error(f"Exception: {str(e)}")
         results.add_fail(f"Timeline Costs: {str(e)}")
 
+
 def test_admin_global():
     """Test 4: Admin Global Dashboard"""
     print_test("Admin Global Dashboard")
@@ -278,7 +283,7 @@ def test_admin_global():
         headers = {
             "X-User-Id": ADMIN_USER_EMAIL,
             "X-User-Role": "admin",
-            "X-Dev-Bypass": "1"
+            "X-Dev-Bypass": "1",
         }
 
         response = requests.get(url, headers=headers)
@@ -319,7 +324,7 @@ def test_admin_global():
         if "date_metrics" in data and "last_7_days" in data["date_metrics"]:
             days = data["date_metrics"]["last_7_days"]
             if len(days) == 7:
-                print_success(f"Date metrics: 7 days present")
+                print_success("Date metrics: 7 days present")
             else:
                 print_warning(f"Date metrics: {len(days)} days (expected 7)")
                 results.add_warning()
@@ -330,6 +335,7 @@ def test_admin_global():
         print_error(f"Exception: {str(e)}")
         results.add_fail(f"Admin Global: {str(e)}")
 
+
 def test_admin_detailed_costs():
     """Test 5: Admin Detailed Costs"""
     print_test("Admin Detailed Costs Endpoint")
@@ -339,7 +345,7 @@ def test_admin_detailed_costs():
         headers = {
             "X-User-Id": ADMIN_USER_EMAIL,
             "X-User-Role": "admin",
-            "X-Dev-Bypass": "1"
+            "X-Dev-Bypass": "1",
         }
 
         response = requests.get(url, headers=headers)
@@ -352,7 +358,12 @@ def test_admin_detailed_costs():
         data = response.json()
 
         # Check structure
-        required_top_fields = ["users", "total_users", "grand_total_cost", "total_requests"]
+        required_top_fields = [
+            "users",
+            "total_users",
+            "grand_total_cost",
+            "total_requests",
+        ]
         missing_fields = [f for f in required_top_fields if f not in data]
 
         if missing_fields:
@@ -375,7 +386,9 @@ def test_admin_detailed_costs():
 
         if missing_user_fields:
             print_error(f"Missing user fields: {missing_user_fields}")
-            results.add_fail(f"Admin Detailed Costs: Missing user fields {missing_user_fields}")
+            results.add_fail(
+                f"Admin Detailed Costs: Missing user fields {missing_user_fields}"
+            )
             return
 
         print_success(f"Status: {response.status_code}")
@@ -386,21 +399,33 @@ def test_admin_detailed_costs():
         # Validate module structure if modules present
         if len(first_user["modules"]) > 0:
             first_module = first_user["modules"][0]
-            required_module_fields = ["module", "cost", "input_tokens", "output_tokens",
-                                     "request_count", "first_request", "last_request"]
-            missing_module_fields = [f for f in required_module_fields if f not in first_module]
+            required_module_fields = [
+                "module",
+                "cost",
+                "input_tokens",
+                "output_tokens",
+                "request_count",
+                "first_request",
+                "last_request",
+            ]
+            missing_module_fields = [
+                f for f in required_module_fields if f not in first_module
+            ]
 
             if missing_module_fields:
                 print_warning(f"Missing module fields: {missing_module_fields}")
                 results.add_warning()
             else:
-                print_info(f"Sample module: {first_module['module']} - ${first_module['cost']:.4f}")
+                print_info(
+                    f"Sample module: {first_module['module']} - ${first_module['cost']:.4f}"
+                )
 
         results.add_pass()
 
     except Exception as e:
         print_error(f"Exception: {str(e)}")
         results.add_fail(f"Admin Detailed Costs: {str(e)}")
+
 
 def main():
     """Run all validation tests"""
@@ -441,6 +466,7 @@ def main():
 
     # Return exit code
     return 0 if results.failed == 0 else 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

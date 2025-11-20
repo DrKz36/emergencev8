@@ -58,7 +58,9 @@ class TopicSummary:
         else:
             date_str = f"({first}, {last})"
 
-        conv_str = f"{self.mention_count} conversation{'s' if self.mention_count > 1 else ''}"
+        conv_str = (
+            f"{self.mention_count} conversation{'s' if self.mention_count > 1 else ''}"
+        )
 
         if self.summary and self.summary != self.topic:
             return f"{self.topic} {date_str} - {conv_str}\n  └─ {self.summary}"
@@ -73,8 +75,21 @@ class TopicSummary:
 
         try:
             dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
-            months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
-                      "juil", "août", "sept", "oct", "nov", "déc"]
+            months = [
+                "",
+                "janv",
+                "fév",
+                "mars",
+                "avr",
+                "mai",
+                "juin",
+                "juil",
+                "août",
+                "sept",
+                "oct",
+                "nov",
+                "déc",
+            ]
             month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
 
             # Inclure heure si != 00h00
@@ -106,7 +121,10 @@ class MemoryQueryTool:
         self.knowledge_collection = vector_service.get_or_create_collection(
             self.KNOWLEDGE_COLLECTION_NAME
         )
-        logger.info("[MemoryQueryTool] Initialisé avec collection '%s'", self.KNOWLEDGE_COLLECTION_NAME)
+        logger.info(
+            "[MemoryQueryTool] Initialisé avec collection '%s'",
+            self.KNOWLEDGE_COLLECTION_NAME,
+        )
 
     async def list_discussed_topics(
         self,
@@ -137,7 +155,9 @@ class MemoryQueryTool:
             #   └─ Automatisation déploiement GitHub Actions
         """
         if not user_id:
-            logger.warning("[MemoryQueryTool] list_discussed_topics appelé sans user_id")
+            logger.warning(
+                "[MemoryQueryTool] list_discussed_topics appelé sans user_id"
+            )
             return []
 
         if limit is not None and limit <= 0:
@@ -172,8 +192,11 @@ class MemoryQueryTool:
             )
 
             if not result or not result.get("ids"):
-                logger.info("[MemoryQueryTool] Aucun concept trouvé pour user '%s' (timeframe=%s)",
-                           user_id[:8], timeframe)
+                logger.info(
+                    "[MemoryQueryTool] Aucun concept trouvé pour user '%s' (timeframe=%s)",
+                    user_id[:8],
+                    timeframe,
+                )
                 return []
 
             # 4. Parser et construire TopicSummary
@@ -197,7 +220,9 @@ class MemoryQueryTool:
                 topics = [
                     topic
                     for topic in topics
-                    if self._date_is_on_or_after(topic.last_date or topic.first_date, cutoff_date)
+                    if self._date_is_on_or_after(
+                        topic.last_date or topic.first_date, cutoff_date
+                    )
                 ]
 
             # 6. Trier par last_mentioned_at (plus récent en premier)
@@ -208,16 +233,17 @@ class MemoryQueryTool:
 
             logger.info(
                 "[MemoryQueryTool] Récupéré %d sujets pour user '%s' (timeframe=%s, limit=%s)",
-                len(topics), user_id[:8], timeframe, limit
+                len(topics),
+                user_id[:8],
+                timeframe,
+                limit,
             )
 
             return topics
 
         except Exception as e:
             logger.error(
-                "[MemoryQueryTool] Erreur list_discussed_topics: %s",
-                e,
-                exc_info=True
+                "[MemoryQueryTool] Erreur list_discussed_topics: %s", e, exc_info=True
             )
             return []
 
@@ -226,7 +252,7 @@ class MemoryQueryTool:
         user_id: str,
         timeframe: Optional[str],
         min_mention_count: int = 1,
-        agent_id: Optional[str] = None
+        agent_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Construit filtre ChromaDB avec critères temporels et utilisateur.
@@ -242,7 +268,7 @@ class MemoryQueryTool:
         """
         base_conditions: list[dict[str, Any]] = [
             {"user_id": user_id},
-            {"type": "concept"}
+            {"type": "concept"},
         ]
 
         # 🆕 FIX: Filtre agent_id PERMISSIF pour inclure concepts legacy sans agent_id
@@ -259,9 +285,9 @@ class MemoryQueryTool:
         if timeframe and timeframe != "all":
             cutoff_date = self._compute_timeframe_cutoff(timeframe)
             if cutoff_date:
-                base_conditions.append({
-                    "last_mentioned_at": {"$gte": cutoff_date.isoformat()}
-                })
+                base_conditions.append(
+                    {"last_mentioned_at": {"$gte": cutoff_date.isoformat()}}
+                )
 
         # ChromaDB nécessite $and pour multiple conditions
         if len(base_conditions) == 1:
@@ -309,7 +335,9 @@ class MemoryQueryTool:
                 dt = dt.astimezone(timezone.utc)
             return dt >= cutoff
         except Exception:
-            logger.debug("[MemoryQueryTool] Impossible de parser la date '%s'", date_str)
+            logger.debug(
+                "[MemoryQueryTool] Impossible de parser la date '%s'", date_str
+            )
             return False
 
     @staticmethod
@@ -377,7 +405,9 @@ class MemoryQueryTool:
 
                 # Extraire métadonnées
                 concept_text = meta.get("concept_text") or doc or ""
-                first_date = meta.get("first_mentioned_at") or meta.get("created_at") or ""
+                first_date = (
+                    meta.get("first_mentioned_at") or meta.get("created_at") or ""
+                )
                 last_date = meta.get("last_mentioned_at") or first_date
                 mention_count = int(meta.get("mention_count", 1))
                 vitality = float(meta.get("vitality", 1.0))
@@ -410,18 +440,14 @@ class MemoryQueryTool:
 
             except Exception as e:
                 logger.warning(
-                    "[MemoryQueryTool] Erreur parsing concept %s: %s",
-                    concept_id, e
+                    "[MemoryQueryTool] Erreur parsing concept %s: %s", concept_id, e
                 )
                 continue
 
         return topics
 
     async def get_topic_details(
-        self,
-        user_id: str,
-        topic_query: str,
-        limit: int = 5
+        self, user_id: str, topic_query: str, limit: int = 5
     ) -> Optional[Dict[str, Any]]:
         """
         Récupère détails approfondis sur un sujet spécifique.
@@ -460,18 +486,14 @@ class MemoryQueryTool:
                 collection=self.knowledge_collection,
                 query_text=topic_query,
                 n_results=limit,
-                where_filter={
-                    "$and": [
-                        {"user_id": user_id},
-                        {"type": "concept"}
-                    ]
-                }
+                where_filter={"$and": [{"user_id": user_id}, {"type": "concept"}]},
             )
 
             if not results:
                 logger.info(
                     "[MemoryQueryTool] Aucun détail trouvé pour topic '%s' (user %s)",
-                    topic_query, user_id[:8]
+                    topic_query,
+                    user_id[:8],
                 )
                 return None
 
@@ -496,36 +518,35 @@ class MemoryQueryTool:
 
             details = {
                 "topic": meta.get("concept_text", topic_query),
-                "first_mentioned_at": meta.get("first_mentioned_at") or meta.get("created_at"),
+                "first_mentioned_at": meta.get("first_mentioned_at")
+                or meta.get("created_at"),
                 "last_mentioned_at": meta.get("last_mentioned_at"),
                 "mention_count": int(meta.get("mention_count", 1)),
                 "thread_ids": thread_ids,
                 "summary": meta.get("summary", ""),
                 "vitality": float(meta.get("vitality", 1.0)),
-                "weighted_score": best_match.get("weighted_score", 0.0),  # Score pondéré
+                "weighted_score": best_match.get(
+                    "weighted_score", 0.0
+                ),  # Score pondéré
                 "conversations": conversations,
             }
 
             logger.info(
                 "[MemoryQueryTool] Détails récupérés pour topic '%s' (weighted_score=%.3f)",
-                topic_query, details["weighted_score"]
+                topic_query,
+                details["weighted_score"],
             )
 
             return details
 
         except Exception as e:
             logger.error(
-                "[MemoryQueryTool] Erreur get_topic_details: %s",
-                e,
-                exc_info=True
+                "[MemoryQueryTool] Erreur get_topic_details: %s", e, exc_info=True
             )
             return None
 
     async def get_conversation_timeline(
-        self,
-        user_id: str,
-        limit: int = 100,
-        agent_id: Optional[str] = None
+        self, user_id: str, limit: int = 100, agent_id: Optional[str] = None
     ) -> Dict[str, List[TopicSummary]]:
         """
         Génère vue chronologique complète des conversations.
@@ -556,10 +577,7 @@ class MemoryQueryTool:
         try:
             # Récupérer TOUS les concepts (pas de filtre temporel)
             all_topics = await self.list_discussed_topics(
-                user_id=user_id,
-                timeframe="all",
-                limit=limit,
-                agent_id=agent_id
+                user_id=user_id, timeframe="all", limit=limit, agent_id=agent_id
             )
 
             if not all_topics:
@@ -576,7 +594,7 @@ class MemoryQueryTool:
                 "this_week": [],
                 "last_week": [],
                 "this_month": [],
-                "older": []
+                "older": [],
             }
 
             for topic in all_topics:
@@ -601,15 +619,15 @@ class MemoryQueryTool:
                 except Exception as e:
                     logger.warning(
                         "[MemoryQueryTool] Erreur parsing date pour topic '%s': %s",
-                        topic.topic, e
+                        topic.topic,
+                        e,
                     )
                     timeline["older"].append(topic)
 
             # Trier chaque période par date (plus récent en premier)
             for period in timeline:
                 timeline[period].sort(
-                    key=lambda t: t.last_date or t.first_date or "",
-                    reverse=True
+                    key=lambda t: t.last_date or t.first_date or "", reverse=True
                 )
 
             logger.info(
@@ -619,7 +637,7 @@ class MemoryQueryTool:
                 len(timeline["this_week"]),
                 len(timeline["last_week"]),
                 len(timeline["this_month"]),
-                len(timeline["older"])
+                len(timeline["older"]),
             )
 
             return timeline
@@ -628,11 +646,13 @@ class MemoryQueryTool:
             logger.error(
                 "[MemoryQueryTool] Erreur get_conversation_timeline: %s",
                 e,
-                exc_info=True
+                exc_info=True,
             )
             return {}
 
-    def format_timeline_natural_fr(self, timeline: Dict[str, List[TopicSummary]]) -> str:
+    def format_timeline_natural_fr(
+        self, timeline: Dict[str, List[TopicSummary]]
+    ) -> str:
         """
         Formate timeline en français naturel pour injection dans contexte LLM.
 
@@ -664,7 +684,7 @@ class MemoryQueryTool:
             "this_week": "**Cette semaine:**",
             "last_week": "**Semaine dernière:**",
             "this_month": "**Ce mois-ci:**",
-            "older": "**Plus ancien:**"
+            "older": "**Plus ancien:**",
         }
 
         for period in ["this_week", "last_week", "this_month", "older"]:

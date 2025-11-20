@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Test simple pour valider le fix des couts Gemini/Anthropic"""
+
 import asyncio
 import os
 import sys
@@ -31,15 +32,15 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 
 MODELS_TO_TEST = {
     "google": "gemini-1.5-flash",
-    "anthropic": "claude-3-5-haiku-20241022"
+    "anthropic": "claude-3-5-haiku-20241022",
 }
 
 
 async def test_provider(llm_streamer, provider, model):
     """Test un provider specifique."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"[TEST] {provider.upper()} - Model: {model}")
-    print('='*60)
+    print("=" * 60)
 
     cost_info = {}
     full_response = ""
@@ -48,7 +49,7 @@ async def test_provider(llm_streamer, provider, model):
         system_prompt = "Tu es un assistant technique concis."
         history = [{"role": "user", "content": "Explique Docker en 1 phrase."}]
 
-        print(f"[SEND] Prompt: 'Explique Docker en 1 phrase.'")
+        print("[SEND] Prompt: 'Explique Docker en 1 phrase.'")
         print("[WAIT] Streaming...")
 
         start_time = datetime.now()
@@ -58,7 +59,7 @@ async def test_provider(llm_streamer, provider, model):
             model=model,
             system_prompt=system_prompt,
             history=history,
-            cost_info_container=cost_info
+            cost_info_container=cost_info,
         ):
             full_response += chunk
             if len(full_response) < 100:
@@ -66,7 +67,9 @@ async def test_provider(llm_streamer, provider, model):
 
         duration = (datetime.now() - start_time).total_seconds()
 
-        print(f"\n\n[DONE] Response received ({len(full_response)} chars in {duration:.1f}s)")
+        print(
+            f"\n\n[DONE] Response received ({len(full_response)} chars in {duration:.1f}s)"
+        )
 
         input_tokens = cost_info.get("input_tokens", 0)
         output_tokens = cost_info.get("output_tokens", 0)
@@ -101,13 +104,17 @@ async def test_provider(llm_streamer, provider, model):
             print(f"  [OK] Total cost (${total_cost:.6f} > 0)")
 
         pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-        expected_cost = (input_tokens * pricing["input"]) + (output_tokens * pricing["output"])
+        expected_cost = (input_tokens * pricing["input"]) + (
+            output_tokens * pricing["output"]
+        )
 
         if abs(expected_cost - total_cost) > 0.000001:
-            print(f"  [FAIL] Cost mismatch (expected: ${expected_cost:.6f}, got: ${total_cost:.6f})")
+            print(
+                f"  [FAIL] Cost mismatch (expected: ${expected_cost:.6f}, got: ${total_cost:.6f})"
+            )
             passed = False
         else:
-            print(f"  [OK] Cost calculation consistent")
+            print("  [OK] Cost calculation consistent")
 
         if passed:
             print(f"\n[PASS] Test {provider.upper()} PASSED!")
@@ -119,15 +126,16 @@ async def test_provider(llm_streamer, provider, model):
     except Exception as e:
         print(f"\n[ERROR] Test {provider} failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 async def check_database():
     """Verifie les derniers couts dans la BDD."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("[DATABASE] Checking last cost entries")
-    print('='*60)
+    print("=" * 60)
 
     db_manager = DatabaseManager(str(DB_PATH))
     await db_manager.initialize()
@@ -155,9 +163,13 @@ async def check_database():
             cost = row["total_cost"]
             timestamp = row["timestamp"]
 
-            status = "[OK]" if (input_tok > 0 and output_tok > 0 and cost > 0) else "[FAIL]"
+            status = (
+                "[OK]" if (input_tok > 0 and output_tok > 0 and cost > 0) else "[FAIL]"
+            )
 
-            print(f"{status} {model:25s} | ${cost:8.6f} | {input_tok:5d} in, {output_tok:5d} out | {timestamp}")
+            print(
+                f"{status} {model:25s} | ${cost:8.6f} | {input_tok:5d} in, {output_tok:5d} out | {timestamp}"
+            )
 
     except Exception as e:
         print(f"[ERROR] Database read failed: {e}")
@@ -167,9 +179,9 @@ async def check_database():
 
 async def main():
     """Point d'entree principal."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("[START] Testing Gemini/Anthropic Cost Tracking Fix")
-    print("="*60)
+    print("=" * 60)
     print(f"[INFO] Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"[INFO] DB:   {DB_PATH}")
 
@@ -186,9 +198,7 @@ async def main():
     genai.configure(api_key=GOOGLE_API_KEY)
 
     llm_streamer = LLMStreamer(
-        openai_client=openai_client,
-        anthropic_client=anthropic_client,
-        rate_limits={}
+        openai_client=openai_client, anthropic_client=anthropic_client, rate_limits={}
     )
 
     print("[OK] Clients initialized\n")
@@ -212,9 +222,9 @@ async def main():
     await check_database()
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("[SUMMARY] Test Results")
-    print('='*60 + "\n")
+    print("=" * 60 + "\n")
 
     total = len(results)
     passed = sum(1 for r in results.values() if r)
@@ -223,7 +233,7 @@ async def main():
         status = "[PASS]" if result else "[FAIL]"
         print(f"{status} {provider.upper()}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"[RESULT] {passed}/{total} tests passed")
 
     if passed == total:
@@ -233,7 +243,7 @@ async def main():
         print("\n[WARNING] SOME TESTS FAILED")
         print("[INFO] Check details above for more information.")
 
-    print('='*60 + "\n")
+    print("=" * 60 + "\n")
 
 
 if __name__ == "__main__":
@@ -244,5 +254,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n[FATAL] Fatal error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

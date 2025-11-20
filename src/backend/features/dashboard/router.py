@@ -51,7 +51,7 @@ def _resolve_get_timeline_service() -> Callable[..., Awaitable[TimelineService]]
     tags=["Dashboard"],
     summary="Récupère le résumé complet des données du cockpit",
     description="Fournit un résumé des coûts, des métriques de monitoring et les seuils d'alerte. "
-                "Filtre par session si X-Session-Id est fourni dans les headers, sinon retourne toutes les sessions de l'utilisateur.",
+    "Filtre par session si X-Session-Id est fourni dans les headers, sinon retourne toutes les sessions de l'utilisateur.",
 )
 async def get_dashboard_summary(
     request: Request,
@@ -59,14 +59,20 @@ async def get_dashboard_summary(
     user_id: str = Depends(deps.get_user_id),
 ) -> Dict[str, Any]:
     logger.info("Récupération du résumé des données pour le dashboard.")
-    session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
+    session_id = request.headers.get("X-Session-Id") or request.headers.get(
+        "x-session-id"
+    )
 
     if session_id:
         logger.info(f"Filtrage par session: {session_id}")
     else:
-        logger.info("Pas de session_id fourni, agrégation sur toutes les sessions de l'utilisateur")
+        logger.info(
+            "Pas de session_id fourni, agrégation sur toutes les sessions de l'utilisateur"
+        )
 
-    data = await dashboard_service.get_dashboard_data(user_id=user_id, session_id=session_id)
+    data = await dashboard_service.get_dashboard_data(
+        user_id=user_id, session_id=session_id
+    )
     logger.info("Résumé des données du cockpit envoyé.")
     return data
 
@@ -84,7 +90,9 @@ async def get_session_dashboard_summary(
     user_id: str = Depends(deps.get_user_id),
 ) -> Dict[str, Any]:
     logger.info(f"Récupération des données du cockpit pour session: {session_id}")
-    data = await dashboard_service.get_dashboard_data(user_id=user_id, session_id=session_id)
+    data = await dashboard_service.get_dashboard_data(
+        user_id=user_id, session_id=session_id
+    )
     logger.info(f"Données session {session_id} envoyées.")
     return data
 
@@ -103,7 +111,9 @@ async def get_activity_timeline(
     user_id: Optional[str] = Depends(deps.get_user_id_optional),
 ) -> List[Dict[str, Any]]:
     # Timeline affiche TOUTES les données de l'utilisateur (pas de filtre session_id)
-    logger.info(f"Timeline activité period={period}, user_id={user_id} (toutes sessions)")
+    logger.info(
+        f"Timeline activité period={period}, user_id={user_id} (toutes sessions)"
+    )
     return await timeline_service.get_activity_timeline(
         period=period, user_id=user_id, session_id=None
     )
@@ -176,6 +186,12 @@ async def get_costs_by_agent(
     dashboard_service: DashboardService = Depends(_resolve_get_dashboard_service()),
     user_id: str = Depends(deps.get_user_id),
 ) -> List[Dict[str, Any]]:
-    session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
-    logger.info(f"Récupération des coûts par agent, user_id={user_id}, session_id={session_id}")
-    return await dashboard_service.get_costs_by_agent(user_id=user_id, session_id=session_id)
+    session_id = request.headers.get("X-Session-Id") or request.headers.get(
+        "x-session-id"
+    )
+    logger.info(
+        f"Récupération des coûts par agent, user_id={user_id}, session_id={session_id}"
+    )
+    return await dashboard_service.get_costs_by_agent(
+        user_id=user_id, session_id=session_id
+    )

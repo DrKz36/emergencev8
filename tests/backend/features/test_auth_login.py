@@ -22,10 +22,14 @@ def test_login_logout_flow(auth_app_factory):
             "auth-login",
             admin_emails={admin_email},
         )
-        await ctx.service.set_allowlist_password(admin_email, admin_password, actor="tests")
+        await ctx.service.set_allowlist_password(
+            admin_email, admin_password, actor="tests"
+        )
 
         transport = ASGITransport(app=ctx.app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/api/auth/login",
                 json={"email": admin_email, "password": admin_password},
@@ -35,9 +39,17 @@ def test_login_logout_flow(auth_app_factory):
             assert login_body.email == admin_email
             assert resp.cookies.get("id_token") == login_body.token
             assert resp.cookies.get("emergence_session_id") == login_body.session_id
-            set_cookie_headers = [value.lower() for value in resp.headers.get_list("set-cookie")]
-            assert any('id_token=' in cookie and 'samesite=lax' in cookie for cookie in set_cookie_headers)
-            assert any('emergence_session_id=' in cookie and 'samesite=lax' in cookie for cookie in set_cookie_headers)
+            set_cookie_headers = [
+                value.lower() for value in resp.headers.get_list("set-cookie")
+            ]
+            assert any(
+                "id_token=" in cookie and "samesite=lax" in cookie
+                for cookie in set_cookie_headers
+            )
+            assert any(
+                "emergence_session_id=" in cookie and "samesite=lax" in cookie
+                for cookie in set_cookie_headers
+            )
 
             headers = {"Authorization": f"Bearer {login_body.token}"}
             session_resp = await client.get("/api/auth/session", headers=headers)
@@ -48,13 +60,27 @@ def test_login_logout_flow(auth_app_factory):
             assert session_body.session_id == login_body.session_id
             assert session_body.expires_at > datetime.now(timezone.utc)
 
-            logout_resp = await client.post("/api/auth/logout", json={}, headers=headers)
+            logout_resp = await client.post(
+                "/api/auth/logout", json={}, headers=headers
+            )
             assert logout_resp.status_code == 204
             assert logout_resp.cookies.get("id_token") in ("", None)
             assert logout_resp.cookies.get("emergence_session_id") in ("", None)
-            logout_set_cookie = [value.lower() for value in logout_resp.headers.get_list("set-cookie")]
-            assert any('id_token=' in cookie and 'max-age=0' in cookie and 'samesite=lax' in cookie for cookie in logout_set_cookie)
-            assert any('emergence_session_id=' in cookie and 'max-age=0' in cookie and 'samesite=lax' in cookie for cookie in logout_set_cookie)
+            logout_set_cookie = [
+                value.lower() for value in logout_resp.headers.get_list("set-cookie")
+            ]
+            assert any(
+                "id_token=" in cookie
+                and "max-age=0" in cookie
+                and "samesite=lax" in cookie
+                for cookie in logout_set_cookie
+            )
+            assert any(
+                "emergence_session_id=" in cookie
+                and "max-age=0" in cookie
+                and "samesite=lax" in cookie
+                for cookie in logout_set_cookie
+            )
 
             row = await ctx.db.fetch_one(
                 "SELECT revoked_at FROM auth_sessions WHERE id = ?",
@@ -63,7 +89,9 @@ def test_login_logout_flow(auth_app_factory):
             assert row is not None
             assert row["revoked_at"] is not None
 
-            repeat_logout = await client.post("/api/auth/logout", json={}, headers=headers)
+            repeat_logout = await client.post(
+                "/api/auth/logout", json={}, headers=headers
+            )
             assert repeat_logout.status_code == 204
 
     asyncio.run(scenario())
@@ -76,10 +104,14 @@ def test_login_wrong_password(auth_app_factory):
             "auth-login-wrong",
             admin_emails={admin_email},
         )
-        await ctx.service.set_allowlist_password(admin_email, "AdminPass123!", actor="tests")
+        await ctx.service.set_allowlist_password(
+            admin_email, "AdminPass123!", actor="tests"
+        )
 
         transport = ASGITransport(app=ctx.app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/api/auth/login",
                 json={"email": admin_email, "password": "WrongPass999"},
@@ -97,7 +129,9 @@ def test_login_with_legacy_auth_sessions_schema(auth_app_factory):
             "auth-legacy-schema",
             admin_emails={member_email},
         )
-        await ctx.service.set_allowlist_password(member_email, member_password, actor="tests")
+        await ctx.service.set_allowlist_password(
+            member_email, member_password, actor="tests"
+        )
 
         await ctx.db.execute("DROP TABLE auth_sessions", commit=True)
         await ctx.db.execute(
@@ -119,7 +153,9 @@ def test_login_with_legacy_auth_sessions_schema(auth_app_factory):
         )
 
         transport = ASGITransport(app=ctx.app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/api/auth/login",
                 json={"email": member_email, "password": member_password},
@@ -144,7 +180,9 @@ def test_dev_login_auto_session(auth_app_factory):
         )
 
         transport = ASGITransport(app=ctx.app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post("/api/auth/dev/login")
             assert resp.status_code == 200
             body = LoginResponse(**resp.json())
@@ -171,7 +209,9 @@ def test_dev_login_disabled_returns_404(auth_app_factory):
         )
 
         transport = ASGITransport(app=ctx.app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post("/api/auth/dev/login")
             assert resp.status_code == 404
 

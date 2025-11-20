@@ -2,6 +2,7 @@
 """
 Test rapide: Vérifie que le contexte mémoire vide est bien passé au LLM
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -21,8 +22,7 @@ async def main():
 
     # Init services
     vector_service = VectorService(
-        persist_directory="./data/vector_store",
-        embed_model_name="all-MiniLM-L6-v2"
+        persist_directory="./data/vector_store", embed_model_name="all-MiniLM-L6-v2"
     )
 
     memory_tool = MemoryQueryTool(vector_service)
@@ -37,9 +37,7 @@ async def main():
 
     # Appeler list_discussed_topics
     topics = await memory_tool.list_discussed_topics(
-        user_id=user_id,
-        timeframe="all",
-        agent_id=agent_id
+        user_id=user_id, timeframe="all", agent_id=agent_id
     )
 
     print("-" * 70)
@@ -57,7 +55,7 @@ async def main():
         print("Et Anima DEVRAIT repondre:")
         print('  "Je n\'ai pas acces a nos conversations passees..."')
         print()
-        print("Si elle invente des dates/sujets, c\'est un probleme de prompt LLM!")
+        print("Si elle invente des dates/sujets, c'est un probleme de prompt LLM!")
     else:
         print(f"[INFO] {len(topics)} topics trouves:")
         for topic in topics:

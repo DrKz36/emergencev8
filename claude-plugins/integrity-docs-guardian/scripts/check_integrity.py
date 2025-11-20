@@ -22,8 +22,10 @@ from pathlib import Path
 from typing import List, Dict, Set, Tuple, Literal
 
 # Fix Windows console encoding
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8") if hasattr(
+        sys.stdout, "reconfigure"
+    ) else None
 
 # Add parent directory to path for imports
 SCRIPT_DIR = Path(__file__).parent
@@ -46,9 +48,9 @@ def run_git_command(cmd: List[str], cwd: Path = REPO_ROOT) -> str:
             cwd=cwd,
             capture_output=True,
             text=True,
-            encoding='utf-8',
-            errors='replace',  # Remplace caractères invalides au lieu de crasher
-            check=True
+            encoding="utf-8",
+            errors="replace",  # Remplace caractères invalides au lieu de crasher
+            check=True,
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
@@ -103,11 +105,7 @@ def get_changed_files(mode: ScanMode = "both") -> Dict[str, List[str]]:
         return {"backend": [], "frontend": [], "config": []}
 
     # Categorize files
-    categorized = {
-        "backend": [],
-        "frontend": [],
-        "config": []
-    }
+    categorized = {"backend": [], "frontend": [], "config": []}
 
     for file in sorted(all_files):
         if not file:
@@ -115,7 +113,9 @@ def get_changed_files(mode: ScanMode = "both") -> Dict[str, List[str]]:
 
         if file.startswith("src/backend/") and file.endswith(".py"):
             categorized["backend"].append(file)
-        elif file.startswith("src/frontend/") and file.endswith((".js", ".jsx", ".ts", ".tsx")):
+        elif file.startswith("src/frontend/") and file.endswith(
+            (".js", ".jsx", ".ts", ".tsx")
+        ):
             categorized["frontend"].append(file)
         elif file in ["openapi.json", "docker-compose.yaml", ".env.example"]:
             categorized["config"].append(file)
@@ -166,7 +166,7 @@ def extract_api_calls_from_file(file_path: Path) -> Set[str]:
         patterns = [
             r'axios\.(get|post|put|delete|patch)\(["\']([^"\']+)["\']',
             r'fetch\(["\']([^"\']+)["\']',
-            r'api\.(get|post|put|delete|patch)\(["\']([^"\']+)["\']'
+            r'api\.(get|post|put|delete|patch)\(["\']([^"\']+)["\']',
         ]
 
         for pattern in patterns:
@@ -218,7 +218,7 @@ def analyze_backend_changes(files: List[str]) -> Dict:
         "endpoints_added": list(endpoints_added),
         "endpoints_modified": list(endpoints_modified),
         "endpoints_removed": list(endpoints_removed),
-        "schemas_changed": schemas_changed
+        "schemas_changed": schemas_changed,
     }
 
 
@@ -240,16 +240,20 @@ def analyze_frontend_changes(files: List[str]) -> Dict:
         "files": files,
         "api_calls_added": list(api_calls_added),
         "api_calls_modified": list(api_calls_modified),
-        "api_calls_removed": list(api_calls_removed)
+        "api_calls_removed": list(api_calls_removed),
     }
 
 
-def detect_integrity_issues(backend_analysis: Dict, frontend_analysis: Dict) -> List[Dict]:
+def detect_integrity_issues(
+    backend_analysis: Dict, frontend_analysis: Dict
+) -> List[Dict]:
     """Detect integrity issues between backend and frontend."""
     issues = []
 
     # Check for frontend calls to non-existent backend endpoints
-    backend_endpoints = set(backend_analysis["endpoints_added"] + backend_analysis["endpoints_modified"])
+    backend_endpoints = set(
+        backend_analysis["endpoints_added"] + backend_analysis["endpoints_modified"]
+    )
     frontend_calls = set(frontend_analysis["api_calls_added"])
 
     # Normalize paths for comparison (remove /api/v1 prefix variations)
@@ -267,37 +271,45 @@ def detect_integrity_issues(backend_analysis: Dict, frontend_analysis: Dict) -> 
         norm_call = normalize_endpoint(call)
         if norm_call not in normalized_backend and backend_endpoints:
             # Only report if we have backend data to compare
-            issues.append({
-                "severity": "warning",
-                "type": "potential_missing_endpoint",
-                "description": f"Frontend calls endpoint that may not exist in recent backend changes: {call}",
-                "affected_files": frontend_analysis["files"],
-                "recommendation": "Verify that backend endpoint exists and is properly registered"
-            })
+            issues.append(
+                {
+                    "severity": "warning",
+                    "type": "potential_missing_endpoint",
+                    "description": f"Frontend calls endpoint that may not exist in recent backend changes: {call}",
+                    "affected_files": frontend_analysis["files"],
+                    "recommendation": "Verify that backend endpoint exists and is properly registered",
+                }
+            )
 
     # Check for schema changes without corresponding frontend updates
     if backend_analysis["schemas_changed"] and not frontend_analysis["files"]:
-        issues.append({
-            "severity": "warning",
-            "type": "schema_change_without_frontend_update",
-            "description": f"Backend schemas changed ({', '.join(backend_analysis['schemas_changed'])}) but no frontend files updated",
-            "affected_files": backend_analysis["files"],
-            "recommendation": "Verify frontend types/interfaces are aligned with backend schema changes"
-        })
+        issues.append(
+            {
+                "severity": "warning",
+                "type": "schema_change_without_frontend_update",
+                "description": f"Backend schemas changed ({', '.join(backend_analysis['schemas_changed'])}) but no frontend files updated",
+                "affected_files": backend_analysis["files"],
+                "recommendation": "Verify frontend types/interfaces are aligned with backend schema changes",
+            }
+        )
 
     # Check OpenAPI schema status
     openapi_path = REPO_ROOT / "openapi.json"
     if backend_analysis["endpoints_added"] and openapi_path.exists():
         # Check if openapi.json was modified in this commit
-        changed_files = run_git_command(["git", "diff", "--name-only", "HEAD~1", "HEAD"])
+        changed_files = run_git_command(
+            ["git", "diff", "--name-only", "HEAD~1", "HEAD"]
+        )
         if "openapi.json" not in changed_files:
-            issues.append({
-                "severity": "warning",
-                "type": "openapi_outdated",
-                "description": "Backend endpoints modified but OpenAPI schema not regenerated",
-                "affected_files": ["openapi.json"],
-                "recommendation": "Regenerate OpenAPI schema to reflect endpoint changes"
-            })
+            issues.append(
+                {
+                    "severity": "warning",
+                    "type": "openapi_outdated",
+                    "description": "Backend endpoints modified but OpenAPI schema not regenerated",
+                    "affected_files": ["openapi.json"],
+                    "recommendation": "Regenerate OpenAPI schema to reflect endpoint changes",
+                }
+            )
 
     return issues
 
@@ -307,11 +319,7 @@ def validate_openapi_schema() -> Dict:
     openapi_path = REPO_ROOT / "openapi.json"
 
     if not openapi_path.exists():
-        return {
-            "status": "missing",
-            "missing_endpoints": [],
-            "outdated_schemas": []
-        }
+        return {"status": "missing", "missing_endpoints": [], "outdated_schemas": []}
 
     # In a full implementation, we'd parse the schema and compare with actual code
     # For now, just check if it was recently updated
@@ -321,26 +329,25 @@ def validate_openapi_schema() -> Dict:
 
         # Basic validation
         has_paths = "paths" in schema and len(schema["paths"]) > 0
-        has_schemas = "components" in schema and "schemas" in schema.get("components", {})
+        has_schemas = "components" in schema and "schemas" in schema.get(
+            "components", {}
+        )
 
         if has_paths and has_schemas:
             return {
                 "status": "ok",
                 "endpoints_count": len(schema["paths"]),
-                "schemas_count": len(schema.get("components", {}).get("schemas", {}))
+                "schemas_count": len(schema.get("components", {}).get("schemas", {})),
             }
         else:
             return {
                 "status": "incomplete",
                 "missing_endpoints": [] if has_paths else ["paths section missing"],
-                "outdated_schemas": [] if has_schemas else ["schemas section missing"]
+                "outdated_schemas": [] if has_schemas else ["schemas section missing"],
             }
 
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        return {"status": "error", "error": str(e)}
 
 
 def generate_report(changed_files: Dict[str, List[str]]) -> Dict:
@@ -384,9 +391,9 @@ def generate_report(changed_files: Dict[str, List[str]]) -> Dict:
             "issues_found": len(issues),
             "critical": critical_count,
             "warnings": warning_count,
-            "info": len([i for i in issues if i["severity"] == "info"])
+            "info": len([i for i in issues if i["severity"] == "info"]),
         },
-        "summary": f"{critical_count} critical, {warning_count} warning(s), {len(issues)} total issue(s) found"
+        "summary": f"{critical_count} critical, {warning_count} warning(s), {len(issues)} total issue(s) found",
     }
 
     return report
@@ -395,21 +402,24 @@ def generate_report(changed_files: Dict[str, List[str]]) -> Dict:
 def main():
     """Main entry point."""
     # Parse arguments
-    parser = argparse.ArgumentParser(description="NEO (IntegrityWatcher) - System Integrity Checker v2.0")
+    parser = argparse.ArgumentParser(
+        description="NEO (IntegrityWatcher) - System Integrity Checker v2.0"
+    )
     parser.add_argument(
         "--mode",
         choices=["pre-commit", "post-commit", "both"],
         default="pre-commit",
-        help="Scan mode (default: pre-commit)"
+        help="Scan mode (default: pre-commit)",
     )
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Verbose output with issue details"
+        "--verbose", "-v", action="store_true", help="Verbose output with issue details"
     )
     args = parser.parse_args()
 
-    print(f"🔐 NEO (IntegrityWatcher) v2.0 - Checking system integrity... (mode: {args.mode})", flush=True)
+    print(
+        f"🔐 NEO (IntegrityWatcher) v2.0 - Checking system integrity... (mode: {args.mode})",
+        flush=True,
+    )
 
     # Get changed files
     changed_files = get_changed_files(mode=args.mode)
@@ -424,12 +434,30 @@ def main():
             "timestamp": datetime.now().isoformat(),
             "scan_mode": args.mode,
             "status": "ok",
-            "backend_changes": {"files": [], "endpoints_added": [], "endpoints_modified": [], "endpoints_removed": [], "schemas_changed": []},
-            "frontend_changes": {"files": [], "api_calls_added": [], "api_calls_modified": [], "api_calls_removed": []},
+            "backend_changes": {
+                "files": [],
+                "endpoints_added": [],
+                "endpoints_modified": [],
+                "endpoints_removed": [],
+                "schemas_changed": [],
+            },
+            "frontend_changes": {
+                "files": [],
+                "api_calls_added": [],
+                "api_calls_modified": [],
+                "api_calls_removed": [],
+            },
             "issues": [],
             "openapi_validation": validate_openapi_schema(),
-            "statistics": {"backend_files_changed": 0, "frontend_files_changed": 0, "issues_found": 0, "critical": 0, "warnings": 0, "info": 0},
-            "summary": "No changes detected"
+            "statistics": {
+                "backend_files_changed": 0,
+                "frontend_files_changed": 0,
+                "issues_found": 0,
+                "critical": 0,
+                "warnings": 0,
+                "info": 0,
+            },
+            "summary": "No changes detected",
         }
     else:
         # Generate report
@@ -447,8 +475,17 @@ def main():
     if args.verbose and report["issues"]:
         print("\nIssues found:", flush=True)
         for issue in report["issues"]:
-            severity_icon = "🔴" if issue["severity"] == "critical" else "🟡" if issue["severity"] == "warning" else "🔵"
-            print(f"  {severity_icon} [{issue['severity'].upper()}] {issue['category']}", flush=True)
+            severity_icon = (
+                "🔴"
+                if issue["severity"] == "critical"
+                else "🟡"
+                if issue["severity"] == "warning"
+                else "🔵"
+            )
+            print(
+                f"  {severity_icon} [{issue['severity'].upper()}] {issue['category']}",
+                flush=True,
+            )
             print(f"      {issue['message']}", flush=True)
 
     # Return exit code based on severity
@@ -459,7 +496,9 @@ def main():
         print("\n🚨 CRITICAL issues detected - commit should be blocked", flush=True)
         return 1
     elif report["statistics"]["warnings"] > 0:
-        print("\n⚠️  Warnings detected - review recommended but commit allowed", flush=True)
+        print(
+            "\n⚠️  Warnings detected - review recommended but commit allowed", flush=True
+        )
         return 0
 
     print("\n✅ All integrity checks passed", flush=True)

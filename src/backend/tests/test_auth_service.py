@@ -1,6 +1,7 @@
 """
 Tests pour AuthService - Authentification et autorisation
 """
+
 import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -37,7 +38,10 @@ def mock_auth_config():
 @pytest.fixture
 def auth_service(mock_db_manager, mock_auth_config):
     """Instance AuthService pour tests"""
-    with patch('backend.features.auth.service.build_auth_config_from_env', return_value=mock_auth_config):
+    with patch(
+        "backend.features.auth.service.build_auth_config_from_env",
+        return_value=mock_auth_config,
+    ):
         service = AuthService(mock_db_manager)
         return service
 
@@ -112,7 +116,7 @@ class TestTokenGeneration:
         role = UserRole.TESTER
 
         # Créer un token qui expire immédiatement
-        with patch.object(auth_service, 'access_token_expire_minutes', -1):
+        with patch.object(auth_service, "access_token_expire_minutes", -1):
             token = auth_service.create_access_token(user_id, role)
 
         # Le token devrait être rejeté
@@ -156,7 +160,11 @@ class TestUserRegistration:
         password = "Password123"
 
         # Mock: utilisateur existe déjà
-        with patch.object(auth_service, '_fetch_user_by_username', AsyncMock(return_value={"id": "existing-id", "username": username})):
+        with patch.object(
+            auth_service,
+            "_fetch_user_by_username",
+            AsyncMock(return_value={"id": "existing-id", "username": username}),
+        ):
             with pytest.raises(ValueError, match="Username already exists"):
                 await auth_service.register_user(username, email, password)
 
@@ -194,7 +202,7 @@ class TestUserAuthentication:
             "username": username,
             "password_hash": hashed_password,
             "role": "member",
-            "is_active": True
+            "is_active": True,
         }
         mock_db_manager.fetch_one = AsyncMock(return_value=user_row)
         mock_db_manager.fetchone = AsyncMock(return_value=user_row)
@@ -213,13 +221,15 @@ class TestUserAuthentication:
         wrong_password = "WrongPass"
         hashed_password = auth_service.hash_password(correct_password)
 
-        mock_db_manager.fetchone = AsyncMock(return_value={
-            "id": "user-456",
-            "username": username,
-            "password_hash": hashed_password,
-            "role": "member",
-            "is_active": True
-        })
+        mock_db_manager.fetchone = AsyncMock(
+            return_value={
+                "id": "user-456",
+                "username": username,
+                "password_hash": hashed_password,
+                "role": "member",
+                "is_active": True,
+            }
+        )
 
         user = await auth_service.authenticate(username, wrong_password)
 

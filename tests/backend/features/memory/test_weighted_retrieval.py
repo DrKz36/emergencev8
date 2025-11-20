@@ -14,7 +14,7 @@ import pytest
 import tempfile
 import json
 from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from backend.features.memory.vector_service import (
     compute_memory_score,
@@ -66,22 +66,34 @@ class TestComputeMemoryScore:
     def test_decay_rate_impact(self):
         """Plus λ est élevé, plus l'oubli est rapide."""
         # λ faible (0.01) → oubli lent
-        score_slow = compute_memory_score(0.8, delta_days=50, freq=5, lambda_=0.01, alpha=0.1)
+        score_slow = compute_memory_score(
+            0.8, delta_days=50, freq=5, lambda_=0.01, alpha=0.1
+        )
 
         # λ élevé (0.05) → oubli rapide
-        score_fast = compute_memory_score(0.8, delta_days=50, freq=5, lambda_=0.05, alpha=0.1)
+        score_fast = compute_memory_score(
+            0.8, delta_days=50, freq=5, lambda_=0.05, alpha=0.1
+        )
 
-        assert score_slow > score_fast, "λ=0.01 devrait donner un score plus élevé que λ=0.05"
+        assert score_slow > score_fast, (
+            "λ=0.01 devrait donner un score plus élevé que λ=0.05"
+        )
 
     def test_reinforcement_impact(self):
         """Plus α est élevé, plus la fréquence booste le score."""
         # α faible (0.05)
-        score_low_alpha = compute_memory_score(0.8, delta_days=10, freq=10, lambda_=0.02, alpha=0.05)
+        score_low_alpha = compute_memory_score(
+            0.8, delta_days=10, freq=10, lambda_=0.02, alpha=0.05
+        )
 
         # α élevé (0.2)
-        score_high_alpha = compute_memory_score(0.8, delta_days=10, freq=10, lambda_=0.02, alpha=0.2)
+        score_high_alpha = compute_memory_score(
+            0.8, delta_days=10, freq=10, lambda_=0.02, alpha=0.2
+        )
 
-        assert score_high_alpha > score_low_alpha, "α=0.2 devrait donner un score plus élevé que α=0.05"
+        assert score_high_alpha > score_low_alpha, (
+            "α=0.2 devrait donner un score plus élevé que α=0.05"
+        )
 
     def test_zero_frequency(self):
         """Fréquence 0 (jamais utilisé) → pas de boost."""
@@ -94,7 +106,9 @@ class TestComputeMemoryScore:
         )
         # Devrait être : 0.8 × exp(-0.02 × 10) × (1 + 0.1 × 0) = 0.8 × 0.819 × 1 = 0.655
         expected = 0.8 * 0.819 * 1.0
-        assert abs(score - expected) < 0.05, f"Score devrait être ~{expected}, got {score}"
+        assert abs(score - expected) < 0.05, (
+            f"Score devrait être ~{expected}, got {score}"
+        )
 
     def test_negative_delta_days_clamped(self):
         """Δt négatif (impossible) → clamped à 0."""
@@ -106,18 +120,28 @@ class TestComputeMemoryScore:
             alpha=0.1,
         )
         # Devrait être traité comme delta_days=0
-        score_zero = compute_memory_score(0.8, delta_days=0.0, freq=5, lambda_=0.02, alpha=0.1)
+        score_zero = compute_memory_score(
+            0.8, delta_days=0.0, freq=5, lambda_=0.02, alpha=0.1
+        )
         assert abs(score - score_zero) < 0.001, "Δt négatif devrait être clamped à 0"
 
     def test_invalid_cosine_sim_clamped(self):
         """Cosine sim > 1 ou < 0 → clamped à [0, 1]."""
         # Cosine > 1 (impossible)
-        score_high = compute_memory_score(1.5, delta_days=5, freq=3, lambda_=0.02, alpha=0.1)
-        score_valid = compute_memory_score(1.0, delta_days=5, freq=3, lambda_=0.02, alpha=0.1)
-        assert abs(score_high - score_valid) < 0.001, "Cosine > 1 devrait être clamped à 1.0"
+        score_high = compute_memory_score(
+            1.5, delta_days=5, freq=3, lambda_=0.02, alpha=0.1
+        )
+        score_valid = compute_memory_score(
+            1.0, delta_days=5, freq=3, lambda_=0.02, alpha=0.1
+        )
+        assert abs(score_high - score_valid) < 0.001, (
+            "Cosine > 1 devrait être clamped à 1.0"
+        )
 
         # Cosine < 0 (impossible)
-        score_low = compute_memory_score(-0.5, delta_days=5, freq=3, lambda_=0.02, alpha=0.1)
+        score_low = compute_memory_score(
+            -0.5, delta_days=5, freq=3, lambda_=0.02, alpha=0.1
+        )
         assert score_low == 0.0, "Cosine < 0 devrait être clamped à 0.0"
 
 
@@ -265,7 +289,9 @@ class TestVectorServiceWeightedRetrieval:
         assert all("cosine_sim" in r for r in results)
 
         # Le premier résultat devrait avoir un meilleur score (récent + utilisé)
-        assert results[0]["id"] == "entry_1", "Entry 1 devrait être premier (plus utilisé)"
+        assert results[0]["id"] == "entry_1", (
+            "Entry 1 devrait être premier (plus utilisé)"
+        )
         assert results[0]["weighted_score"] > results[1]["weighted_score"]
 
         # Vérifier que update_metadata a été appelé

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 # Prometheus metrics (P2.1 + Sprint 4)
 try:
     from prometheus_client import Counter, REGISTRY
+
     PROMETHEUS_AVAILABLE = True
 
     def _get_memory_cache_counter() -> Counter:
@@ -67,27 +68,36 @@ class MemoryContextBuilder:
 
         # 🆕 Phase 1 Sprint 1: MemoryQueryTool pour requêtes méta
         from backend.features.memory.memory_query_tool import MemoryQueryTool
+
         self.memory_query_tool = MemoryQueryTool(vector_service)
 
         # 🆕 Sprint 3 Memory Refactoring: UnifiedMemoryRetriever
         from backend.features.memory.unified_retriever import UnifiedMemoryRetriever
 
         # Obtenir db_manager depuis session_manager
-        db_manager = getattr(session_manager, 'db_manager', None)
+        db_manager = getattr(session_manager, "db_manager", None)
 
         if db_manager:
-            self.unified_retriever: Optional[UnifiedMemoryRetriever] = UnifiedMemoryRetriever(
-                session_manager=session_manager,
-                vector_service=vector_service,
-                db_manager=db_manager,
-                memory_query_tool=self.memory_query_tool
+            self.unified_retriever: Optional[UnifiedMemoryRetriever] = (
+                UnifiedMemoryRetriever(
+                    session_manager=session_manager,
+                    vector_service=vector_service,
+                    db_manager=db_manager,
+                    memory_query_tool=self.memory_query_tool,
+                )
             )
-            logger.info("[MemoryContextBuilder] Initialized with UnifiedMemoryRetriever (STM + LTM + Archives)")
+            logger.info(
+                "[MemoryContextBuilder] Initialized with UnifiedMemoryRetriever (STM + LTM + Archives)"
+            )
         else:
-            logger.warning("[MemoryContextBuilder] db_manager not available, UnifiedRetriever disabled")
+            logger.warning(
+                "[MemoryContextBuilder] db_manager not available, UnifiedRetriever disabled"
+            )
             self.unified_retriever = None
 
-        logger.info("[MemoryContextBuilder] Initialized with in-memory preference cache (TTL=5min) + MemoryQueryTool")
+        logger.info(
+            "[MemoryContextBuilder] Initialized with in-memory preference cache (TTL=5min) + MemoryQueryTool"
+        )
 
     def try_get_session_summary(self, session_id: str) -> str:
         try:
@@ -126,8 +136,12 @@ class MemoryContextBuilder:
         return None
 
     async def build_memory_context(
-        self, session_id: str, last_user_message: str, top_k: int = 5, agent_id: Optional[str] = None,
-        use_unified_retriever: bool = True  # ✅ Sprint 3: Flag activation UnifiedRetriever
+        self,
+        session_id: str,
+        last_user_message: str,
+        top_k: int = 5,
+        agent_id: Optional[str] = None,
+        use_unified_retriever: bool = True,  # ✅ Sprint 3: Flag activation UnifiedRetriever
     ) -> str:
         """
         Construit contexte mémoire pour injection prompt.
@@ -155,7 +169,9 @@ class MemoryContextBuilder:
 
             # 🆕 SPRINT 3: Utiliser UnifiedRetriever si disponible et activé
             if use_unified_retriever and self.unified_retriever and uid and agent_id:
-                logger.info("[MemoryContext] Using UnifiedRetriever for context (STM + LTM + Archives)")
+                logger.info(
+                    "[MemoryContext] Using UnifiedRetriever for context (STM + LTM + Archives)"
+                )
 
                 try:
                     context = await self.unified_retriever.retrieve_context(
@@ -164,13 +180,16 @@ class MemoryContextBuilder:
                         session_id=session_id,
                         current_query=last_user_message,
                         top_k_concepts=top_k,
-                        top_k_archives=3  # Top 3 conversations archivées
+                        top_k_archives=3,  # Top 3 conversations archivées
                     )
 
                     return context.to_markdown()
 
                 except Exception as e:
-                    logger.error(f"[MemoryContext] UnifiedRetriever failed, falling back to legacy: {e}", exc_info=True)
+                    logger.error(
+                        f"[MemoryContext] UnifiedRetriever failed, falling back to legacy: {e}",
+                        exc_info=True,
+                    )
                     # Fallback to legacy behavior below
 
             # FALLBACK: Comportement legacy (si unified_retriever désactivé ou erreur)
@@ -197,15 +216,17 @@ class MemoryContextBuilder:
 
             # 🆕 2. Phase 1 Sprint 1: Detect meta queries (questions about conversation history)
             if uid and self._is_meta_query(last_user_message):
-                logger.info(f"[MemoryContext] Meta query detected: '{last_user_message[:50]}...' (agent: {agent_id})")
+                logger.info(
+                    f"[MemoryContext] Meta query detected: '{last_user_message[:50]}...' (agent: {agent_id})"
+                )
                 chronological_context = await self._build_chronological_context(
                     uid, last_user_message, agent_id=agent_id
                 )
                 if chronological_context:
                     # 🐛 FIX: Vérifier si le contexte contient réellement des données ou juste le message par défaut
                     is_empty_response = (
-                        "Aucun sujet abordé" in chronological_context or
-                        chronological_context.strip() == ""
+                        "Aucun sujet abordé" in chronological_context
+                        or chronological_context.strip() == ""
                     )
 
                     if is_empty_response:
@@ -214,14 +235,20 @@ class MemoryContextBuilder:
                             f"Returning explicit empty message to prevent hallucinations."
                         )
                         # Retourner un message explicite pour que l'agent ne fabule pas
-                        sections.append((
-                            "Historique des sujets abordés",
-                            "⚠️ CONTEXTE VIDE: Aucune conversation passée n'est disponible dans la mémoire. "
-                            "Ne fabrique AUCUNE date ou conversation. Réponds honnêtement à l'utilisateur que tu n'as pas accès à l'historique."
-                        ))
+                        sections.append(
+                            (
+                                "Historique des sujets abordés",
+                                "⚠️ CONTEXTE VIDE: Aucune conversation passée n'est disponible dans la mémoire. "
+                                "Ne fabrique AUCUNE date ou conversation. Réponds honnêtement à l'utilisateur que tu n'as pas accès à l'historique.",
+                            )
+                        )
                     else:
-                        sections.append(("Historique des sujets abordés", chronological_context))
-                        logger.info(f"[MemoryContext] Chronological context provided ({len(chronological_context)} chars)")
+                        sections.append(
+                            ("Historique des sujets abordés", chronological_context)
+                        )
+                        logger.info(
+                            f"[MemoryContext] Chronological context provided ({len(chronological_context)} chars)"
+                        )
 
                     # Pour requêtes méta, le contexte chronologique suffit
                     # Pas besoin de recherche vectorielle supplémentaire
@@ -243,7 +270,8 @@ class MemoryContextBuilder:
             if results and agent_id:
                 normalized_agent_id = agent_id.lower()
                 results = [
-                    r for r in results
+                    r
+                    for r in results
                     if self._result_matches_agent(r, normalized_agent_id)
                 ]
                 # Limiter aux top_k après filtrage
@@ -258,7 +286,9 @@ class MemoryContextBuilder:
                     t = (r.get("text") or "").strip()
                     if t:
                         # Enrichir avec métadonnées temporelles si disponibles
-                        temporal_hint = self._format_temporal_hint(r.get("metadata", {}))
+                        temporal_hint = self._format_temporal_hint(
+                            r.get("metadata", {})
+                        )
                         lines.append(f"- {t}{temporal_hint}")
 
                 if lines:
@@ -289,9 +319,13 @@ class MemoryContextBuilder:
         if user_id in self._prefs_cache:
             prefs, cached_at = self._prefs_cache[user_id]
             if now - cached_at < self._cache_ttl:
-                logger.debug(f"[Cache HIT] Preferences for user {user_id[:8]}... (age={int((now - cached_at).total_seconds())}s)")
+                logger.debug(
+                    f"[Cache HIT] Preferences for user {user_id[:8]}... (age={int((now - cached_at).total_seconds())}s)"
+                )
                 if PROMETHEUS_AVAILABLE:
-                    memory_cache_operations.labels(operation="hit", type="preferences").inc()
+                    memory_cache_operations.labels(
+                        operation="hit", type="preferences"
+                    ).inc()
                 return prefs
 
         # Cache miss → fetch ChromaDB
@@ -341,7 +375,8 @@ class MemoryContextBuilder:
         """Remove expired entries from cache (garbage collection)."""
         now = datetime.now()
         expired_keys = [
-            key for key, (_, cached_at) in self._prefs_cache.items()
+            key
+            for key, (_, cached_at) in self._prefs_cache.items()
             if now - cached_at >= self._cache_ttl
         ]
 
@@ -362,9 +397,13 @@ class MemoryContextBuilder:
         """
         if user_id in self._prefs_cache:
             del self._prefs_cache[user_id]
-            logger.info(f"[MemoryContext] Cache préférences invalidé pour user {user_id[:8]}...")
+            logger.info(
+                f"[MemoryContext] Cache préférences invalidé pour user {user_id[:8]}..."
+            )
 
-    def _apply_temporal_weighting(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _apply_temporal_weighting(
+        self, results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Apply temporal weighting to boost recent and frequently used items."""
         import datetime
 
@@ -380,7 +419,9 @@ class MemoryContextBuilder:
             freshness_boost = 1.0
             if created_at:
                 try:
-                    created_dt = datetime.datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    created_dt = datetime.datetime.fromisoformat(
+                        created_at.replace("Z", "+00:00")
+                    )
                     age_days = (now - created_dt).days
                     if age_days < 7:
                         freshness_boost = 1.3  # Recent items (< 7 days)
@@ -521,7 +562,9 @@ class MemoryContextBuilder:
         if not isinstance(metadata, dict):
             return ""  # type: ignore[unreachable]
 
-        first_mentioned = metadata.get("first_mentioned_at") or metadata.get("created_at")
+        first_mentioned = metadata.get("first_mentioned_at") or metadata.get(
+            "created_at"
+        )
         mention_count = metadata.get("mention_count", 1)
 
         if not first_mentioned:
@@ -530,12 +573,26 @@ class MemoryContextBuilder:
         try:
             # Parse ISO 8601 timestamp
             from datetime import datetime
+
             dt = datetime.fromisoformat(first_mentioned.replace("Z", "+00:00"))
 
             # Format français naturel : "5 oct" ou "5 oct à 14h32"
             day = dt.day
-            months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
-                      "juil", "août", "sept", "oct", "nov", "déc"]
+            months = [
+                "",
+                "janv",
+                "fév",
+                "mars",
+                "avr",
+                "mai",
+                "juin",
+                "juil",
+                "août",
+                "sept",
+                "oct",
+                "nov",
+                "déc",
+            ]
             month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
 
             date_str = f"{day} {month}"
@@ -585,20 +642,16 @@ class MemoryContextBuilder:
             r"\bquels?\s+sujets?\b",
             r"\bliste\s+(les?\s+)?(sujets?|th[eè]mes?)\b",
             r"\b(de\s+)?quoi\s+(on\s+a|avons[-\s]nous|nous\s+avons)\s+(parl[eé]|discut[eé]|abord[eé])\b",
-
             # Requêtes sur historique/chronologie
             r"\bhistorique\s+(de\s+)?(nos\s+)?(conversations?|discussions?)\b",
             r"\bchronologie\b",
             r"\b(nos\s+)?conversations?\s+(pr[eé]c[eé]dentes?|ant[eé]rieures?|pass[eé]es?)\b",
-
             # Requêtes sur résumés
             r"\br[eé]sume(\s+moi)?\s+(nos\s+)?(conversations?|discussions?)\b",
             r"\bfais[-\s](moi\s+)?un\s+r[eé]sum[eé]\b",
-
             # Requêtes temporelles
             r"\b(cette\s+semaine|la\s+semaine\s+derni[eè]re|ce\s+mois|r[eé]cemment)\b.*\b(parl[eé]|discut[eé]|abord[eé])\b",
             r"\bquand\s+(on\s+a|avons[-\s]nous)\s+(parl[eé]|discut[eé])\b",
-
             # Requêtes sur thématiques
             r"\bquels?\s+th[eè]mes?\b",
             r"\bquelles?\s+(sont\s+)?(les\s+)?th[eé]matiques?\b",
@@ -641,12 +694,11 @@ class MemoryContextBuilder:
 
             if timeframe and timeframe != "all":
                 # Requête ciblée sur une période spécifique
-                logger.info(f"[MemoryContext] Chronological context for timeframe '{timeframe}' (agent: {agent_id})")
+                logger.info(
+                    f"[MemoryContext] Chronological context for timeframe '{timeframe}' (agent: {agent_id})"
+                )
                 topics = await self.memory_query_tool.list_discussed_topics(
-                    user_id=user_id,
-                    timeframe=timeframe,
-                    limit=50,
-                    agent_id=agent_id
+                    user_id=user_id, timeframe=timeframe, limit=50, agent_id=agent_id
                 )
 
                 if not topics:
@@ -661,11 +713,11 @@ class MemoryContextBuilder:
 
             else:
                 # Requête générale → timeline complète groupée
-                logger.info(f"[MemoryContext] Full chronological timeline requested (agent: {agent_id})")
+                logger.info(
+                    f"[MemoryContext] Full chronological timeline requested (agent: {agent_id})"
+                )
                 timeline = await self.memory_query_tool.get_conversation_timeline(
-                    user_id=user_id,
-                    limit=100,
-                    agent_id=agent_id
+                    user_id=user_id, limit=100, agent_id=agent_id
                 )
 
                 # 🔥 FIX: Toujours utiliser format_timeline_natural_fr qui retourne le header
@@ -673,7 +725,10 @@ class MemoryContextBuilder:
                 return self.memory_query_tool.format_timeline_natural_fr(timeline)
 
         except Exception as e:
-            logger.error(f"[MemoryContext] Error building chronological context: {e}", exc_info=True)
+            logger.error(
+                f"[MemoryContext] Error building chronological context: {e}",
+                exc_info=True,
+            )
             return ""
 
     def _extract_timeframe_from_query(self, query: str) -> str:
@@ -723,7 +778,7 @@ class MemoryContextBuilder:
     def _result_matches_agent(
         result: Dict[str, Any],
         agent_id: str,
-        strict_mode: Optional[bool] = None  # ✅ Sprint 4: Mode strict
+        strict_mode: Optional[bool] = None,  # ✅ Sprint 4: Mode strict
     ) -> bool:
         """
         Vérifie si un résultat vectoriel correspond à l'agent demandé.
@@ -747,7 +802,7 @@ class MemoryContextBuilder:
 
         # Auto-détection mode depuis env
         if strict_mode is None:
-            strict_mode = os.getenv('STRICT_AGENT_ISOLATION', 'false').lower() == 'true'
+            strict_mode = os.getenv("STRICT_AGENT_ISOLATION", "false").lower() == "true"
 
         metadata = result.get("metadata", {})
         if not isinstance(metadata, dict):
@@ -770,8 +825,7 @@ class MemoryContextBuilder:
         if strict_mode and PROMETHEUS_AVAILABLE and result_agent_id:
             try:
                 agent_isolation_violations.labels(
-                    agent_requesting=agent_id,
-                    agent_concept=result_agent_id
+                    agent_requesting=agent_id, agent_concept=result_agent_id
                 ).inc()
                 logger.debug(
                     f"[AgentIsolation] Violation détectée: agent {agent_id} "

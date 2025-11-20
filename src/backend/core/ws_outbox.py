@@ -31,6 +31,7 @@ from fastapi import WebSocket
 
 try:
     from prometheus_client import Gauge, Counter, Histogram
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
@@ -44,26 +45,24 @@ OUTBOX_MAX = 512  # Taille max queue (backpressure)
 # Métriques Prometheus
 if PROMETHEUS_AVAILABLE:
     ws_outbox_queue_size = Gauge(
-        "ws_outbox_queue_size",
-        "Current size of WsOutbox message queue"
+        "ws_outbox_queue_size", "Current size of WsOutbox message queue"
     )
     ws_outbox_batch_size = Histogram(
         "ws_outbox_batch_size",
         "Size of message batches sent via WsOutbox",
-        buckets=[1, 2, 5, 10, 20, 50, 100]
+        buckets=[1, 2, 5, 10, 20, 50, 100],
     )
     ws_outbox_send_latency = Histogram(
         "ws_outbox_send_latency_seconds",
         "Latency of WsOutbox batch sends",
-        buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25]
+        buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25],
     )
     ws_outbox_dropped_total = Counter(
         "ws_outbox_dropped_messages_total",
-        "Total number of messages dropped due to full queue"
+        "Total number of messages dropped due to full queue",
     )
     ws_outbox_send_errors_total = Counter(
-        "ws_outbox_send_errors_total",
-        "Total number of send errors"
+        "ws_outbox_send_errors_total", "Total number of send errors"
     )
 else:
     ws_outbox_queue_size: Optional[Gauge] = None  # type: ignore[no-redef]
@@ -182,7 +181,9 @@ class WsOutbox:
                 logger.debug("[WsOutbox] Drain loop cancelled")
                 break
             except Exception as e:
-                logger.error(f"[WsOutbox] Unexpected error in drain loop: {e}", exc_info=True)
+                logger.error(
+                    f"[WsOutbox] Unexpected error in drain loop: {e}", exc_info=True
+                )
                 # Continue la loop malgré l'erreur
 
     async def _send_batch(self, batch: list[dict[str, Any]]) -> None:
@@ -222,5 +223,5 @@ class WsOutbox:
                 ws_outbox_send_errors_total.inc()
             logger.error(
                 f"[WsOutbox] Error sending batch (size={len(batch)}): {e}",
-                exc_info=True
+                exc_info=True,
             )

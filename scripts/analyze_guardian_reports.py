@@ -15,10 +15,11 @@ from pathlib import Path
 from typing import Any, Dict
 
 # Fix encoding Windows
-if sys.platform == 'win32':
+if sys.platform == "win32":
     import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, "strict")
+    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, "strict")
 
 DEFAULT_REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
 
@@ -42,7 +43,7 @@ def analyze_prod_report(prod: Dict[str, Any]) -> None:
     print()
 
     # Résumé
-    summary = prod['summary']
+    summary = prod["summary"]
     print(f"✅ Erreurs: {summary['errors']}")
     print(f"⚠️  Warnings: {summary['warnings']}")
     print(f"🚨 Critical signals: {summary['critical_signals']}")
@@ -50,47 +51,49 @@ def analyze_prod_report(prod: Dict[str, Any]) -> None:
     print()
 
     # Erreurs détaillées
-    if prod['errors_detailed']:
+    if prod["errors_detailed"]:
         print("❌ ERREURS DÉTECTÉES:")
-        for err in prod['errors_detailed']:
+        for err in prod["errors_detailed"]:
             print(f"   - {err['message']}")
             print(f"     Endpoint: {err.get('endpoint', 'N/A')}")
-            print(f"     File: {err.get('file_path', 'N/A')}:{err.get('line_number', 'N/A')}")
-            if err.get('stack_trace'):
+            print(
+                f"     File: {err.get('file_path', 'N/A')}:{err.get('line_number', 'N/A')}"
+            )
+            if err.get("stack_trace"):
                 print(f"     Stack: {err['stack_trace'][:200]}...")
         print()
 
     # Warnings détaillés
-    if prod['warnings_detailed']:
+    if prod["warnings_detailed"]:
         print("⚠️  WARNINGS:")
-        for warn in prod['warnings_detailed']:
+        for warn in prod["warnings_detailed"]:
             print(f"   - {warn['message']}")
             print(f"     Endpoint: {warn.get('endpoint', 'N/A')}")
         print()
 
     # Patterns d'erreurs
-    patterns = prod['error_patterns']
-    if patterns['most_common_error']:
+    patterns = prod["error_patterns"]
+    if patterns["most_common_error"]:
         print("🔍 PATTERNS D'ERREURS:")
         print(f"   Erreur la plus fréquente: {patterns['most_common_error']}")
-        if patterns['by_endpoint']:
+        if patterns["by_endpoint"]:
             print("   Endpoints touchés:")
-            for endpoint, count in list(patterns['by_endpoint'].items())[:5]:
+            for endpoint, count in list(patterns["by_endpoint"].items())[:5]:
                 print(f"     - {endpoint}: {count} erreur(s)")
         print()
 
     # Recommandations
-    if prod['recommendations']:
+    if prod["recommendations"]:
         print("💡 ACTIONS RECOMMANDÉES:")
-        for rec in prod['recommendations']:
+        for rec in prod["recommendations"]:
             print(f"   [{rec['priority']}] {rec['action']}")
             print(f"      → {rec['details']}")
         print()
 
     # Commits récents (contexte)
-    if prod['recent_commits']:
+    if prod["recent_commits"]:
         print("📝 COMMITS RÉCENTS:")
-        for commit in prod['recent_commits'][:3]:
+        for commit in prod["recent_commits"][:3]:
             print(f"   - {commit['hash']}: {commit['message']} ({commit['time']})")
         print()
 
@@ -103,62 +106,68 @@ def analyze_unified_report(unified: Dict[str, Any]) -> None:
     print("=" * 60)
 
     # Executive summary
-    exec_sum = unified['executive_summary']
-    status_icon = "✅" if exec_sum['status'] == 'ok' else "🔴"
+    exec_sum = unified["executive_summary"]
+    status_icon = "✅" if exec_sum["status"] == "ok" else "🔴"
     print(f"{status_icon} {exec_sum['headline']}")
-    print(f"Issues totales: {exec_sum['total_issues']} (Critical: {exec_sum['critical']}, Warnings: {exec_sum['warnings']})")
+    print(
+        f"Issues totales: {exec_sum['total_issues']} (Critical: {exec_sum['critical']}, Warnings: {exec_sum['warnings']})"
+    )
     print()
 
     # Priority actions
-    if unified['priority_actions']:
+    if unified["priority_actions"]:
         print("🔥 PRIORITY ACTIONS:")
-        for action in unified['priority_actions']:
+        for action in unified["priority_actions"]:
             print(f"   [{action['priority']}] {action['description']}")
             print(f"      File: {action.get('file', 'N/A')}")
             print(f"      Fix: {action.get('recommendation', 'N/A')}")
         print()
 
     # Anima (Documentation)
-    anima = unified['full_reports']['anima']
+    anima = unified["full_reports"]["anima"]
     print("📚 ANIMA (Documentation):")
     print(f"   Status: {anima['status']}")
     print(f"   Gaps trouvés: {anima['statistics']['gaps_found']}")
     print(f"   Updates proposées: {anima['statistics']['updates_proposed']}")
 
-    if anima['documentation_gaps']:
+    if anima["documentation_gaps"]:
         print("   ⚠️  GAPS:")
-        for gap in anima['documentation_gaps'][:5]:
+        for gap in anima["documentation_gaps"][:5]:
             print(f"      - {gap.get('description', 'N/A')} ({gap.get('file', 'N/A')})")
 
-    if anima['proposed_updates']:
+    if anima["proposed_updates"]:
         print("   📝 UPDATES PROPOSÉES:")
-        for update in anima['proposed_updates'][:5]:
-            print(f"      - {update.get('action', 'N/A')} → {update.get('target_file', 'N/A')}")
+        for update in anima["proposed_updates"][:5]:
+            print(
+                f"      - {update.get('action', 'N/A')} → {update.get('target_file', 'N/A')}"
+            )
     print()
 
     # Neo (Intégrité)
-    neo = unified['full_reports']['neo']
+    neo = unified["full_reports"]["neo"]
     print("🔍 NEO (Intégrité):")
     print(f"   Status: {neo['status']}")
     print(f"   Backend files changed: {neo['statistics']['backend_files_changed']}")
     print(f"   Frontend files changed: {neo['statistics']['frontend_files_changed']}")
     print(f"   Issues trouvées: {neo['statistics']['issues_found']}")
 
-    if neo['issues']:
+    if neo["issues"]:
         print("   ❌ ISSUES:")
-        for issue in neo['issues'][:5]:
-            print(f"      - [{issue.get('category', 'N/A')}] {issue.get('description', 'N/A')}")
+        for issue in neo["issues"][:5]:
+            print(
+                f"      - [{issue.get('category', 'N/A')}] {issue.get('description', 'N/A')}"
+            )
             print(f"        → {issue.get('recommendation', 'N/A')}")
     print()
 
     # Recommandations par horizon
-    recs = unified['recommendations']
+    recs = unified["recommendations"]
     print("💡 RECOMMANDATIONS PAR HORIZON:")
-    if recs['immediate'] and recs['immediate'][0] != "None - all checks passed":
+    if recs["immediate"] and recs["immediate"][0] != "None - all checks passed":
         print(f"   🔥 Immediate: {', '.join(recs['immediate'])}")
-    if recs['short_term'] and recs['short_term'][0] != "Continue monitoring":
+    if recs["short_term"] and recs["short_term"][0] != "Continue monitoring":
         print(f"   📅 Short-term: {', '.join(recs['short_term'])}")
-    if recs['long_term'] and recs['long_term'][0] != "Maintain current practices":
+    if recs["long_term"] and recs["long_term"][0] != "Maintain current practices":
         print(f"   📋 Long-term: {', '.join(recs['long_term'])}")
     print()
 
@@ -240,12 +249,14 @@ def main():
     except FileNotFoundError as e:
         print(f"❌ ERREUR: Fichier rapport non trouvé: {e}")
         print("   Assure-toi que les rapports Guardian ont été générés.")
-        print("   Lance: pwsh -File claude-plugins/integrity-docs-guardian/scripts/run_audit.ps1")
+        print(
+            "   Lance: pwsh -File claude-plugins/integrity-docs-guardian/scripts/run_audit.ps1"
+        )
     except json.JSONDecodeError as e:
         print(f"❌ ERREUR: Fichier rapport JSON invalide: {e}")
     except Exception as e:
         print(f"❌ ERREUR inattendue: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

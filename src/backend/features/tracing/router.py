@@ -19,7 +19,9 @@ router = APIRouter(tags=["Tracing"], prefix="/traces")
 
 
 @router.get("/recent")
-async def get_recent_traces(limit: int = Query(default=100, ge=1, le=1000)) -> List[Dict[str, Any]]:
+async def get_recent_traces(
+    limit: int = Query(default=100, ge=1, le=1000),
+) -> List[Dict[str, Any]]:
     """
     Retourne les N derniers spans complétés (du plus récent au plus ancien).
 
@@ -82,7 +84,9 @@ async def get_trace_stats() -> Dict[str, Any]:
         spans = mgr.export(limit=100)
 
         # Stats par nom
-        by_name: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"count": 0, "total_duration": 0.0})
+        by_name: Dict[str, Dict[str, Any]] = defaultdict(
+            lambda: {"count": 0, "total_duration": 0.0}
+        )
         by_status: Dict[str, int] = defaultdict(int)
         by_agent: Dict[str, int] = defaultdict(int)
 
@@ -106,7 +110,9 @@ async def get_trace_stats() -> Dict[str, Any]:
         # Calcul avg_duration
         by_name_stats = {}
         for name, data in by_name.items():
-            avg_duration = data["total_duration"] / data["count"] if data["count"] > 0 else 0.0
+            avg_duration = (
+                data["total_duration"] / data["count"] if data["count"] > 0 else 0.0
+            )
             by_name_stats[name] = {
                 "count": data["count"],
                 "avg_duration": round(avg_duration, 3),

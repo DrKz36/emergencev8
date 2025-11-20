@@ -52,7 +52,9 @@ try:
         print(f"  Ce mois (30j): {row['month']}")
 
         # Message le plus récent
-        cursor.execute("SELECT created_at FROM messages ORDER BY created_at DESC LIMIT 1")
+        cursor.execute(
+            "SELECT created_at FROM messages ORDER BY created_at DESC LIMIT 1"
+        )
         last_msg = cursor.fetchone()
         print(f"  Dernier message: {last_msg['created_at']}")
     else:
@@ -99,7 +101,9 @@ try:
             cost = row["cost"] or 0
             input_tok = row["input_tok"] or 0
             output_tok = row["output_tok"] or 0
-            print(f"    {model}: {count} requêtes, ${cost:.6f}, {input_tok:,} in, {output_tok:,} out")
+            print(
+                f"    {model}: {count} requêtes, ${cost:.6f}, {input_tok:,} in, {output_tok:,} out"
+            )
 
         # DIAGNOSTIC GEMINI
         cursor.execute("""
@@ -116,13 +120,19 @@ try:
             print("\n  🔥 GEMINI (diagnostic Gap #1):")
             print(f"    Requêtes: {gemini['count']}")
             print(f"    Coût total: ${gemini['cost'] or 0:.6f}")
-            print(f"    Tokens: {gemini['input_tok'] or 0:,} in, {gemini['output_tok'] or 0:,} out")
+            print(
+                f"    Tokens: {gemini['input_tok'] or 0:,} in, {gemini['output_tok'] or 0:,} out"
+            )
 
             if (gemini["cost"] or 0) == 0:
-                print(f"    ⚠️ WARNING: Coûts Gemini à $0.00 avec {gemini['count']} requêtes!")
+                print(
+                    f"    ⚠️ WARNING: Coûts Gemini à $0.00 avec {gemini['count']} requêtes!"
+                )
                 print("    💡 Vérifiez que le fix Gap #1 est bien appliqué")
             elif (gemini["input_tok"] or 0) == 0 and (gemini["output_tok"] or 0) == 0:
-                print(f"    ⚠️ WARNING: Tokens Gemini à 0 avec {gemini['count']} requêtes!")
+                print(
+                    f"    ⚠️ WARNING: Tokens Gemini à 0 avec {gemini['count']} requêtes!"
+                )
                 print("    💡 count_tokens() ne fonctionne peut-être pas")
             else:
                 print("    ✅ OK: Gemini semble correctement tracké")
@@ -146,9 +156,13 @@ try:
         print(f"\n  Coût moyen par requête: ${avg_cost:.6f}")
 
         # Dernière entrée
-        cursor.execute("SELECT timestamp, model, total_cost FROM costs ORDER BY timestamp DESC LIMIT 1")
+        cursor.execute(
+            "SELECT timestamp, model, total_cost FROM costs ORDER BY timestamp DESC LIMIT 1"
+        )
         last_cost = cursor.fetchone()
-        print(f"  Dernière entrée: {last_cost['timestamp']} - {last_cost['model']} (${last_cost['total_cost']:.6f})")
+        print(
+            f"  Dernière entrée: {last_cost['timestamp']} - {last_cost['model']} (${last_cost['total_cost']:.6f})"
+        )
 
     else:
         print("  ⚠️ Aucun coût enregistré")
@@ -180,9 +194,13 @@ try:
         print(f"  Sessions archivées: {total_sessions - active}")
 
         # Dernière session
-        cursor.execute("SELECT id, created_at FROM sessions ORDER BY created_at DESC LIMIT 1")
+        cursor.execute(
+            "SELECT id, created_at FROM sessions ORDER BY created_at DESC LIMIT 1"
+        )
         last_session = cursor.fetchone()
-        print(f"  Dernière session: {last_session['id']} ({last_session['created_at']})")
+        print(
+            f"  Dernière session: {last_session['id']} ({last_session['created_at']})"
+        )
 
 except sqlite3.OperationalError as e:
     print(f"  ❌ Erreur: {e}")

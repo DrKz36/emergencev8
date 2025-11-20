@@ -25,87 +25,55 @@ BACKEND_ERROR_PATTERNS = [
         "type": "ImportError",
         "pattern": r"ImportError:\s+No module named ['\"]([^'\"]+)['\"]",
         "severity": "critical",
-        "extract_module": 1
+        "extract_module": 1,
     },
     {
         "type": "ModuleNotFoundError",
         "pattern": r"ModuleNotFoundError:\s+No module named ['\"]([^'\"]+)['\"]",
         "severity": "critical",
-        "extract_module": 1
+        "extract_module": 1,
     },
     {
         "type": "AttributeError",
         "pattern": r"AttributeError:\s+'(\w+)'\s+object has no attribute '(\w+)'",
-        "severity": "critical"
+        "severity": "critical",
     },
     {
         "type": "KeyError",
         "pattern": r"KeyError:\s+['\"]([^'\"]+)['\"]",
-        "severity": "warning"
+        "severity": "warning",
     },
-    {
-        "type": "TypeError",
-        "pattern": r"TypeError:\s+(.+)",
-        "severity": "critical"
-    },
+    {"type": "TypeError", "pattern": r"TypeError:\s+(.+)", "severity": "critical"},
     {
         "type": "ValidationError",
         "pattern": r"ValidationError:\s+(.+)",
-        "severity": "warning"
+        "severity": "warning",
     },
     {
         "type": "DatabaseError",
         "pattern": r"(sqlalchemy\.\w+\.)?(\w*Error):\s+(.+)",
-        "severity": "critical"
+        "severity": "critical",
     },
-    {
-        "type": "HTTP500",
-        "pattern": r"HTTP/\d\.\d\"\s+500",
-        "severity": "critical"
-    },
-    {
-        "type": "HTTP404",
-        "pattern": r"HTTP/\d\.\d\"\s+404",
-        "severity": "warning"
-    },
-    {
-        "type": "Exception",
-        "pattern": r"(\w+Exception):\s+(.+)",
-        "severity": "warning"
-    }
+    {"type": "HTTP500", "pattern": r"HTTP/\d\.\d\"\s+500", "severity": "critical"},
+    {"type": "HTTP404", "pattern": r"HTTP/\d\.\d\"\s+404", "severity": "warning"},
+    {"type": "Exception", "pattern": r"(\w+Exception):\s+(.+)", "severity": "warning"},
 ]
 
 FRONTEND_ERROR_PATTERNS = [
-    {
-        "type": "TypeError",
-        "pattern": r"TypeError:\s+(.+)",
-        "severity": "critical"
-    },
+    {"type": "TypeError", "pattern": r"TypeError:\s+(.+)", "severity": "critical"},
     {
         "type": "ReferenceError",
         "pattern": r"ReferenceError:\s+(.+)",
-        "severity": "critical"
+        "severity": "critical",
     },
-    {
-        "type": "SyntaxError",
-        "pattern": r"SyntaxError:\s+(.+)",
-        "severity": "critical"
-    },
+    {"type": "SyntaxError", "pattern": r"SyntaxError:\s+(.+)", "severity": "critical"},
     {
         "type": "NetworkError",
         "pattern": r"(Network Error|Failed to fetch)",
-        "severity": "warning"
+        "severity": "warning",
     },
-    {
-        "type": "ReactWarning",
-        "pattern": r"Warning:\s+(.+)",
-        "severity": "info"
-    },
-    {
-        "type": "ConsoleError",
-        "pattern": r"Error:\s+(.+)",
-        "severity": "warning"
-    }
+    {"type": "ReactWarning", "pattern": r"Warning:\s+(.+)", "severity": "info"},
+    {"type": "ConsoleError", "pattern": r"Error:\s+(.+)", "severity": "warning"},
 ]
 
 
@@ -122,7 +90,7 @@ class ErrorDetector:
             return []
 
         errors = []
-        with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
 
         for i, line in enumerate(lines):
@@ -137,7 +105,7 @@ class ErrorDetector:
                         "line_number": i + 1,
                         "context": line.strip(),
                         "file": None,  # Extract from traceback if available
-                        "stack_trace": self._extract_stack_trace(lines, i)
+                        "stack_trace": self._extract_stack_trace(lines, i),
                     }
 
                     # Extract module name for import errors
@@ -155,7 +123,7 @@ class ErrorDetector:
             return []
 
         errors = []
-        with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
 
         for i, line in enumerate(lines):
@@ -170,7 +138,7 @@ class ErrorDetector:
                         "line_number": i + 1,
                         "context": line.strip(),
                         "file": None,  # Extract from traceback if available
-                        "stack_trace": self._extract_stack_trace(lines, i)
+                        "stack_trace": self._extract_stack_trace(lines, i),
                     }
 
                     errors.append(error)
@@ -178,11 +146,13 @@ class ErrorDetector:
 
         return errors
 
-    def _extract_stack_trace(self, lines: List[str], error_line: int, max_lines: int = 10) -> str:
+    def _extract_stack_trace(
+        self, lines: List[str], error_line: int, max_lines: int = 10
+    ) -> str:
         """Extract stack trace around error line"""
         start = max(0, error_line - 5)
         end = min(len(lines), error_line + max_lines)
-        return ''.join(lines[start:end])
+        return "".join(lines[start:end])
 
 
 class FixGenerator:
@@ -233,11 +203,11 @@ class FixGenerator:
                     {
                         "type": "shell_command",
                         "command": f"pip install {package_name}",
-                        "description": f"Install {package_name} via pip"
+                        "description": f"Install {package_name} via pip",
                     }
                 ],
                 "estimated_time": "30 seconds",
-                "risk": "low"
+                "risk": "low",
             }
         ]
 
@@ -251,11 +221,11 @@ class FixGenerator:
                 "actions": [
                     {
                         "type": "manual_review",
-                        "description": "Review code and add null checks (e.g., if obj is not None: ...)"
+                        "description": "Review code and add null checks (e.g., if obj is not None: ...)",
                     }
                 ],
                 "estimated_time": "5 minutes",
-                "risk": "low"
+                "risk": "low",
             }
         ]
 
@@ -272,11 +242,11 @@ class FixGenerator:
                     "actions": [
                         {
                             "type": "manual_review",
-                            "description": "Add optional chaining (?.) or null check"
+                            "description": "Add optional chaining (?.) or null check",
                         }
                     ],
                     "estimated_time": "2 minutes",
-                    "risk": "low"
+                    "risk": "low",
                 }
             ]
 
@@ -292,11 +262,11 @@ class FixGenerator:
                 "actions": [
                     {
                         "type": "manual_review",
-                        "description": "Check if frontend is sending all required fields"
+                        "description": "Check if frontend is sending all required fields",
                     }
                 ],
                 "estimated_time": "10 minutes",
-                "risk": "medium"
+                "risk": "medium",
             }
         ]
 
@@ -310,11 +280,11 @@ class FixGenerator:
                 "actions": [
                     {
                         "type": "manual_review",
-                        "description": "Verify backend is running and CORS is configured"
+                        "description": "Verify backend is running and CORS is configured",
                     }
                 ],
                 "estimated_time": "5 minutes",
-                "risk": "low"
+                "risk": "low",
             }
         ]
 
@@ -331,11 +301,11 @@ class FixGenerator:
                     "actions": [
                         {
                             "type": "manual_review",
-                            "description": "Add key={item.id} or key={index} to mapped elements"
+                            "description": "Add key={item.id} or key={index} to mapped elements",
                         }
                     ],
                     "estimated_time": "2 minutes",
-                    "risk": "low"
+                    "risk": "low",
                 }
             ]
 
@@ -351,11 +321,11 @@ class FixGenerator:
                 "actions": [
                     {
                         "type": "manual_review",
-                        "description": f"Investigate {error.get('type')} error"
+                        "description": f"Investigate {error.get('type')} error",
                     }
                 ],
                 "estimated_time": "10 minutes",
-                "risk": "unknown"
+                "risk": "unknown",
             }
         ]
 
@@ -373,7 +343,7 @@ class ReportGenerator:
         backend_log: Optional[Path],
         frontend_log: Optional[Path],
         start_time: datetime,
-        include_fixes: bool = True
+        include_fixes: bool = True,
     ) -> Dict[str, Any]:
         """Generate comprehensive error report"""
 
@@ -397,9 +367,19 @@ class ReportGenerator:
 
         # Calculate statistics
         total_errors = len(backend_errors) + len(frontend_errors)
-        critical = sum(1 for e in backend_errors + frontend_errors if e.get("severity") == "critical")
-        warnings = sum(1 for e in backend_errors + frontend_errors if e.get("severity") == "warning")
-        info = sum(1 for e in backend_errors + frontend_errors if e.get("severity") == "info")
+        critical = sum(
+            1
+            for e in backend_errors + frontend_errors
+            if e.get("severity") == "critical"
+        )
+        warnings = sum(
+            1
+            for e in backend_errors + frontend_errors
+            if e.get("severity") == "warning"
+        )
+        info = sum(
+            1 for e in backend_errors + frontend_errors if e.get("severity") == "info"
+        )
 
         # Determine status
         if critical > 0:
@@ -429,8 +409,8 @@ class ReportGenerator:
                 "backend_errors": len(backend_errors),
                 "frontend_errors": len(frontend_errors),
                 "unique_errors": total_errors,  # TODO: Deduplicate
-                "recurring_errors": 0  # TODO: Detect recurring
-            }
+                "recurring_errors": 0,  # TODO: Detect recurring
+            },
         }
 
         return report
@@ -442,16 +422,30 @@ def main():
     parser.add_argument("--output", required=True, help="Output report file path")
     parser.add_argument("--backend-log", help="Backend log file path")
     parser.add_argument("--frontend-log", help="Frontend log file path")
-    parser.add_argument("--final", action="store_true", help="Final analysis (not incremental)")
-    parser.add_argument("--auto-fix", action="store_true", help="Auto-apply high-confidence fixes")
-    parser.add_argument("--report-only", action="store_true", help="Generate report only, no fixes")
+    parser.add_argument(
+        "--final", action="store_true", help="Final analysis (not incremental)"
+    )
+    parser.add_argument(
+        "--auto-fix", action="store_true", help="Auto-apply high-confidence fixes"
+    )
+    parser.add_argument(
+        "--report-only", action="store_true", help="Generate report only, no fixes"
+    )
 
     args = parser.parse_args()
 
     # Determine log file paths
     reports_dir = script_dir.parent / "reports"
-    backend_log = Path(args.backend_log) if args.backend_log else reports_dir / f"backend_buffer_{args.session_id}.log"
-    frontend_log = Path(args.frontend_log) if args.frontend_log else reports_dir / f"frontend_buffer_{args.session_id}.log"
+    backend_log = (
+        Path(args.backend_log)
+        if args.backend_log
+        else reports_dir / f"backend_buffer_{args.session_id}.log"
+    )
+    frontend_log = (
+        Path(args.frontend_log)
+        if args.frontend_log
+        else reports_dir / f"frontend_buffer_{args.session_id}.log"
+    )
 
     # Generate report
     generator = ReportGenerator()
@@ -463,14 +457,14 @@ def main():
         backend_log=backend_log,
         frontend_log=frontend_log,
         start_time=start_time,
-        include_fixes=include_fixes
+        include_fixes=include_fixes,
     )
 
     # Save report
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
 
     print(f"✅ Report generated: {output_path}")
@@ -483,9 +477,9 @@ def main():
         # TODO: Implement auto-fix logic
 
     # Exit with appropriate code
-    if report['status'] == "ok":
+    if report["status"] == "ok":
         return 0
-    elif report['status'] in ["info_only", "warnings"]:
+    elif report["status"] in ["info_only", "warnings"]:
         return 0
     else:
         return 1

@@ -23,7 +23,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -78,7 +77,7 @@ async def run_sqlite_scenario(sqlite_path: str) -> PersistenceResult:
     builder = build_test_graph()
     async with AsyncSqliteSaver.from_conn_string(sqlite_path) as saver:
         graph = builder.compile(checkpointer=saver)
-        thread_id = f"sqlite-{int(time.time()*1000)}"
+        thread_id = f"sqlite-{int(time.time() * 1000)}"
         bad_config = {
             "configurable": {"thread_id": thread_id, "allow_finalize": False},
         }
@@ -102,7 +101,9 @@ async def run_sqlite_scenario(sqlite_path: str) -> PersistenceResult:
         }
 
         resume_started = time.perf_counter()
-        resume_output = await graph.ainvoke(Command(resume=True), resume_config, durability="sync")
+        resume_output = await graph.ainvoke(
+            Command(resume=True), resume_config, durability="sync"
+        )
         resume_duration_ms = (time.perf_counter() - resume_started) * 1000
 
         return PersistenceResult(
@@ -122,16 +123,20 @@ async def run_firestore_scenario(project: str, collection: str) -> PersistenceRe
 
     try:
         from langgraph_checkpoint_firestore.aio import AsyncFirestoreSaver  # type: ignore
-    except ImportError as exc:  # pragma: no cover - executed only when optional dep is missing
+    except (
+        ImportError
+    ) as exc:  # pragma: no cover - executed only when optional dep is missing
         raise RuntimeError(
             "langgraph-checkpoint-firestore>=3.0.0 not installed; "
             "await upstream release before enabling this test."
         ) from exc
 
     builder = build_test_graph()
-    async with AsyncFirestoreSaver(project_id=project, collection_name=collection) as saver:
+    async with AsyncFirestoreSaver(
+        project_id=project, collection_name=collection
+    ) as saver:
         graph = builder.compile(checkpointer=saver)
-        thread_id = f"firestore-{int(time.time()*1000)}"
+        thread_id = f"firestore-{int(time.time() * 1000)}"
         bad_config = {
             "configurable": {"thread_id": thread_id, "allow_finalize": False},
         }
@@ -154,7 +159,9 @@ async def run_firestore_scenario(project: str, collection: str) -> PersistenceRe
         }
 
         resume_started = time.perf_counter()
-        resume_output = await graph.ainvoke(Command(resume=True), resume_config, durability="sync")
+        resume_output = await graph.ainvoke(
+            Command(resume=True), resume_config, durability="sync"
+        )
         resume_duration_ms = (time.perf_counter() - resume_started) * 1000
 
         return PersistenceResult(
@@ -223,9 +230,13 @@ async def main_async(args: argparse.Namespace) -> None:
             print(f"[langgraph] Firestore scenario skipped: {exc}")
         else:
             if args.no_write:
-                print(json.dumps(asdict(firestore_result), indent=2, ensure_ascii=False))
+                print(
+                    json.dumps(asdict(firestore_result), indent=2, ensure_ascii=False)
+                )
             else:
-                firestore_report_path = REPORT_DIR / f"{args.report_prefix}-firestore.json"
+                firestore_report_path = (
+                    REPORT_DIR / f"{args.report_prefix}-firestore.json"
+                )
                 write_report(firestore_result, firestore_report_path)
                 print(f"[langgraph] Firestore persistence OK → {firestore_report_path}")
 
@@ -241,4 +252,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

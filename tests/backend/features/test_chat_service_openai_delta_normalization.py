@@ -13,20 +13,24 @@ def call(raw):
 
 
 def test_normalizes_list_of_parts():
-    parts = [DummyPart('R\u00e9ponse '), DummyPart('initiale'), DummyPart(' compl\u00e8te')]
-    assert call(parts) == 'R\u00e9ponse initiale compl\u00e8te'
+    parts = [
+        DummyPart("R\u00e9ponse "),
+        DummyPart("initiale"),
+        DummyPart(" compl\u00e8te"),
+    ]
+    assert call(parts) == "R\u00e9ponse initiale compl\u00e8te"
 
 
 def test_normalizes_list_of_dicts():
-    parts = [{'text': 'Bonjour'}, {'text': ' monde'}, {'no_text': 'ignored'}]
-    assert call(parts) == 'Bonjour monde'
+    parts = [{"text": "Bonjour"}, {"text": " monde"}, {"no_text": "ignored"}]
+    assert call(parts) == "Bonjour monde"
 
 
 def test_handles_string_and_none():
-    assert call('plain text') == 'plain text'
-    assert call(None) == ''
+    assert call("plain text") == "plain text"
+    assert call(None) == ""
 
 
 def test_fallback_to_str():
-    raw = types.SimpleNamespace(value='x')
-    assert call(raw).startswith('namespace')
+    raw = types.SimpleNamespace(value="x")
+    assert call(raw).startswith("namespace")

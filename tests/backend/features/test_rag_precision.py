@@ -29,7 +29,9 @@ class TestSpecificityScore:
         score = compute_specificity_score(text)
 
         assert 0.0 <= score <= 1.0, "Score doit être entre 0 et 1"
-        assert score > 0.5, f"Texte à haute spécificité devrait scorer > 0.5 (got {score:.3f})"
+        assert score > 0.5, (
+            f"Texte à haute spécificité devrait scorer > 0.5 (got {score:.3f})"
+        )
 
     def test_specificity_low_density_common_words(self):
         """Texte avec mots communs courts → score faible"""
@@ -64,7 +66,9 @@ class TestSpecificityScore:
         score = compute_specificity_score(text)
 
         assert 0.0 <= score <= 1.0, "Score doit être entre 0 et 1"
-        assert score > 0.6, f"Texte riche en nombres devrait scorer > 0.6 (got {score:.3f})"
+        assert score > 0.6, (
+            f"Texte riche en nombres devrait scorer > 0.6 (got {score:.3f})"
+        )
 
 
 class TestLexicalRerank:
@@ -75,21 +79,35 @@ class TestLexicalRerank:
         query = "train machine learning model"
         results = [
             {"id": "1", "text": "deep learning neural networks", "distance": 0.3},
-            {"id": "2", "text": "train ML model with gradient descent", "distance": 0.4},
+            {
+                "id": "2",
+                "text": "train ML model with gradient descent",
+                "distance": 0.4,
+            },
             {"id": "3", "text": "data preprocessing techniques", "distance": 0.5},
         ]
 
         reranked = rerank_with_lexical_overlap(query, results, topk=3)
 
         assert len(reranked) == 3, "Devrait retourner 3 résultats"
-        assert all("rerank_score" in r for r in reranked), "Tous devraient avoir rerank_score"
-        assert all("jaccard_score" in r for r in reranked), "Tous devraient avoir jaccard_score"
-        assert all("cosine_sim" in r for r in reranked), "Tous devraient avoir cosine_sim"
+        assert all("rerank_score" in r for r in reranked), (
+            "Tous devraient avoir rerank_score"
+        )
+        assert all("jaccard_score" in r for r in reranked), (
+            "Tous devraient avoir jaccard_score"
+        )
+        assert all("cosine_sim" in r for r in reranked), (
+            "Tous devraient avoir cosine_sim"
+        )
 
         # Vérifier que le reranking a bien été appliqué (les scores sont présents et triés)
         # Note: Le scoring combine distance + jaccard + cosine, donc l'ordre peut varier
-        assert reranked[0]["rerank_score"] >= reranked[1]["rerank_score"], "Scores doivent être triés décroissants"
-        assert reranked[1]["rerank_score"] >= reranked[2]["rerank_score"], "Scores doivent être triés décroissants"
+        assert reranked[0]["rerank_score"] >= reranked[1]["rerank_score"], (
+            "Scores doivent être triés décroissants"
+        )
+        assert reranked[1]["rerank_score"] >= reranked[2]["rerank_score"], (
+            "Scores doivent être triés décroissants"
+        )
 
     def test_rerank_empty_results(self):
         """Test avec liste vide"""
@@ -111,8 +129,16 @@ class TestLexicalRerank:
         """Vérifier le calcul Jaccard correct"""
         query = "apple banana"
         results = [
-            {"id": "1", "text": "apple banana cherry", "distance": 0.5},  # Jaccard = 2/3 = 0.67
-            {"id": "2", "text": "apple orange", "distance": 0.5},          # Jaccard = 1/3 = 0.33
+            {
+                "id": "1",
+                "text": "apple banana cherry",
+                "distance": 0.5,
+            },  # Jaccard = 2/3 = 0.67
+            {
+                "id": "2",
+                "text": "apple orange",
+                "distance": 0.5,
+            },  # Jaccard = 1/3 = 0.33
         ]
 
         reranked = rerank_with_lexical_overlap(query, results, topk=2)
@@ -138,7 +164,9 @@ class TestRecencyDecay:
         age_days = 30.0
         score = recency_decay(age_days, half_life=30.0)
 
-        assert abs(score - 0.5) < 0.01, f"À half-life, score devrait être ~0.5 (got {score:.3f})"
+        assert abs(score - 0.5) < 0.01, (
+            f"À half-life, score devrait être ~0.5 (got {score:.3f})"
+        )
 
     def test_recency_decay_old_doc(self):
         """Document ancien → score faible"""
@@ -195,7 +223,9 @@ class TestRAGPrecisionIntegration:
             },
         ]
 
-    def test_specificity_boost_prioritizes_informative_chunks(self, mock_vector_results):
+    def test_specificity_boost_prioritizes_informative_chunks(
+        self, mock_vector_results
+    ):
         """
         Test que les chunks à forte densité IDF remontent dans le top-3.
         """
@@ -213,7 +243,9 @@ class TestRAGPrecisionIntegration:
             cosine_score = max(0.0, 1.0 - (distance / 2.0))
 
             # Score combiné
-            combined_score = (1 - specificity_weight) * cosine_score + specificity_weight * specificity_score
+            combined_score = (
+                1 - specificity_weight
+            ) * cosine_score + specificity_weight * specificity_score
 
             result["specificity_score"] = specificity_score
             result["combined_score"] = combined_score
@@ -227,7 +259,9 @@ class TestRAGPrecisionIntegration:
         assert top1["id"] == "recent_specific", (
             f"Document à haute spécificité devrait être top-1 (got {top1['id']})"
         )
-        assert top1["specificity_score"] > 0.5, "Document spécifique devrait avoir score > 0.5"
+        assert top1["specificity_score"] > 0.5, (
+            "Document spécifique devrait avoir score > 0.5"
+        )
 
     def test_recency_boost_prioritizes_recent_docs(self, mock_vector_results):
         """
@@ -259,7 +293,9 @@ class TestRAGPrecisionIntegration:
         # Vérifications
         # Document récent devrait être mieux classé
         top_doc = mock_vector_results[0]
-        assert top_doc["age_days"] < 10, f"Document top-1 devrait être récent (got {top_doc['age_days']:.1f} jours)"
+        assert top_doc["age_days"] < 10, (
+            f"Document top-1 devrait être récent (got {top_doc['age_days']:.1f} jours)"
+        )
 
     def test_ranking_stability_short_vs_long_queries(self):
         """
@@ -269,20 +305,32 @@ class TestRAGPrecisionIntegration:
         query_long = "train machine learning model with hyperparameter optimization"
 
         results = [
-            {"id": "1", "text": "train ML model with gradient descent", "distance": 0.3},
+            {
+                "id": "1",
+                "text": "train ML model with gradient descent",
+                "distance": 0.3,
+            },
             {"id": "2", "text": "deep learning neural networks", "distance": 0.4},
-            {"id": "3", "text": "machine learning hyperparameter tuning", "distance": 0.35},
+            {
+                "id": "3",
+                "text": "machine learning hyperparameter tuning",
+                "distance": 0.35,
+            },
         ]
 
         # Rerank avec requête courte
-        reranked_short = rerank_with_lexical_overlap(query_short, results.copy(), topk=3)
+        reranked_short = rerank_with_lexical_overlap(
+            query_short, results.copy(), topk=3
+        )
 
         # Rerank avec requête longue
         reranked_long = rerank_with_lexical_overlap(query_long, results.copy(), topk=3)
 
         # Le top-1 devrait être le même (stabilité)
         # Note: Peut varier selon le contenu, vérifier que l'ordre est cohérent
-        assert len(reranked_short) == len(reranked_long) == 3, "Devrait retourner 3 résultats"
+        assert len(reranked_short) == len(reranked_long) == 3, (
+            "Devrait retourner 3 résultats"
+        )
 
         # Vérifier que des résultats pertinents sont dans le top-3
         top_ids_short = {r["id"] for r in reranked_short}
@@ -309,7 +357,11 @@ class TestRAGMetrics:
             # Query 3: doc pertinent hors top-3 → miss
             [{"id": "irrelevant1", "score": 0.6}, {"id": "irrelevant2", "score": 0.5}],
             # Query 4: doc pertinent en position 3 → hit
-            [{"id": "irrelevant1", "score": 0.7}, {"id": "irrelevant2", "score": 0.65}, {"id": "relevant", "score": 0.6}],
+            [
+                {"id": "irrelevant1", "score": 0.7},
+                {"id": "irrelevant2", "score": 0.65},
+                {"id": "relevant", "score": 0.6},
+            ],
             # Query 5: doc pertinent en position 1 → hit
             [{"id": "relevant", "score": 0.95}],
         ]
@@ -345,7 +397,9 @@ class TestRAGMetrics:
 
         mrr = sum(reciprocal_ranks) / len(reciprocal_ranks)
         expected_mrr = (1.0 + 0.5 + 0.0 + 0.333) / 4
-        assert abs(mrr - expected_mrr) < 0.01, f"MRR devrait être ~{expected_mrr:.3f} (got {mrr:.3f})"
+        assert abs(mrr - expected_mrr) < 0.01, (
+            f"MRR devrait être ~{expected_mrr:.3f} (got {mrr:.3f})"
+        )
 
     def test_latency_p95(self):
         """
@@ -369,7 +423,9 @@ class TestRAGMetrics:
         p95_latency = latencies[p95_index]
 
         # Latence P95 devrait être < 5ms (optimisation rapide)
-        assert p95_latency < 5.0, f"Latence P95 devrait être < 5ms (got {p95_latency:.2f}ms)"
+        assert p95_latency < 5.0, (
+            f"Latence P95 devrait être < 5ms (got {p95_latency:.2f}ms)"
+        )
 
     def test_rerank_latency_p95(self):
         """
@@ -393,7 +449,9 @@ class TestRAGMetrics:
         p95_latency = latencies[p95_index]
 
         # Latence P95 devrait être < 10ms (rerank rapide)
-        assert p95_latency < 10.0, f"Latence P95 rerank devrait être < 10ms (got {p95_latency:.2f}ms)"
+        assert p95_latency < 10.0, (
+            f"Latence P95 rerank devrait être < 10ms (got {p95_latency:.2f}ms)"
+        )
 
 
 # ============================================================

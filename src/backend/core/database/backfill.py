@@ -1,5 +1,6 @@
 # src/backend/core/database/backfill.py
 """Utilities to backfill user-scoped data after introducing user_id columns."""
+
 from __future__ import annotations
 
 import hashlib
@@ -85,9 +86,7 @@ async def _apply_session_mapping(
     if not mapping:
         return
     updates = [
-        (user_id, session_id)
-        for session_id, user_id in mapping.items()
-        if session_id
+        (user_id, session_id) for session_id, user_id in mapping.items() if session_id
     ]
     if not updates:
         return
@@ -189,6 +188,7 @@ async def _apply_placeholder_aliases(
             )
     return total_updated
 
+
 async def _backfill_from_threads(db: DatabaseManager) -> None:
     await db.execute(
         """
@@ -206,8 +206,7 @@ async def _backfill_from_threads(db: DatabaseManager) -> None:
                   AND threads.user_id IS NOT NULL
                   AND threads.user_id <> ''
            )
-        """
-        ,
+        """,
         commit=True,
     )
     await db.execute(
@@ -226,8 +225,7 @@ async def _backfill_from_threads(db: DatabaseManager) -> None:
                   AND threads.user_id IS NOT NULL
                   AND threads.user_id <> ''
            )
-        """
-        ,
+        """,
         commit=True,
     )
 
@@ -249,8 +247,7 @@ async def _backfill_document_chunks(db: DatabaseManager) -> None:
                   AND documents.user_id IS NOT NULL
                   AND documents.user_id <> ''
            )
-        """
-        ,
+        """,
         commit=True,
     )
 

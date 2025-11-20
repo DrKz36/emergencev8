@@ -19,7 +19,9 @@ sys.path.insert(0, str(project_root / "src"))
 # Import après sys.path modification
 from backend.features.memory.vector_service import VectorService  # noqa: E402
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "emergence_knowledge"
@@ -32,21 +34,19 @@ def migrate_concept_metadata():
     logger.info(f"🔄 Starting metadata migration for collection: {COLLECTION_NAME}")
 
     # Configuration par défaut alignée avec le backend
-    persist_directory = os.getenv("EMERGENCE_VECTOR_DIR", "./src/backend/data/vector_store")
+    persist_directory = os.getenv(
+        "EMERGENCE_VECTOR_DIR", "./src/backend/data/vector_store"
+    )
     embed_model_name = os.getenv("EMBED_MODEL_NAME", "all-MiniLM-L6-v2")
 
     vector_service = VectorService(
-        persist_directory=persist_directory,
-        embed_model_name=embed_model_name
+        persist_directory=persist_directory, embed_model_name=embed_model_name
     )
     collection = vector_service.get_or_create_collection(COLLECTION_NAME)
 
     # Get all concepts
     try:
-        result = collection.get(
-            where={"type": "concept"},
-            include=["metadatas"]
-        )
+        result = collection.get(where={"type": "concept"}, include=["metadatas"])
     except Exception as e:
         logger.error(f"❌ Failed to fetch concepts: {e}")
         return
@@ -70,7 +70,9 @@ def migrate_concept_metadata():
             if meta.get("first_mentioned_at"):
                 skipped_count += 1
                 if i % 100 == 0:
-                    logger.info(f"⏭️  [{i}/{len(ids)}] Skipping already migrated concept: {vector_id}")
+                    logger.info(
+                        f"⏭️  [{i}/{len(ids)}] Skipping already migrated concept: {vector_id}"
+                    )
                 continue
 
             # Enrich metadata
@@ -86,15 +88,14 @@ def migrate_concept_metadata():
             updated_meta["thread_id"] = None
 
             # Update in ChromaDB
-            collection.update(
-                ids=[vector_id],
-                metadatas=[updated_meta]
-            )
+            collection.update(ids=[vector_id], metadatas=[updated_meta])
 
             migrated_count += 1
 
             if (i + 1) % 100 == 0:
-                logger.info(f"✅ [{i + 1}/{len(ids)}] Migrated {migrated_count} concepts")
+                logger.info(
+                    f"✅ [{i + 1}/{len(ids)}] Migrated {migrated_count} concepts"
+                )
 
         except Exception as e:
             error_count += 1

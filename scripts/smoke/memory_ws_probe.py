@@ -55,7 +55,9 @@ class Probe:
     async def _connect(self):
         # Toujours proposer 'jwt'; ajouter le token si dispo (mimique du front). :contentReference[oaicite:2]{index=2}
         subprotocols = ["jwt"] + ([self.token] if self.token else [])
-        print(f"[probe] connect → {self.ws_url}  (session_id={self.session_id}, subprotocols={subprotocols}, origin={self.origin})")
+        print(
+            f"[probe] connect → {self.ws_url}  (session_id={self.session_id}, subprotocols={subprotocols}, origin={self.origin})"
+        )
         # NB: PAS d'extra_headers (incompatible sur ta version)
         return await websockets.connect(
             self.ws_url,
@@ -146,7 +148,11 @@ class Probe:
         )
 
     async def test_C(self, agent):
-        text = "Quel est ton mot-code ?" if agent == "anima" else "Quel est le mot-code d'Anima ?"
+        text = (
+            "Quel est ton mot-code ?"
+            if agent == "anima"
+            else "Quel est le mot-code d'Anima ?"
+        )
         await self.run_once(agent, text, use_rag=False)
 
     async def test_D(self, agent, text, use_rag):
@@ -176,12 +182,17 @@ class Probe:
         recent_types = [
             event_type
             for (event_type, _payload) in self.events[before:]
-            if event_type.startswith("ws:chat_stream_") or event_type == "ws:analysis_status"
+            if event_type.startswith("ws:chat_stream_")
+            or event_type == "ws:analysis_status"
         ]
         ok_start = "ws:chat_stream_start" in recent_types
         ok_end = "ws:chat_stream_end" in recent_types
-        completed_count = sum(1 for event_type in recent_types if event_type == "ws:analysis_status")
-        print(f"[probe:F] order-ok(start={ok_start}, end={ok_end}), completed_count={completed_count}")
+        completed_count = sum(
+            1 for event_type in recent_types if event_type == "ws:analysis_status"
+        )
+        print(
+            f"[probe:F] order-ok(start={ok_start}, end={ok_end}), completed_count={completed_count}"
+        )
 
 
 async def main():
@@ -198,7 +209,9 @@ async def main():
     ap.add_argument("--session-id", dest="session_id", default=None)
     args = ap.parse_args()
 
-    probe = Probe(args.base, token=args.token, timeout=args.timeout, session_id=args.session_id)
+    probe = Probe(
+        args.base, token=args.token, timeout=args.timeout, session_id=args.session_id
+    )
     print(f"[probe] using session_id={probe.session_id}")
     run = args.run.upper()
 

@@ -10,7 +10,6 @@ Usage:
     python scripts/migrate_agent_memory.py --default-agent neo --dry-run
 """
 
-import os
 import sys
 import argparse
 import logging
@@ -22,17 +21,14 @@ sys.path.insert(0, str(root_dir / "src"))
 
 from backend.features.memory.vector_service import VectorService
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(levelname)s] %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def migrate_agent_memory(
     default_agent_id: str = "anima",
     dry_run: bool = False,
-    collection_name: str = "emergence_knowledge"
+    collection_name: str = "emergence_knowledge",
 ):
     """
     Migre les souvenirs existants en ajoutant agent_id.
@@ -119,22 +115,23 @@ def migrate_agent_memory(
         total_updated = 0
 
         for i in range(0, len(ids_to_update), batch_size):
-            batch_ids = ids_to_update[i:i+batch_size]
-            batch_metas = metadatas_to_update[i:i+batch_size]
+            batch_ids = ids_to_update[i : i + batch_size]
+            batch_metas = metadatas_to_update[i : i + batch_size]
 
             try:
-                collection.update(
-                    ids=batch_ids,
-                    metadatas=batch_metas
-                )
+                collection.update(ids=batch_ids, metadatas=batch_metas)
                 total_updated += len(batch_ids)
-                logger.info(f"   ✅ Batch {i//batch_size + 1}: {len(batch_ids)} items mis à jour ({total_updated}/{len(ids_to_update)})")
+                logger.info(
+                    f"   ✅ Batch {i // batch_size + 1}: {len(batch_ids)} items mis à jour ({total_updated}/{len(ids_to_update)})"
+                )
             except Exception as e:
-                logger.error(f"   ❌ Erreur batch {i//batch_size + 1}: {e}")
+                logger.error(f"   ❌ Erreur batch {i // batch_size + 1}: {e}")
                 continue
 
         logger.info("")
-        logger.info(f"✅ Migration terminée : {total_updated}/{len(ids_to_update)} items mis à jour")
+        logger.info(
+            f"✅ Migration terminée : {total_updated}/{len(ids_to_update)} items mis à jour"
+        )
 
     # Vérification post-migration
     if not dry_run:
@@ -153,7 +150,9 @@ def migrate_agent_memory(
             if missing_agent_id == 0:
                 logger.info("✅ Tous les items vérifiés ont agent_id")
             else:
-                logger.warning(f"⚠️ {missing_agent_id}/10 items échantillon n'ont toujours pas agent_id")
+                logger.warning(
+                    f"⚠️ {missing_agent_id}/10 items échantillon n'ont toujours pas agent_id"
+                )
         except Exception as e:
             logger.warning(f"⚠️ Erreur vérification: {e}")
 
@@ -170,18 +169,16 @@ def main():
         type=str,
         default="anima",
         choices=["anima", "neo", "nexus"],
-        help="Agent par défaut pour items sans agent_id (default: anima)"
+        help="Agent par défaut pour items sans agent_id (default: anima)",
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Simuler sans modifier la base"
+        "--dry-run", action="store_true", help="Simuler sans modifier la base"
     )
     parser.add_argument(
         "--collection",
         type=str,
         default="emergence_knowledge",
-        help="Nom de la collection ChromaDB (default: emergence_knowledge)"
+        help="Nom de la collection ChromaDB (default: emergence_knowledge)",
     )
 
     args = parser.parse_args()
@@ -189,7 +186,7 @@ def main():
     migrate_agent_memory(
         default_agent_id=args.default_agent,
         dry_run=args.dry_run,
-        collection_name=args.collection
+        collection_name=args.collection,
     )
 
 

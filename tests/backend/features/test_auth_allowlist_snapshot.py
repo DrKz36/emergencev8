@@ -45,7 +45,9 @@ class _StubCollection:
         self._name = name
 
     def document(self, name: str) -> _StubDocument:
-        self._store.setdefault("documents", []).append({"collection": self._name, "document": name})
+        self._store.setdefault("documents", []).append(
+            {"collection": self._name, "document": name}
+        )
         return _StubDocument(self._store, self._name, name)
 
 

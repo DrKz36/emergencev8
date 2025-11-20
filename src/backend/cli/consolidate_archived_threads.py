@@ -43,8 +43,7 @@ import click
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,7 @@ async def get_unconsolidated_archived_threads(
     db_manager: Any,
     user_id: Optional[str] = None,
     limit: Optional[int] = None,
-    force: bool = False
+    force: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Fetch archived threads that haven't been consolidated yet.
@@ -94,9 +93,7 @@ async def get_unconsolidated_archived_threads(
 
 
 async def consolidate_thread(
-    gardener: Any,
-    thread: Dict[str, Any],
-    verbose: bool = False
+    gardener: Any, thread: Dict[str, Any], verbose: bool = False
 ) -> Dict[str, Any]:
     """
     Consolidate a single thread using the MemoryGardener.
@@ -109,34 +106,35 @@ async def consolidate_thread(
     Returns:
         Result dictionary with status and stats
     """
-    thread_id = thread['id']
-    session_id = thread['session_id']
-    user_id = thread['user_id']
+    thread_id = thread["id"]
+    session_id = thread["session_id"]
+    user_id = thread["user_id"]
 
     if verbose:
-        logger.info(f"  Processing thread: {thread_id[:8]}... (messages: {thread.get('message_count', 0)})")
+        logger.info(
+            f"  Processing thread: {thread_id[:8]}... (messages: {thread.get('message_count', 0)})"
+        )
 
     try:
         result = await gardener._tend_single_thread(
-            thread_id=thread_id,
-            session_id=session_id,
-            user_id=user_id
+            thread_id=thread_id, session_id=session_id, user_id=user_id
         )
 
-        if verbose and result.get('status') == 'success':
-            new_concepts = result.get('new_concepts', 0)
+        if verbose and result.get("status") == "success":
+            new_concepts = result.get("new_concepts", 0)
             logger.info(f"    ✓ Success: {new_concepts} concepts/items added to LTM")
 
         from typing import cast
+
         return cast(Dict[str, Any], result)
 
     except Exception as e:
         logger.error(f"    ✗ Error consolidating thread {thread_id[:8]}...: {e}")
         return {
-            'status': 'error',
-            'message': str(e),
-            'consolidated_sessions': 0,
-            'new_concepts': 0
+            "status": "error",
+            "message": str(e),
+            "consolidated_sessions": 0,
+            "new_concepts": 0,
         }
 
 
@@ -145,7 +143,7 @@ async def run_consolidation(
     limit: Optional[int] = None,
     force: bool = False,
     dry_run: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> None:
     """
     Main consolidation logic.
@@ -173,24 +171,20 @@ async def run_consolidation(
     embed_model_name = os.getenv("EMBED_MODEL_NAME", "all-MiniLM-L6-v2")
 
     vector_service = VectorService(
-        persist_directory=persist_directory,
-        embed_model_name=embed_model_name
+        persist_directory=persist_directory, embed_model_name=embed_model_name
     )
     memory_analyzer = MemoryAnalyzer(db_manager=db_manager)
 
     gardener = MemoryGardener(
         db_manager=db_manager,
         vector_service=vector_service,
-        memory_analyzer=memory_analyzer
+        memory_analyzer=memory_analyzer,
     )
 
     # Fetch threads to consolidate
     logger.info("Fetching archived threads...")
     threads = await get_unconsolidated_archived_threads(
-        db_manager,
-        user_id=user_id,
-        limit=limit,
-        force=force
+        db_manager, user_id=user_id, limit=limit, force=force
     )
 
     if not threads:
@@ -202,10 +196,12 @@ async def run_consolidation(
     if dry_run:
         logger.info("\n=== DRY RUN MODE - No changes will be made ===\n")
         for i, thread in enumerate(threads, 1):
-            logger.info(f"{i}. Thread {thread['id'][:8]}... ({thread.get('message_count', 0)} messages)")
+            logger.info(
+                f"{i}. Thread {thread['id'][:8]}... ({thread.get('message_count', 0)} messages)"
+            )
             logger.info(f"   User: {thread.get('user_id', 'unknown')}")
             logger.info(f"   Archived: {thread.get('archived_at', 'unknown')}")
-            if thread.get('consolidated_at'):
+            if thread.get("consolidated_at"):
                 logger.info(f"   Previously consolidated: {thread['consolidated_at']}")
         return
 
@@ -213,11 +209,11 @@ async def run_consolidation(
     logger.info(f"\nStarting consolidation of {len(threads)} thread(s)...\n")
 
     stats = {
-        'total': len(threads),
-        'success': 0,
-        'skipped': 0,
-        'errors': 0,
-        'total_concepts': 0
+        "total": len(threads),
+        "success": 0,
+        "skipped": 0,
+        "errors": 0,
+        "total_concepts": 0,
     }
 
     start_time = datetime.now(timezone.utc)
@@ -227,15 +223,15 @@ async def run_consolidation(
 
         result = await consolidate_thread(gardener, thread, verbose=verbose)
 
-        if result.get('status') == 'success':
-            new_concepts = result.get('new_concepts', 0)
+        if result.get("status") == "success":
+            new_concepts = result.get("new_concepts", 0)
             if new_concepts > 0:
-                stats['success'] += 1
-                stats['total_concepts'] += new_concepts
+                stats["success"] += 1
+                stats["total_concepts"] += new_concepts
             else:
-                stats['skipped'] += 1
+                stats["skipped"] += 1
         else:
-            stats['errors'] += 1
+            stats["errors"] += 1
 
     end_time = datetime.now(timezone.utc)
     duration = (end_time - start_time).total_seconds()
@@ -252,8 +248,10 @@ async def run_consolidation(
     logger.info(f"Duration:                   {duration:.2f} seconds")
     logger.info("=" * 60)
 
-    if stats['errors'] > 0:
-        logger.warning(f"\n⚠️  {stats['errors']} thread(s) failed to consolidate. Check logs for details.")
+    if stats["errors"] > 0:
+        logger.warning(
+            f"\n⚠️  {stats['errors']} thread(s) failed to consolidate. Check logs for details."
+        )
     else:
         logger.info("\n✓ All threads consolidated successfully!")
 
@@ -261,11 +259,19 @@ async def run_consolidation(
 
 
 @click.command()
-@click.option('--user-id', type=str, default=None, help='Consolidate only for specific user')
-@click.option('--limit', type=int, default=None, help='Max number of threads to process')
-@click.option('--force', is_flag=True, help='Reconsolidate even if already consolidated')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without actually doing it')
-@click.option('--verbose', '-v', is_flag=True, help='Show detailed progress')
+@click.option(
+    "--user-id", type=str, default=None, help="Consolidate only for specific user"
+)
+@click.option(
+    "--limit", type=int, default=None, help="Max number of threads to process"
+)
+@click.option(
+    "--force", is_flag=True, help="Reconsolidate even if already consolidated"
+)
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without actually doing it"
+)
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
 def main(user_id, limit, force, dry_run, verbose):
     """
     Consolidate archived threads to Long-Term Memory.
@@ -277,13 +283,15 @@ def main(user_id, limit, force, dry_run, verbose):
         logging.getLogger().setLevel(logging.DEBUG)
 
     try:
-        asyncio.run(run_consolidation(
-            user_id=user_id,
-            limit=limit,
-            force=force,
-            dry_run=dry_run,
-            verbose=verbose
-        ))
+        asyncio.run(
+            run_consolidation(
+                user_id=user_id,
+                limit=limit,
+                force=force,
+                dry_run=dry_run,
+                verbose=verbose,
+            )
+        )
     except KeyboardInterrupt:
         logger.info("\n\nConsolidation interrupted by user")
         sys.exit(1)
@@ -292,5 +300,5 @@ def main(user_id, limit, force, dry_run, verbose):
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

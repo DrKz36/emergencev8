@@ -10,7 +10,12 @@ from backend.shared.app_settings import Settings
 
 @pytest.fixture(autouse=True)
 def clear_api_env(monkeypatch):
-    for key in ("GOOGLE_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+    for key in (
+        "GOOGLE_API_KEY",
+        "GEMINI_API_KEY",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+    ):
         monkeypatch.delenv(key, raising=False)
 
 

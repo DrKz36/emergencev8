@@ -1,4 +1,4 @@
-﻿# src/backend/features/debate/router.py
+# src/backend/features/debate/router.py
 # V3.1 - REST "lecture seule" des debats actifs
 # - DI conforme au ServiceContainer
 # - Endpoints: GET / (liste), GET /{debate_id} (detail)
@@ -26,8 +26,11 @@ async def get_debate_details(
     """Recupere les details d'un debat actif (structure Pydantic serialisable)."""
     session = getattr(debate_service, "active_debates", {}).get(debate_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Debat non trouve dans les sessions actives.")
+        raise HTTPException(
+            status_code=404, detail="Debat non trouve dans les sessions actives."
+        )
     from typing import cast
+
     return cast(dict[str, Any], session.model_dump(mode="json"))
 
 
@@ -42,6 +45,4 @@ async def list_active_debates(
         {"debate_id": debate_id, "topic": state.config.topic, "status": state.status}
         for debate_id, state in active.items()
     ]
-    return {
-        "active_debates": debate_list
-    }
+    return {"active_debates": debate_list}

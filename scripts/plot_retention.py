@@ -25,7 +25,6 @@ import os
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 
 # Configuration
 ROOT_DIR = Path(__file__).parent.parent
@@ -43,9 +42,9 @@ else:
 
 def plot_all():
     """Génère le graphique comparatif de rétention pour tous les agents."""
-    print("="*80)
+    print("=" * 80)
     print("📈 GÉNÉRATION DU GRAPHIQUE DE RÉTENTION MÉMOIRE")
-    print("="*80)
+    print("=" * 80)
 
     # Recherche des fichiers CSV
     csv_files = list(ROOT_DIR.glob("memory_results_*.csv"))
@@ -62,12 +61,12 @@ def plot_all():
 
     # Configuration du graphique
     plt.figure(figsize=(10, 6))
-    plt.style.use('seaborn-v0_8-darkgrid')
+    plt.style.use("seaborn-v0_8-darkgrid")
 
     colors = {
-        'neo': '#3498db',      # Bleu
-        'anima': '#e74c3c',    # Rouge
-        'nexus': '#2ecc71'     # Vert
+        "neo": "#3498db",  # Bleu
+        "anima": "#e74c3c",  # Rouge
+        "nexus": "#2ecc71",  # Vert
     }
 
     agents_plotted = []
@@ -84,17 +83,13 @@ def plot_all():
                 continue
 
             # Agrégation par tick (moyenne des scores)
-            pivot = df.pivot_table(
-                index="tick",
-                values="score",
-                aggfunc="mean"
-            )
+            pivot = df.pivot_table(index="tick", values="score", aggfunc="mean")
 
             # Réindexation pour garantir l'ordre correct des ticks
             pivot = pivot.reindex(TICK_ORDER, fill_value=0)
 
             # Tracé de la courbe
-            color = colors.get(agent_name.lower(), '#95a5a6')
+            color = colors.get(agent_name.lower(), "#95a5a6")
             plt.plot(
                 pivot.index,
                 pivot["score"],
@@ -102,7 +97,7 @@ def plot_all():
                 markersize=8,
                 linewidth=2,
                 label=agent_name,
-                color=color
+                color=color,
             )
 
             agents_plotted.append(agent_name)
@@ -121,22 +116,25 @@ def plot_all():
         return
 
     # Finalisation du graphique
-    plt.title("Courbe de rétention mémoire – Agents ÉMERGENCE", fontsize=16, fontweight='bold')
+    plt.title(
+        "Courbe de rétention mémoire – Agents ÉMERGENCE", fontsize=16, fontweight="bold"
+    )
     plt.xlabel("Échéance temporelle", fontsize=12)
     plt.ylabel("Score de rétention (0-1)", fontsize=12)
     plt.ylim(-0.05, 1.05)
     plt.grid(True, alpha=0.3)
-    plt.legend(loc='best', fontsize=11)
+    plt.legend(loc="best", fontsize=11)
 
     # Annotations
     mode_text = "MODE DEBUG (délais courts)" if DEBUG_MODE else "Mode production"
     plt.text(
-        0.02, 0.98,
+        0.02,
+        0.98,
         mode_text,
         transform=plt.gca().transAxes,
         fontsize=9,
-        verticalalignment='top',
-        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3)
+        verticalalignment="top",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.3),
     )
 
     plt.tight_layout()
@@ -144,11 +142,11 @@ def plot_all():
     # Sauvegarde
     plt.savefig(OUTPUT_PNG, dpi=150)
     print()
-    print("="*80)
-    print(f"✅ Graphique généré avec succès")
+    print("=" * 80)
+    print("✅ Graphique généré avec succès")
     print(f"📊 Fichier : {OUTPUT_PNG}")
     print(f"👥 Agents tracés : {', '.join(agents_plotted)}")
-    print("="*80)
+    print("=" * 80)
 
 
 def plot_detailed():
@@ -178,10 +176,7 @@ def plot_detailed():
 
             # Pivot par tick et fact_id
             pivot = df.pivot_table(
-                index="tick",
-                columns="fact_id",
-                values="score",
-                aggfunc="mean"
+                index="tick", columns="fact_id", values="score", aggfunc="mean"
             )
 
             # Réindexation
@@ -190,20 +185,16 @@ def plot_detailed():
             # Tracé de chaque fait
             for fact_id in pivot.columns:
                 ax.plot(
-                    pivot.index,
-                    pivot[fact_id],
-                    marker="o",
-                    label=fact_id,
-                    linewidth=2
+                    pivot.index, pivot[fact_id], marker="o", label=fact_id, linewidth=2
                 )
 
-            ax.set_title(f"Agent {agent_name}", fontsize=14, fontweight='bold')
+            ax.set_title(f"Agent {agent_name}", fontsize=14, fontweight="bold")
             ax.set_xlabel("Échéance", fontsize=11)
             if idx == 0:
                 ax.set_ylabel("Score", fontsize=11)
             ax.set_ylim(-0.05, 1.05)
             ax.grid(True, alpha=0.3)
-            ax.legend(loc='best')
+            ax.legend(loc="best")
 
         except Exception as e:
             print(f"❌ Erreur pour {agent_name}: {e}")
@@ -226,4 +217,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Erreur fatale: {e}")
         import traceback
+
         traceback.print_exc()

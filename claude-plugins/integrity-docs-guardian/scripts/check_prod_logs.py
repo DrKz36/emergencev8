@@ -41,9 +41,11 @@ def fetch_logs():
     gcloud_cmd = get_gcloud_command()
 
     cmd = [
-        gcloud_cmd, "logging", "read",
+        gcloud_cmd,
+        "logging",
+        "read",
         f'resource.type="cloud_run_revision" AND resource.labels.service_name="{SERVICE}"',
-        f'--limit={LIMIT}',
+        f"--limit={LIMIT}",
         "--format=json",
         f"--freshness={FRESHNESS}",
     ]
@@ -56,15 +58,20 @@ def fetch_logs():
         cmd.extend([f"--project={PROJECT_ID}"])
 
     try:
-        print(f"🔍 Fetching logs from Cloud Run service '{SERVICE}'...", file=sys.stderr)
-        print(f"   Region: {REGION}, Freshness: {FRESHNESS}, Limit: {LIMIT}", file=sys.stderr)
+        print(
+            f"🔍 Fetching logs from Cloud Run service '{SERVICE}'...", file=sys.stderr
+        )
+        print(
+            f"   Region: {REGION}, Freshness: {FRESHNESS}, Limit: {LIMIT}",
+            file=sys.stderr,
+        )
 
         # Execute with timeout to prevent hanging
         output = subprocess.check_output(
             cmd,
             stderr=subprocess.STDOUT,
             text=True,
-            timeout=60  # 60 seconds timeout for gcloud logging read
+            timeout=60,  # 60 seconds timeout for gcloud logging read
         )
 
         if not output.strip():
@@ -79,7 +86,10 @@ def fetch_logs():
         print("❌ Timeout fetching logs from gcloud (60s):", file=sys.stderr)
         print(f"   Command: {' '.join(cmd)}", file=sys.stderr)
         print(f"   Error: {exc}", file=sys.stderr)
-        print("   Suggestion: Check network connectivity or gcloud authentication", file=sys.stderr)
+        print(
+            "   Suggestion: Check network connectivity or gcloud authentication",
+            file=sys.stderr,
+        )
         return []
     except subprocess.CalledProcessError as e:
         print("❌ Error fetching logs from gcloud:", file=sys.stderr)
@@ -130,7 +140,7 @@ def extract_full_context(log_entry):
         "error_type": None,
         "file_path": None,
         "line_number": None,
-        "full_payload": None
+        "full_payload": None,
     }
 
     # Extract message (use the centralized extract_message function)
@@ -152,7 +162,11 @@ def extract_full_context(log_entry):
 
         # Stack trace
         if "stack" in payload or "stacktrace" in payload or "traceback" in payload:
-            context["stack_trace"] = payload.get("stack") or payload.get("stacktrace") or payload.get("traceback")
+            context["stack_trace"] = (
+                payload.get("stack")
+                or payload.get("stacktrace")
+                or payload.get("traceback")
+            )
 
         # HTTP context
         if "httpRequest" in payload:
@@ -163,7 +177,11 @@ def extract_full_context(log_entry):
             context["user_agent"] = http.get("userAgent", "")
 
         # Request ID (for tracing)
-        context["request_id"] = payload.get("request_id") or payload.get("requestId") or payload.get("trace")
+        context["request_id"] = (
+            payload.get("request_id")
+            or payload.get("requestId")
+            or payload.get("trace")
+        )
 
         # Error details
         if "error" in payload:
@@ -188,6 +206,7 @@ def extract_full_context(log_entry):
     # Extract file/line from message if not found (Python traceback format)
     if not context["file_path"] and context["message"]:
         import re
+
         # Match: File "/path/to/file.py", line 123
         match = re.search(r'File "([^"]+)", line (\d+)', context["message"])
         if match:
@@ -195,7 +214,7 @@ def extract_full_context(log_entry):
             context["line_number"] = int(match.group(2))
 
         # Extract error type (e.g., "ValueError:", "KeyError:")
-        match = re.search(r'(\w+Error|Exception):', context["message"])
+        match = re.search(r"(\w+Error|Exception):", context["message"])
         if match:
             context["error_type"] = match.group(1)
 
@@ -212,19 +231,23 @@ def analyze_patterns(errors_with_context):
         "by_error_type": {},
         "by_file": {},
         "frequency_timeline": [],
-        "most_common_error": None
+        "most_common_error": None,
     }
 
     for error in errors_with_context:
         # Count by endpoint
         endpoint = error.get("endpoint")
         if endpoint:
-            patterns["by_endpoint"][endpoint] = patterns["by_endpoint"].get(endpoint, 0) + 1
+            patterns["by_endpoint"][endpoint] = (
+                patterns["by_endpoint"].get(endpoint, 0) + 1
+            )
 
         # Count by error type
         error_type = error.get("error_type")
         if error_type:
-            patterns["by_error_type"][error_type] = patterns["by_error_type"].get(error_type, 0) + 1
+            patterns["by_error_type"][error_type] = (
+                patterns["by_error_type"].get(error_type, 0) + 1
+            )
 
         # Count by file
         file_path = error.get("file_path")
@@ -233,12 +256,18 @@ def analyze_patterns(errors_with_context):
 
     # Sort by frequency
     if patterns["by_endpoint"]:
-        patterns["by_endpoint"] = dict(sorted(patterns["by_endpoint"].items(), key=lambda x: x[1], reverse=True))
+        patterns["by_endpoint"] = dict(
+            sorted(patterns["by_endpoint"].items(), key=lambda x: x[1], reverse=True)
+        )
     if patterns["by_error_type"]:
-        patterns["by_error_type"] = dict(sorted(patterns["by_error_type"].items(), key=lambda x: x[1], reverse=True))
+        patterns["by_error_type"] = dict(
+            sorted(patterns["by_error_type"].items(), key=lambda x: x[1], reverse=True)
+        )
         patterns["most_common_error"] = list(patterns["by_error_type"].keys())[0]
     if patterns["by_file"]:
-        patterns["by_file"] = dict(sorted(patterns["by_file"].items(), key=lambda x: x[1], reverse=True))
+        patterns["by_file"] = dict(
+            sorted(patterns["by_file"].items(), key=lambda x: x[1], reverse=True)
+        )
 
     return patterns
 
@@ -256,7 +285,10 @@ def get_code_snippet(file_path, line_number, context_lines=5):
 
     # Try to find file in project
     import os
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
     full_path = os.path.join(project_root, file_path)
 
     if not os.path.exists(full_path):
@@ -274,7 +306,7 @@ def get_code_snippet(file_path, line_number, context_lines=5):
             "line": line_number,
             "code_snippet": "".join(lines[start_line:end_line]),
             "start_line": start_line + 1,
-            "end_line": end_line
+            "end_line": end_line,
         }
 
         return snippet
@@ -290,7 +322,9 @@ def get_recent_commits(max_commits=5):
     """
     try:
         cmd = ["git", "log", f"-{max_commits}", "--pretty=format:%H|%an|%ar|%s"]
-        output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True, timeout=5)
+        output = subprocess.check_output(
+            cmd, stderr=subprocess.DEVNULL, text=True, timeout=5
+        )
 
         commits = []
         for line in output.strip().split("\n"):
@@ -298,12 +332,14 @@ def get_recent_commits(max_commits=5):
                 continue
             parts = line.split("|")
             if len(parts) == 4:
-                commits.append({
-                    "hash": parts[0][:8],
-                    "author": parts[1],
-                    "time": parts[2],
-                    "message": parts[3]
-                })
+                commits.append(
+                    {
+                        "hash": parts[0][:8],
+                        "author": parts[1],
+                        "time": parts[2],
+                        "message": parts[3],
+                    }
+                )
 
         return commits
     except Exception as e:
@@ -326,25 +362,58 @@ def is_bot_scan_or_noise(full_context):
 
     # Known bot scan endpoints (not part of our application)
     BOT_SCAN_PATHS = [
-        "/install", "/protractor.conf.js", "/wizard/", "/applications.pinpoint",
-        "/install/update.html", "/.env", "/wp-admin", "/admin", "/phpmyadmin",
-        "/config.json", "/web.config", "/.git/config", "/backup", "/setup",
-        "/test", "/debug", "/api/v1/admin", "/api/admin", "/console",
-        "/.aws/credentials", "/server-status", "/cgi-bin", "/xmlrpc.php",
+        "/install",
+        "/protractor.conf.js",
+        "/wizard/",
+        "/applications.pinpoint",
+        "/install/update.html",
+        "/.env",
+        "/wp-admin",
+        "/admin",
+        "/phpmyadmin",
+        "/config.json",
+        "/web.config",
+        "/.git/config",
+        "/backup",
+        "/setup",
+        "/test",
+        "/debug",
+        "/api/v1/admin",
+        "/api/admin",
+        "/console",
+        "/.aws/credentials",
+        "/server-status",
+        "/cgi-bin",
+        "/xmlrpc.php",
         # PHP vulnerability scans
-        "/xprober.php", "/.user.ini", "/user.ini", "/index.php",
+        "/xprober.php",
+        "/.user.ini",
+        "/user.ini",
+        "/index.php",
         # AWS/S3 scans
-        "/.s3cfg", "/.aws/", "/aws/",
+        "/.s3cfg",
+        "/.aws/",
+        "/aws/",
         # Path traversal attempts
-        "/etc/passwd", "/etc/shadow", "000~ROOT~000",
+        "/etc/passwd",
+        "/etc/shadow",
+        "000~ROOT~000",
         # Python/environment scans
-        "/venv/", "/.env", "/env/", "/.git/", "/requirements.txt"
+        "/venv/",
+        "/.env",
+        "/env/",
+        "/.git/",
+        "/requirements.txt",
     ]
 
     # Known bot scan hosts (cloud metadata, security scans)
     BOT_SCAN_HOSTS = [
-        "alibaba.oast.pro", "100.100.100.200", "169.254.169.254",
-        "metadata.google.internal", "169.254.169.254", "metadata"
+        "alibaba.oast.pro",
+        "100.100.100.200",
+        "169.254.169.254",
+        "metadata.google.internal",
+        "169.254.169.254",
+        "metadata",
     ]
 
     # Check if endpoint matches bot scan patterns
@@ -421,76 +490,85 @@ def analyze_logs(logs):
         # Categorize by severity
         if severity in ["ERROR", "CRITICAL", "ALERT", "EMERGENCY"]:
             # OLD format for summary
-            errors.append({
-                "time": timestamp,
-                "severity": severity,
-                "msg": message[:300]
-            })
+            errors.append(
+                {"time": timestamp, "severity": severity, "msg": message[:300]}
+            )
             # NEW: Full context for analysis
             errors_with_full_context.append(full_context)
 
         elif severity == "WARNING":
             # FILTER: Ignore bot scan noise (404s from security scanners)
             if not is_bot_scan_or_noise(full_context):
-                warnings.append({
-                    "time": timestamp,
-                    "msg": message[:300]
-                })
+                warnings.append({"time": timestamp, "msg": message[:300]})
                 warnings_with_context.append(full_context)
 
         elif severity == "INFO":
-            info_logs.append({
-                "time": timestamp,
-                "msg": message[:200]
-            })
+            info_logs.append({"time": timestamp, "msg": message[:200]})
 
         # Check for specific critical patterns
         message_lower = message.lower()
 
         # OOMKilled or memory issues
-        if any(pattern in message_lower for pattern in ["oomkilled", "out of memory", "memory limit"]):
-            critical_signals.append({
-                "type": "OOM",
-                "time": timestamp,
-                "msg": message[:300],
-                "full_context": full_context
-            })
+        if any(
+            pattern in message_lower
+            for pattern in ["oomkilled", "out of memory", "memory limit"]
+        ):
+            critical_signals.append(
+                {
+                    "type": "OOM",
+                    "time": timestamp,
+                    "msg": message[:300],
+                    "full_context": full_context,
+                }
+            )
 
         # Unhealthy revisions
         if "unhealthy" in message_lower or "health check" in message_lower:
-            critical_signals.append({
-                "type": "UNHEALTHY",
-                "time": timestamp,
-                "msg": message[:300],
-                "full_context": full_context
-            })
+            critical_signals.append(
+                {
+                    "type": "UNHEALTHY",
+                    "time": timestamp,
+                    "msg": message[:300],
+                    "full_context": full_context,
+                }
+            )
 
         # Container crashes
-        if any(pattern in message_lower for pattern in ["crash", "terminated", "killed", "exit code"]):
-            critical_signals.append({
-                "type": "CRASH",
-                "time": timestamp,
-                "msg": message[:300],
-                "full_context": full_context
-            })
+        if any(
+            pattern in message_lower
+            for pattern in ["crash", "terminated", "killed", "exit code"]
+        ):
+            critical_signals.append(
+                {
+                    "type": "CRASH",
+                    "time": timestamp,
+                    "msg": message[:300],
+                    "full_context": full_context,
+                }
+            )
 
         # Latency issues
         if "latency" in message_lower or "slow" in message_lower:
-            latency_issues.append({
-                "time": timestamp,
-                "msg": message[:300],
-                "full_context": full_context
-            })
+            latency_issues.append(
+                {"time": timestamp, "msg": message[:300], "full_context": full_context}
+            )
 
         # 5xx errors - check for actual HTTP 5xx status codes
         import re
-        if severity not in ["ERROR", "CRITICAL", "ALERT", "EMERGENCY"]:  # Avoid duplicates
-            if re.search(r'(status_code["\s:]+5\d{2}|HTTP[/\s]+5\d{2}|\s5(0[0-5]|0[0-9])\s)', message):
-                errors.append({
-                    "time": timestamp,
-                    "severity": "HTTP_5XX",
-                    "msg": message[:300]
-                })
+
+        if severity not in [
+            "ERROR",
+            "CRITICAL",
+            "ALERT",
+            "EMERGENCY",
+        ]:  # Avoid duplicates
+            if re.search(
+                r'(status_code["\s:]+5\d{2}|HTTP[/\s]+5\d{2}|\s5(0[0-5]|0[0-9])\s)',
+                message,
+            ):
+                errors.append(
+                    {"time": timestamp, "severity": "HTTP_5XX", "msg": message[:300]}
+                )
                 errors_with_full_context.append(full_context)
 
     # Determine overall status
@@ -532,35 +610,40 @@ def analyze_logs(logs):
             "errors": len(errors),
             "warnings": len(warnings),
             "critical_signals": len(critical_signals),
-            "latency_issues": len(latency_issues)
+            "latency_issues": len(latency_issues),
         },
         # OLD format (backward compatibility)
         "errors": errors[:5],
         "warnings": warnings[:5],
         "critical_signals": critical_signals[:3],
         "latency_issues": latency_issues[:3] if latency_issues else [],
-
         # NEW: Full context for Codex GPT
         "errors_detailed": errors_with_full_context[:10],  # Top 10 with full context
         "warnings_detailed": warnings_with_context[:10],
         "error_patterns": error_patterns,
         "code_snippets": code_snippets,
         "recent_commits": recent_commits,
-
         "log_samples": log_samples[:15],
-
-        "recommendations": []
+        "recommendations": [],
     }
 
     # Generate recommendations (ENHANCED with actionable details)
     if status == "CRITICAL":
-        report["recommendations"].append({
-            "priority": "HIGH",
-            "action": "Investigate critical issues immediately",
-            "details": "OOMKilled or container crashes detected" if critical_signals else "High error rate detected",
-            "affected_files": list(error_patterns["by_file"].keys())[:3] if error_patterns["by_file"] else [],
-            "affected_endpoints": list(error_patterns["by_endpoint"].keys())[:3] if error_patterns["by_endpoint"] else []
-        })
+        report["recommendations"].append(
+            {
+                "priority": "HIGH",
+                "action": "Investigate critical issues immediately",
+                "details": "OOMKilled or container crashes detected"
+                if critical_signals
+                else "High error rate detected",
+                "affected_files": list(error_patterns["by_file"].keys())[:3]
+                if error_patterns["by_file"]
+                else [],
+                "affected_endpoints": list(error_patterns["by_endpoint"].keys())[:3]
+                if error_patterns["by_endpoint"]
+                else [],
+            }
+        )
 
         if any(sig["type"] == "OOM" for sig in critical_signals):
             # Determine the current and peak memory usage from log context (if available)
@@ -579,10 +662,9 @@ def analyze_logs(logs):
                 if signal.get("type") != "OOM":
                     continue
 
-                context_message = (
-                    signal.get("full_context", {}).get("message")
-                    or signal.get("msg", "")
-                )
+                context_message = signal.get("full_context", {}).get(
+                    "message"
+                ) or signal.get("msg", "")
                 match = memory_pattern.search(context_message)
                 if match:
                     limit_mib = int(match.group("limit"))
@@ -627,73 +709,93 @@ def analyze_logs(logs):
                 else f"{new_limit_mib}Mi"
             )
 
-            report["recommendations"].append({
-                "priority": "HIGH",
-                "action": "Increase memory limit",
-                "command": f"gcloud run services update {SERVICE} --memory={new_limit_human} --region={REGION}",
-                "details": (
-                    "Current limit "
-                    + current_human
-                    + " insufficient; peak usage ~"
-                    + peak_human
-                    + f". Increase to {new_limit_human}."
-                ),
-            })
+            report["recommendations"].append(
+                {
+                    "priority": "HIGH",
+                    "action": "Increase memory limit",
+                    "command": f"gcloud run services update {SERVICE} --memory={new_limit_human} --region={REGION}",
+                    "details": (
+                        "Current limit "
+                        + current_human
+                        + " insufficient; peak usage ~"
+                        + peak_human
+                        + f". Increase to {new_limit_human}."
+                    ),
+                }
+            )
 
         if len(errors) > 10:
-            report["recommendations"].append({
-                "priority": "HIGH",
-                "action": "Consider rollback to previous stable revision",
-                "details": "High error rate suggests recent deployment issue",
-                "recent_commits": recent_commits[:3],  # Show recent commits as potential culprits
-                "rollback_command": f"gcloud run services update-traffic {SERVICE} --to-revisions=PREVIOUS=100 --region={REGION}"
-            })
+            report["recommendations"].append(
+                {
+                    "priority": "HIGH",
+                    "action": "Consider rollback to previous stable revision",
+                    "details": "High error rate suggests recent deployment issue",
+                    "recent_commits": recent_commits[
+                        :3
+                    ],  # Show recent commits as potential culprits
+                    "rollback_command": f"gcloud run services update-traffic {SERVICE} --to-revisions=PREVIOUS=100 --region={REGION}",
+                }
+            )
 
         # Pattern-specific recommendations
         if error_patterns["most_common_error"]:
-            report["recommendations"].append({
-                "priority": "HIGH",
-                "action": f"Fix recurring {error_patterns['most_common_error']} error",
-                "details": f"This error type accounts for most failures ({error_patterns['by_error_type'][error_patterns['most_common_error']]} occurrences)",
-                "suggested_files_to_check": code_snippets[:2] if code_snippets else []
-            })
+            report["recommendations"].append(
+                {
+                    "priority": "HIGH",
+                    "action": f"Fix recurring {error_patterns['most_common_error']} error",
+                    "details": f"This error type accounts for most failures ({error_patterns['by_error_type'][error_patterns['most_common_error']]} occurrences)",
+                    "suggested_files_to_check": code_snippets[:2]
+                    if code_snippets
+                    else [],
+                }
+            )
 
         if error_patterns["by_endpoint"]:
             top_endpoint = list(error_patterns["by_endpoint"].keys())[0]
             count = error_patterns["by_endpoint"][top_endpoint]
-            report["recommendations"].append({
-                "priority": "HIGH",
-                "action": f"Fix endpoint: {top_endpoint}",
-                "details": f"This endpoint is failing repeatedly ({count} errors)",
-                "suggested_fix": "Check request validation, error handling, and database queries for this endpoint"
-            })
+            report["recommendations"].append(
+                {
+                    "priority": "HIGH",
+                    "action": f"Fix endpoint: {top_endpoint}",
+                    "details": f"This endpoint is failing repeatedly ({count} errors)",
+                    "suggested_fix": "Check request validation, error handling, and database queries for this endpoint",
+                }
+            )
 
     elif status == "DEGRADED":
-        report["recommendations"].append({
-            "priority": "MEDIUM",
-            "action": "Monitor closely and investigate warnings",
-            "details": f"{len(warnings)} warnings detected",
-            "affected_files": list(error_patterns["by_file"].keys())[:3] if error_patterns["by_file"] else []
-        })
+        report["recommendations"].append(
+            {
+                "priority": "MEDIUM",
+                "action": "Monitor closely and investigate warnings",
+                "details": f"{len(warnings)} warnings detected",
+                "affected_files": list(error_patterns["by_file"].keys())[:3]
+                if error_patterns["by_file"]
+                else [],
+            }
+        )
 
         if latency_issues:
-            report["recommendations"].append({
-                "priority": "MEDIUM",
-                "action": "Investigate slow queries or endpoints",
-                "details": "Performance degradation detected",
-                "suggested_investigation": [
-                    "Check database query performance",
-                    "Review API call timeouts",
-                    "Analyze memory usage patterns"
-                ]
-            })
+            report["recommendations"].append(
+                {
+                    "priority": "MEDIUM",
+                    "action": "Investigate slow queries or endpoints",
+                    "details": "Performance degradation detected",
+                    "suggested_investigation": [
+                        "Check database query performance",
+                        "Review API call timeouts",
+                        "Analyze memory usage patterns",
+                    ],
+                }
+            )
 
     else:
-        report["recommendations"].append({
-            "priority": "LOW",
-            "action": "No immediate action required",
-            "details": "Production is healthy"
-        })
+        report["recommendations"].append(
+            {
+                "priority": "LOW",
+                "action": "No immediate action required",
+                "details": "Production is healthy",
+            }
+        )
 
     return report
 
@@ -713,16 +815,12 @@ def print_summary(report):
     """Print a human-readable summary of the report"""
     # Force UTF-8 encoding for emoji support on Windows
     if platform.system() == "Windows":
-        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stdout.reconfigure(encoding="utf-8")
 
     status = report["status"]
 
     # Status emoji
-    status_emoji = {
-        "OK": "🟢",
-        "DEGRADED": "🟡",
-        "CRITICAL": "🔴"
-    }
+    status_emoji = {"OK": "🟢", "DEGRADED": "🟡", "CRITICAL": "🔴"}
 
     print(f"\n{status_emoji.get(status, '⚪')} Production Status: {status}")
     print("\n📊 Summary:")
@@ -747,7 +845,9 @@ def print_summary(report):
     if report["recommendations"]:
         print("\n💡 Recommendations:")
         for rec in report["recommendations"]:
-            priority_emoji = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(rec["priority"], "⚪")
+            priority_emoji = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(
+                rec["priority"], "⚪"
+            )
             print(f"   {priority_emoji} [{rec['priority']}] {rec['action']}")
             if "command" in rec:
                 print(f"      Command: {rec['command']}")

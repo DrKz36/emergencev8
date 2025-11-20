@@ -1,9 +1,17 @@
-﻿# src/backend/features/voice/router.py
+# src/backend/features/voice/router.py
 # V1.2 - Fix DI container leak (utilise app.state au lieu de créer nouveau container)
 import logging
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    HTTPException,
+)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -17,6 +25,7 @@ router = APIRouter()
 
 class TTSRequest(BaseModel):
     """Request body pour générer du TTS à partir de texte."""
+
     text: str
     agent_id: str | None = None  # Optionnel : agent_id pour choisir la voix
 
@@ -47,7 +56,9 @@ async def audio_receiver(websocket: WebSocket) -> AsyncGenerator[bytes, None]:
     except WebSocketDisconnect:
         logger.info("Le client a ferme la connexion pendant la reception audio.")
     except Exception as exc:
-        logger.error(f"Erreur inattendue pendant la reception audio: {exc}", exc_info=True)
+        logger.error(
+            f"Erreur inattendue pendant la reception audio: {exc}", exc_info=True
+        )
 
 
 @router.websocket("/ws/{agent_name}")
@@ -85,19 +96,25 @@ async def voice_chat_ws(
         except Exception:
             pass
     except WebSocketDisconnect:
-        logger.info("Client deconnecte de l'agent '%s' (Session: %s)", agent_name, session_id)
+        logger.info(
+            "Client deconnecte de l'agent '%s' (Session: %s)", agent_name, session_id
+        )
     except Exception as exc:
         logger.error(
             f"Erreur critique dans le WebSocket pour l'agent '{agent_name}': {exc}",
             exc_info=True,
         )
-        error_payload = {"type": "error", "data": "Une erreur interne est survenue sur le serveur."}
+        error_payload = {
+            "type": "error",
+            "data": "Une erreur interne est survenue sur le serveur.",
+        }
         try:
             await websocket.send_json(error_payload)
         except Exception:
             pass
     finally:
         from fastapi.websockets import WebSocketState
+
         if websocket.client_state != WebSocketState.DISCONNECTED:
             await websocket.close()
             logger.info("Connexion WebSocket fermee pour la session %s.", session_id)
@@ -143,12 +160,16 @@ async def text_to_speech(
     if not request.text or not request.text.strip():
         raise HTTPException(status_code=400, detail="Le texte ne peut pas être vide.")
 
-    logger.info(f"TTS request from user {user_id} (agent={request.agent_id}): {request.text[:50]}...")
+    logger.info(
+        f"TTS request from user {user_id} (agent={request.agent_id}): {request.text[:50]}..."
+    )
 
     async def audio_generator() -> AsyncGenerator[bytes, None]:
         """Generator pour streamer l'audio."""
         try:
-            async for chunk in service.synthesize_speech(request.text, agent_id=request.agent_id):
+            async for chunk in service.synthesize_speech(
+                request.text, agent_id=request.agent_id
+            ):
                 yield chunk
         except Exception as exc:
             logger.error(f"Erreur pendant génération TTS: {exc}", exc_info=True)
@@ -160,5 +181,5 @@ async def text_to_speech(
         headers={
             "Content-Disposition": "inline",
             "Cache-Control": "no-cache",
-        }
+        },
     )

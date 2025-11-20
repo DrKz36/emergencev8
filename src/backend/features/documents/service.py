@@ -31,14 +31,21 @@ def _trim_error_message(message: str, limit: int = 512) -> str:
         return collapsed
     return f"{collapsed[: limit - 1]}…"
 
+
 logger = logging.getLogger(__name__)
 
 
 class DocumentService:
     MAX_PREVIEW_CHARS = 20000
-    DEFAULT_MAX_VECTOR_CHUNKS = 5000  # Phase 4 RAG: augmenté pour gros documents (1000 → 5000)
-    DEFAULT_VECTOR_BATCH_SIZE = 256  # Augmenté de 64 → 256 pour réduire timeouts (moins d'appels Chroma)
-    DEFAULT_CHUNK_INSERT_BATCH_SIZE = 512  # Augmenté de 128 → 512 pour réduire timeouts (moins d'appels DB)
+    DEFAULT_MAX_VECTOR_CHUNKS = (
+        5000  # Phase 4 RAG: augmenté pour gros documents (1000 → 5000)
+    )
+    DEFAULT_VECTOR_BATCH_SIZE = (
+        256  # Augmenté de 64 → 256 pour réduire timeouts (moins d'appels Chroma)
+    )
+    DEFAULT_CHUNK_INSERT_BATCH_SIZE = (
+        512  # Augmenté de 128 → 512 pour réduire timeouts (moins d'appels DB)
+    )
     DEFAULT_MAX_PARAGRAPHS_PER_CHUNK = 2
     MAX_TOTAL_CHUNKS_ALLOWED = 5000  # Limite absolue pour éviter timeout processing
     MAX_FILE_SIZE_MB = 50  # Limite taille fichier upload
@@ -135,9 +142,13 @@ class DocumentService:
             return False
 
     def _vector_store_available(self) -> bool:
-        reachable_checker = getattr(self.vector_service, "is_vector_store_reachable", None)
+        reachable_checker = getattr(
+            self.vector_service, "is_vector_store_reachable", None
+        )
         if callable(reachable_checker) and not reachable_checker():
-            last_error_getter = getattr(self.vector_service, "get_last_init_error", None)
+            last_error_getter = getattr(
+                self.vector_service, "get_last_init_error", None
+            )
             if callable(last_error_getter):
                 self._vector_init_error = last_error_getter()
             if not self._vector_init_error:
@@ -207,19 +218,27 @@ class DocumentService:
             )
 
         indexed = 0
-        total_batches = (len(items_to_vectorize) + self.vector_batch_size - 1) // self.vector_batch_size
+        total_batches = (
+            len(items_to_vectorize) + self.vector_batch_size - 1
+        ) // self.vector_batch_size
         try:
-            for batch_idx, start in enumerate(range(0, len(items_to_vectorize), self.vector_batch_size), 1):
+            for batch_idx, start in enumerate(
+                range(0, len(items_to_vectorize), self.vector_batch_size), 1
+            ):
                 batch = items_to_vectorize[start : start + self.vector_batch_size]
                 if not batch:
                     continue
-                logger.info(f"[Vectorisation] Batch {batch_idx}/{total_batches}: traitement de {len(batch)} chunks...")
+                logger.info(
+                    f"[Vectorisation] Batch {batch_idx}/{total_batches}: traitement de {len(batch)} chunks..."
+                )
                 self.vector_service.add_items(
                     collection=self.document_collection,
                     items=batch,
                 )
                 indexed += len(batch)
-                logger.debug(f"[Vectorisation] Batch {batch_idx}/{total_batches} terminé ({indexed}/{len(items_to_vectorize)} total)")
+                logger.debug(
+                    f"[Vectorisation] Batch {batch_idx}/{total_batches} terminé ({indexed}/{len(items_to_vectorize)} total)"
+                )
         except Exception as exc:
             warning = _trim_error_message(str(exc)) or "Vectorisation indisponible"
             self._vector_init_error = warning
@@ -243,11 +262,15 @@ class DocumentService:
 
     def _resolve_document_path(self, raw_path: str) -> Path:
         if not raw_path:
-            raise HTTPException(status_code=404, detail="Chemin de document introuvable.")
+            raise HTTPException(
+                status_code=404, detail="Chemin de document introuvable."
+            )
 
         normalized = raw_path.strip()
         if not normalized:
-            raise HTTPException(status_code=404, detail="Chemin de document introuvable.")
+            raise HTTPException(
+                status_code=404, detail="Chemin de document introuvable."
+            )
 
         uploads_root = self.uploads_dir
         raw_candidate = Path(normalized)
@@ -295,7 +318,11 @@ class DocumentService:
                 return candidate
 
         error_status = 404 if valid_candidates else 400
-        detail = "Fichier source introuvable." if valid_candidates else "Chemin de document invalide."
+        detail = (
+            "Fichier source introuvable."
+            if valid_candidates
+            else "Chemin de document invalide."
+        )
         logger.error(
             "Document path %s invalide dans %s (candidats=%s)",
             raw_path,
@@ -356,39 +383,43 @@ class DocumentService:
         chunk_rows: list[dict[str, Any]] = []
         vector_items: list[dict[str, Any]] = []
         for chunk in semantic_chunks or []:
-            chunk_index = chunk.get('chunk_index')
-            text = chunk.get('text', '')
+            chunk_index = chunk.get("chunk_index")
+            text = chunk.get("text", "")
             if chunk_index is None:
                 continue
             chunk_id = f"{doc_id}_{chunk_index}"
-            chunk_rows.append({
-                'id': chunk_id,
-                'document_id': doc_id,
-                'chunk_index': chunk_index,
-                'content': text,
-            })
+            chunk_rows.append(
+                {
+                    "id": chunk_id,
+                    "document_id": doc_id,
+                    "chunk_index": chunk_index,
+                    "content": text,
+                }
+            )
             # 🔥 Phase 4.1 RAG: session_id RETIRÉ des metadata pour scope user global
             # Rationale: Documents doivent être accessibles à toutes sessions du user
             # session_id reste en paramètre pour logs/audit, mais PAS stocké dans ChromaDB
             metadata = {
-                'document_id': doc_id,
-                'filename': filename,
+                "document_id": doc_id,
+                "filename": filename,
                 # 'session_id': session_id,  # ← RETIRÉ - Chunks scopés par user_id uniquement
-                'user_id': user_id,
-                'owner_id': user_id,
-                'chunk_type': chunk.get('chunk_type', 'prose'),
-                'section_title': chunk.get('section_title') or '',
-                'keywords': ','.join(chunk.get('keywords', [])),
-                'line_range': chunk.get('line_range', ''),
-                'line_start': chunk.get('line_start', 0),
-                'line_end': chunk.get('line_end', 0),
-                'is_complete': chunk.get('is_complete', False),
+                "user_id": user_id,
+                "owner_id": user_id,
+                "chunk_type": chunk.get("chunk_type", "prose"),
+                "section_title": chunk.get("section_title") or "",
+                "keywords": ",".join(chunk.get("keywords", [])),
+                "line_range": chunk.get("line_range", ""),
+                "line_start": chunk.get("line_start", 0),
+                "line_end": chunk.get("line_end", 0),
+                "is_complete": chunk.get("is_complete", False),
             }
-            vector_items.append({
-                'id': chunk_id,
-                'text': text,
-                'metadata': metadata,
-            })
+            vector_items.append(
+                {
+                    "id": chunk_id,
+                    "text": text,
+                    "metadata": metadata,
+                }
+            )
         return chunk_rows, vector_items
 
     def _chunk_text(self, text: str) -> List[str]:
@@ -409,18 +440,23 @@ class DocumentService:
             return "prose"
 
         # Heuristique 1 : Détection de conversation (timestamps)
-        if any(re.match(r'\[\d{2}\.\d{2}\.\d{2}', line) for line in lines[:5]):
+        if any(re.match(r"\[\d{2}\.\d{2}\.\d{2}", line) for line in lines[:5]):
             return "conversation"
 
         # Heuristique 2 : Détection de section (headers)
-        if any(re.match(r'^#{1,6}\s+', line) or re.match(r'^[IVX]+\.\s+[A-Z]', line) for line in lines[:3]):
+        if any(
+            re.match(r"^#{1,6}\s+", line) or re.match(r"^[IVX]+\.\s+[A-Z]", line)
+            for line in lines[:3]
+        ):
             return "section"
 
         # Heuristique 3 : Détection de poème (ASSOUPLISSEMENT Phase 2)
         # Critères : lignes courtes + structure versifiée
         non_empty_lines = [line for line in lines if line.strip()]
         if len(non_empty_lines) >= 4:
-            avg_line_length = sum(len(line) for line in non_empty_lines) / len(non_empty_lines)
+            avg_line_length = sum(len(line) for line in non_empty_lines) / len(
+                non_empty_lines
+            )
 
             # Poème : lignes courtes (< 70 caractères en moyenne)
             if avg_line_length < 70:
@@ -433,8 +469,8 @@ class DocumentService:
                     return "poem"
 
                 # OU vérifier structure en strophes (paragraphes séparés par \n\n)
-                if '\n\n' in text:
-                    paragraphs = [p for p in text.split('\n\n') if p.strip()]
+                if "\n\n" in text:
+                    paragraphs = [p for p in text.split("\n\n") if p.strip()]
                     # Accepter 1+ strophe (au lieu de 2+)
                     if len(paragraphs) >= 1 and short_ratio > 0.5:
                         return "poem"
@@ -450,12 +486,12 @@ class DocumentService:
         """
         for line in lines[:5]:
             # Markdown headers (# Titre)
-            match = re.match(r'^#{1,6}\s+(.+)$', line.strip())
+            match = re.match(r"^#{1,6}\s+(.+)$", line.strip())
             if match:
                 return match.group(1).strip()
 
             # Numérotation romaine/décimale (I. Titre, 1. Titre)
-            match = re.match(r'^[IVX]+\.\s+([A-Z].+)$', line.strip())
+            match = re.match(r"^[IVX]+\.\s+([A-Z].+)$", line.strip())
             if match:
                 return match.group(1).strip()
 
@@ -470,23 +506,88 @@ class DocumentService:
         """
         # Stopwords français courants
         stopwords = {
-            'le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'et', 'ou',
-            'mais', 'dans', 'pour', 'sur', 'avec', 'sans', 'mon', 'ma', 'mes',
-            'ce', 'cette', 'ces', 'que', 'qui', 'quoi', 'dont', 'où', 'je',
-            'tu', 'il', 'elle', 'nous', 'vous', 'ils', 'elles', 'à', 'au',
-            'aux', 'est', 'sont', 'était', 'été', 'être', 'avoir', 'ai', 'as',
-            'a', 'avons', 'avez', 'ont', 'par', 'ne', 'pas', 'plus', 'très',
-            'bien', 'tout', 'tous', 'toute', 'toutes', 'en', 'y', 'se', 'si'
+            "le",
+            "la",
+            "les",
+            "un",
+            "une",
+            "des",
+            "de",
+            "du",
+            "et",
+            "ou",
+            "mais",
+            "dans",
+            "pour",
+            "sur",
+            "avec",
+            "sans",
+            "mon",
+            "ma",
+            "mes",
+            "ce",
+            "cette",
+            "ces",
+            "que",
+            "qui",
+            "quoi",
+            "dont",
+            "où",
+            "je",
+            "tu",
+            "il",
+            "elle",
+            "nous",
+            "vous",
+            "ils",
+            "elles",
+            "à",
+            "au",
+            "aux",
+            "est",
+            "sont",
+            "était",
+            "été",
+            "être",
+            "avoir",
+            "ai",
+            "as",
+            "a",
+            "avons",
+            "avez",
+            "ont",
+            "par",
+            "ne",
+            "pas",
+            "plus",
+            "très",
+            "bien",
+            "tout",
+            "tous",
+            "toute",
+            "toutes",
+            "en",
+            "y",
+            "se",
+            "si",
         }
 
         # Mots-clés prioritaires (score boosté)
         priority_keywords = {
-            'fondateur', 'origine', 'premier', 'initial', 'commencement',
-            'passerelle', 'hirondelle', 'espoir', 'quête', 'renaissance'
+            "fondateur",
+            "origine",
+            "premier",
+            "initial",
+            "commencement",
+            "passerelle",
+            "hirondelle",
+            "espoir",
+            "quête",
+            "renaissance",
         }
 
         # Extraire les mots (lettres uniquement, min 3 caractères)
-        words = re.findall(r'\b[a-zàâäéèêëïîôùûüÿæœç]{3,}\b', text.lower())
+        words = re.findall(r"\b[a-zàâäéèêëïîôùûüÿæœç]{3,}\b", text.lower())
 
         # Filtrer stopwords et compter occurrences
         word_counts: Dict[str, int] = {}
@@ -500,11 +601,7 @@ class DocumentService:
         sorted_words = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
         return [word for word, _ in sorted_words[:max_keywords]]
 
-    def _chunk_text_semantic(
-        self,
-        text: str,
-        filename: str
-    ) -> List[Dict[str, Any]]:
+    def _chunk_text_semantic(self, text: str, filename: str) -> List[Dict[str, Any]]:
         """
         Découpe le texte en chunks sémantiques en respectant l'intégrité des structures.
 
@@ -527,7 +624,7 @@ class DocumentService:
         if not text or not text.strip():
             return []
 
-        lines = text.split('\n')
+        lines = text.split("\n")
         total_lines = len(lines)
 
         # Étape 1 : Découper par paragraphes (séparés par \n\n)
@@ -537,22 +634,26 @@ class DocumentService:
 
         for i, line in enumerate(lines):
             if not line.strip() and current_paragraph:
-                paragraphs.append({
-                    'lines': current_paragraph,
-                    'line_start': paragraph_line_start,
-                    'line_end': i
-                })
+                paragraphs.append(
+                    {
+                        "lines": current_paragraph,
+                        "line_start": paragraph_line_start,
+                        "line_end": i,
+                    }
+                )
                 current_paragraph = []
                 paragraph_line_start = i + 1
             else:
                 current_paragraph.append(line)
 
         if current_paragraph:
-            paragraphs.append({
-                'lines': current_paragraph,
-                'line_start': paragraph_line_start,
-                'line_end': len(lines)
-            })
+            paragraphs.append(
+                {
+                    "lines": current_paragraph,
+                    "line_start": paragraph_line_start,
+                    "line_end": len(lines),
+                }
+            )
 
         base_chunk_size = config.CHUNK_SIZE
         paragraph_limit = max(1, self.max_paragraphs_per_chunk)
@@ -581,7 +682,7 @@ class DocumentService:
                 current_chunk_size = 0
 
             for para_dict in paragraphs:
-                para_text = '\n'.join(para_dict['lines'])
+                para_text = "\n".join(para_dict["lines"])
                 para_size = len(para_text)
 
                 if para_size > chunk_size:
@@ -617,13 +718,13 @@ class DocumentService:
 
         def apply_overlap(chunks: list[dict[str, Any]]) -> None:
             for i in range(len(chunks) - 1):
-                current_text = chunks[i]['text']
-                next_text = chunks[i + 1]['text']
+                current_text = chunks[i]["text"]
+                next_text = chunks[i + 1]["text"]
                 if len(current_text) > config.CHUNK_OVERLAP:
-                    overlap_text = current_text[-config.CHUNK_OVERLAP:]
+                    overlap_text = current_text[-config.CHUNK_OVERLAP :]
                     if not next_text.startswith(overlap_text):
-                        chunks[i + 1]['text'] = f"{overlap_text}\n\n{next_text}"
-                        chunks[i + 1]['has_overlap'] = True
+                        chunks[i + 1]["text"] = f"{overlap_text}\n\n{next_text}"
+                        chunks[i + 1]["has_overlap"] = True
 
         def merge_chunks(
             chunks: list[dict[str, Any]],
@@ -635,28 +736,32 @@ class DocumentService:
                 group = chunks[start : start + merge_factor]
                 if not group:
                     continue
-                merged_text = "\n\n".join(chunk.get('text', '') for chunk in group)
-                merged_lines = merged_text.split('\n')
-                line_start = group[0].get('line_start', 0)
-                line_end = group[-1].get('line_end', line_start)
+                merged_text = "\n\n".join(chunk.get("text", "") for chunk in group)
+                merged_lines = merged_text.split("\n")
+                line_start = group[0].get("line_start", 0)
+                line_end = group[-1].get("line_end", line_start)
                 section_title = next(
-                    (chunk.get('section_title') for chunk in group if chunk.get('section_title')),
+                    (
+                        chunk.get("section_title")
+                        for chunk in group
+                        if chunk.get("section_title")
+                    ),
                     None,
                 )
                 if not section_title:
                     section_title = self._extract_section_title(merged_lines)
                 metadata_chunk = {
-                    'text': merged_text,
-                    'chunk_type': group[0].get('chunk_type', 'prose'),
-                    'section_title': section_title,
-                    'keywords': self._extract_keywords(merged_text),
-                    'line_start': line_start,
-                    'line_end': line_end,
-                    'line_range': f"{line_start}-{line_end}",
-                    'is_complete': len(merged_text) <= chunk_size
-                    and all(chunk.get('is_complete', False) for chunk in group),
-                    'has_overlap': False,
-                    'chunk_index': len(merged),
+                    "text": merged_text,
+                    "chunk_type": group[0].get("chunk_type", "prose"),
+                    "section_title": section_title,
+                    "keywords": self._extract_keywords(merged_text),
+                    "line_start": line_start,
+                    "line_end": line_end,
+                    "line_range": f"{line_start}-{line_end}",
+                    "is_complete": len(merged_text) <= chunk_size
+                    and all(chunk.get("is_complete", False) for chunk in group),
+                    "has_overlap": False,
+                    "chunk_index": len(merged),
                 }
                 merged.append(metadata_chunk)
             return merged
@@ -700,7 +805,7 @@ class DocumentService:
 
         apply_overlap(chunks)
         for index, chunk in enumerate(chunks):
-            chunk['chunk_index'] = index
+            chunk["chunk_index"] = index
 
         logger.info(
             f"Chunking sémantique terminé : {len(chunks)} chunks pour '{filename}' "
@@ -729,13 +834,13 @@ class DocumentService:
         """
         # Reconstruire le texte
         all_lines = []
-        line_start = paragraphs[0]['line_start']
-        line_end = paragraphs[-1]['line_end']
+        line_start = paragraphs[0]["line_start"]
+        line_end = paragraphs[-1]["line_end"]
 
         for para in paragraphs:
-            all_lines.extend(para['lines'])
+            all_lines.extend(para["lines"])
 
-        text = '\n'.join(all_lines)
+        text = "\n".join(all_lines)
 
         # Détection du type
         chunk_type = self._detect_content_type(text, all_lines)
@@ -752,16 +857,16 @@ class DocumentService:
         is_complete = len(text) < chunk_size
 
         return {
-            'text': text,
-            'chunk_type': chunk_type,
-            'section_title': section_title,
-            'keywords': keywords,
-            'line_start': line_start,
-            'line_end': line_end,
-            'line_range': f"{line_start}-{line_end}",
-            'is_complete': is_complete,
-            'has_overlap': False,
-            'chunk_index': chunk_index,
+            "text": text,
+            "chunk_type": chunk_type,
+            "section_title": section_title,
+            "keywords": keywords,
+            "line_start": line_start,
+            "line_end": line_end,
+            "line_range": f"{line_start}-{line_end}",
+            "is_complete": is_complete,
+            "has_overlap": False,
+            "chunk_index": chunk_index,
         }
 
     async def process_uploaded_file(
@@ -783,7 +888,7 @@ class DocumentService:
             raise HTTPException(
                 status_code=413,
                 detail=f"Fichier trop volumineux ({file_size_mb:.1f}MB). Limite: {self.MAX_FILE_SIZE_MB}MB. "
-                       f"Pour les gros documents, découpez-les en plusieurs fichiers plus petits."
+                f"Pour les gros documents, découpez-les en plusieurs fichiers plus petits.",
             )
 
         filepath = self.uploads_dir / f"{uuid.uuid4()}_{filename}"
@@ -805,14 +910,20 @@ class DocumentService:
             )
 
             parser = self.parser_factory.get_parser(filepath.suffix)
-            logger.info(f"[Document Upload] Parsing fichier '{filename}' ({file_size_mb:.1f}MB)...")
+            logger.info(
+                f"[Document Upload] Parsing fichier '{filename}' ({file_size_mb:.1f}MB)..."
+            )
             text_content = await asyncio.to_thread(parser.parse, str(filepath))
-            logger.info(f"[Document Upload] Parsing terminé: {len(text_content)} caractères extraits")
+            logger.info(
+                f"[Document Upload] Parsing terminé: {len(text_content)} caractères extraits"
+            )
 
             # ✅ Phase 2 RAG : Chunking sémantique avec métadonnées enrichies
             logger.info(f"[Document Upload] Chunking sémantique de '{filename}'...")
             semantic_chunks = self._chunk_text_semantic(text_content, filename)
-            logger.info(f"[Document Upload] Chunking terminé: {len(semantic_chunks)} chunks générés")
+            logger.info(
+                f"[Document Upload] Chunking terminé: {len(semantic_chunks)} chunks générés"
+            )
 
             # Vérifier le nombre de chunks AVANT de continuer
             if len(semantic_chunks) > self.MAX_TOTAL_CHUNKS_ALLOWED:
@@ -827,9 +938,9 @@ class DocumentService:
                 raise HTTPException(
                     status_code=413,
                     detail=f"Document trop volumineux: {len(semantic_chunks)} chunks générés "
-                           f"(limite: {self.MAX_TOTAL_CHUNKS_ALLOWED}). "
-                           f"Le fichier contient trop de texte pour être traité en une seule fois. "
-                           f"Veuillez découper le document en plusieurs fichiers plus petits."
+                    f"(limite: {self.MAX_TOTAL_CHUNKS_ALLOWED}). "
+                    f"Le fichier contient trop de texte pour être traité en une seule fois. "
+                    f"Veuillez découper le document en plusieurs fichiers plus petits.",
                 )
 
             await db_queries.update_document_processing_info(
@@ -847,7 +958,9 @@ class DocumentService:
                 doc_id, filename, semantic_chunks, session_id, user_id
             )
             if chunk_rows:
-                logger.info(f"[Document Upload] Insertion de {len(chunk_rows)} chunks en DB...")
+                logger.info(
+                    f"[Document Upload] Insertion de {len(chunk_rows)} chunks en DB..."
+                )
                 await self._persist_document_chunks(
                     chunk_rows,
                     session_id=session_id,
@@ -859,13 +972,19 @@ class DocumentService:
             vector_warning: Optional[str] = None
             indexed_chunks = 0
             if chunk_vectors:
-                logger.info(f"[Document Upload] Vectorisation de {len(chunk_vectors)} chunks...")
-                vectorized, vector_warning, indexed_chunks = self._vectorize_document_chunks(
-                    doc_id,
-                    chunk_vectors,
-                    total_chunks=len(chunk_rows),
+                logger.info(
+                    f"[Document Upload] Vectorisation de {len(chunk_vectors)} chunks..."
                 )
-                logger.info(f"[Document Upload] Vectorisation terminée: {indexed_chunks}/{len(chunk_vectors)} chunks indexés")
+                vectorized, vector_warning, indexed_chunks = (
+                    self._vectorize_document_chunks(
+                        doc_id,
+                        chunk_vectors,
+                        total_chunks=len(chunk_rows),
+                    )
+                )
+                logger.info(
+                    f"[Document Upload] Vectorisation terminée: {indexed_chunks}/{len(chunk_vectors)} chunks indexés"
+                )
 
             if not vectorized:
                 warning_message = vector_warning or "Vector store indisponible"
@@ -915,7 +1034,9 @@ class DocumentService:
 
     # --- ✅ NOUVELLES MÉTHODES EXPOSÉES AU ROUTEUR ---
 
-    async def get_all_documents(self, session_id: str, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_all_documents(
+        self, session_id: str, user_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
         Retourne la liste des documents enregistrés pour la session donnée.
         """
@@ -952,13 +1073,15 @@ class DocumentService:
             )
         except ValueError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
-        text_segments = [chunk.get('content', '') for chunk in chunks if chunk.get('content')]
+        text_segments = [
+            chunk.get("content", "") for chunk in chunks if chunk.get("content")
+        ]
         full_text = "\n\n".join(text_segments)
-        source = 'chunks'
+        source = "chunks"
         if not full_text:
-            source = 'file'
+            source = "file"
             try:
-                path = self._resolve_document_path(str(document.get('filepath', '')))
+                path = self._resolve_document_path(str(document.get("filepath", "")))
                 await self._ensure_stored_filepath(
                     document,
                     path,
@@ -966,29 +1089,29 @@ class DocumentService:
                     session_id=session_id,
                     user_id=user_id,
                 )
-                full_text = path.read_text(encoding='utf-8', errors='ignore')
+                full_text = path.read_text(encoding="utf-8", errors="ignore")
             except Exception:
-                full_text = ''
+                full_text = ""
         truncated = len(full_text) > self.MAX_PREVIEW_CHARS
         preview_text = full_text[: self.MAX_PREVIEW_CHARS] if truncated else full_text
         preview_chunks = [
             {
-                'chunk_index': chunk.get('chunk_index'),
-                'content': chunk.get('content', ''),
+                "chunk_index": chunk.get("chunk_index"),
+                "content": chunk.get("content", ""),
             }
             for chunk in (chunks[:25])
         ]
         return {
-            'id': doc_id_int,
-            'filename': document.get('filename'),
-            'status': document.get('status'),
-            'char_count': document.get('char_count'),
-            'chunk_count': document.get('chunk_count'),
-            'content': preview_text,
-            'truncated': truncated,
-            'total_length': len(full_text),
-            'source': source,
-            'chunk_preview': preview_chunks,
+            "id": doc_id_int,
+            "filename": document.get("filename"),
+            "status": document.get("status"),
+            "char_count": document.get("char_count"),
+            "chunk_count": document.get("chunk_count"),
+            "content": preview_text,
+            "truncated": truncated,
+            "total_length": len(full_text),
+            "source": source,
+            "chunk_preview": preview_chunks,
         }
 
     async def get_document_file(
@@ -1011,7 +1134,7 @@ class DocumentService:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
         if not document:
             raise HTTPException(status_code=404, detail="Document introuvable.")
-        path = self._resolve_document_path(str(document.get('filepath', '')))
+        path = self._resolve_document_path(str(document.get("filepath", "")))
         if not path.is_file():
             raise HTTPException(status_code=404, detail="Fichier source introuvable.")
         await self._ensure_stored_filepath(
@@ -1021,12 +1144,12 @@ class DocumentService:
             session_id=session_id,
             user_id=user_id,
         )
-        filename = document.get('filename') or path.name
+        filename = document.get("filename") or path.name
         media_type, _ = mimetypes.guess_type(str(path))
         return {
-            'path': path,
-            'filename': filename,
-            'media_type': media_type or 'application/octet-stream',
+            "path": path,
+            "filename": filename,
+            "media_type": media_type or "application/octet-stream",
         }
 
     async def reindex_document(
@@ -1049,7 +1172,7 @@ class DocumentService:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
         if not document:
             raise HTTPException(status_code=404, detail="Document introuvable.")
-        path = self._resolve_document_path(str(document.get('filepath', '')))
+        path = self._resolve_document_path(str(document.get("filepath", "")))
         if not path.exists():
             raise HTTPException(status_code=404, detail="Fichier source introuvable.")
         await self._ensure_stored_filepath(
@@ -1062,11 +1185,19 @@ class DocumentService:
         try:
             parser = self.parser_factory.get_parser(path.suffix)
         except Exception as exc:
-            raise HTTPException(status_code=400, detail="Type de fichier non supporté pour la ré-indexation.") from exc
+            raise HTTPException(
+                status_code=400,
+                detail="Type de fichier non supporté pour la ré-indexation.",
+            ) from exc
         try:
             text_content = await asyncio.to_thread(parser.parse, str(path))
         except Exception as exc:
-            logger.error("Erreur lors du parsing du document %s: %s", doc_id_int, exc, exc_info=True)
+            logger.error(
+                "Erreur lors du parsing du document %s: %s",
+                doc_id_int,
+                exc,
+                exc_info=True,
+            )
             error_message = str(exc)[:512]
             await db_queries.set_document_error_status(
                 self.db_manager,
@@ -1075,11 +1206,15 @@ class DocumentService:
                 error_message=error_message,
                 user_id=user_id,
             )
-            raise HTTPException(status_code=500, detail="Erreur lors du parsing du document.") from exc
-        semantic_chunks = self._chunk_text_semantic(text_content, document.get('filename') or path.name)
+            raise HTTPException(
+                status_code=500, detail="Erreur lors du parsing du document."
+            ) from exc
+        semantic_chunks = self._chunk_text_semantic(
+            text_content, document.get("filename") or path.name
+        )
         chunk_rows, chunk_vectors = self._build_chunk_payloads(
             doc_id_int,
-            document.get('filename') or path.name,
+            document.get("filename") or path.name,
             semantic_chunks,
             session_id,
             user_id,
@@ -1103,8 +1238,15 @@ class DocumentService:
         except ValueError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
         except Exception as exc:
-            logger.error("Erreur lors de la purge des chunks du document %s: %s", doc_id_int, exc, exc_info=True)
-            raise HTTPException(status_code=500, detail="Impossible de purger les chunks existants.") from exc
+            logger.error(
+                "Erreur lors de la purge des chunks du document %s: %s",
+                doc_id_int,
+                exc,
+                exc_info=True,
+            )
+            raise HTTPException(
+                status_code=500, detail="Impossible de purger les chunks existants."
+            ) from exc
         if chunk_rows:
             await self._persist_document_chunks(
                 chunk_rows,
@@ -1117,15 +1259,17 @@ class DocumentService:
         indexed_chunks = 0
         if chunk_vectors:
             # 🔥 Phase 4.1 RAG: session_id RETIRÉ du scope_filter (chunks scopés user uniquement)
-            scope_filter: Dict[str, Any] = {'document_id': doc_id_int}
+            scope_filter: Dict[str, Any] = {"document_id": doc_id_int}
             if user_id:
-                scope_filter['user_id'] = user_id
+                scope_filter["user_id"] = user_id
             # Note: session_id retiré - les chunks sont scopés par user_id uniquement
-            vectorized, vector_warning, indexed_chunks = self._vectorize_document_chunks(
-                doc_id_int,
-                chunk_vectors,
-                total_chunks=len(chunk_rows),
-                scope_filter=scope_filter,
+            vectorized, vector_warning, indexed_chunks = (
+                self._vectorize_document_chunks(
+                    doc_id_int,
+                    chunk_vectors,
+                    total_chunks=len(chunk_rows),
+                    scope_filter=scope_filter,
+                )
             )
 
         if not vectorized:
@@ -1151,18 +1295,20 @@ class DocumentService:
             )
 
         return {
-            'document_id': doc_id_int,
-            'filename': document.get('filename') or path.name,
-            'chunk_count': len(chunk_rows),
-            'char_count': len(text_content),
-            'status': 'ready' if vectorized else 'error',
-            'vectorized': vectorized,
-            'warning': vector_warning,
-            'indexed_chunks': indexed_chunks,
-            'total_chunks': len(chunk_rows),
+            "document_id": doc_id_int,
+            "filename": document.get("filename") or path.name,
+            "chunk_count": len(chunk_rows),
+            "char_count": len(text_content),
+            "status": "ready" if vectorized else "error",
+            "vectorized": vectorized,
+            "warning": vector_warning,
+            "indexed_chunks": indexed_chunks,
+            "total_chunks": len(chunk_rows),
         }
 
-    async def delete_document(self, doc_id: int, session_id: str, user_id: Optional[str] = None) -> bool:
+    async def delete_document(
+        self, doc_id: int, session_id: str, user_id: Optional[str] = None
+    ) -> bool:
         """
         Supprime un document de la session :
          1) purge des vecteurs associés
@@ -1207,7 +1353,7 @@ class DocumentService:
         session_id: str,
         user_id: Optional[str] = None,
         top_k: int = 5,
-        intent: Optional[Dict[str, Any]] = None
+        intent: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Recherche dans les documents avec scoring multi-critères Phase 3.
@@ -1231,7 +1377,9 @@ class DocumentService:
 
         # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
         if not user_id:
-            logger.error("search_documents appelé sans user_id - isolation des données impossible")
+            logger.error(
+                "search_documents appelé sans user_id - isolation des données impossible"
+            )
             return []
 
         try:
@@ -1291,21 +1439,23 @@ class DocumentService:
                 # ✅ Phase 3 : Pondération multi-critères
                 # vector: 40%, completeness: 20%, keywords: 15%, recency: 10%, diversity: 10%, type: 5%
                 final_score = (
-                    vector_score * 0.40 +
-                    completeness_score * 0.20 +
-                    keyword_score * 0.15 +
-                    recency_score * 0.10 +
-                    diversity_score * 0.10 +
-                    type_score * 0.05
+                    vector_score * 0.40
+                    + completeness_score * 0.20
+                    + keyword_score * 0.15
+                    + recency_score * 0.10
+                    + diversity_score * 0.10
+                    + type_score * 0.05
                 )
 
-                scored_results.append({
-                    "text": text,
-                    "score": final_score,
-                    "metadata": metadata,
-                    "distance": distance,
-                    "id": r.get("id", ""),
-                })
+                scored_results.append(
+                    {
+                        "text": text,
+                        "score": final_score,
+                        "metadata": metadata,
+                        "distance": distance,
+                        "id": r.get("id", ""),
+                    }
+                )
 
             # Étape 3 : Calculer diversité (pénaliser documents identiques)
             scored_results = self._apply_diversity_penalty(scored_results)
@@ -1315,10 +1465,14 @@ class DocumentService:
             return scored_results[:top_k]
 
         except Exception as e:
-            logger.error(f"Erreur lors de la recherche de documents: {e}", exc_info=True)
+            logger.error(
+                f"Erreur lors de la recherche de documents: {e}", exc_info=True
+            )
             return []
 
-    def _compute_keyword_score(self, text: str, query: str, chunk_keywords: str) -> float:
+    def _compute_keyword_score(
+        self, text: str, query: str, chunk_keywords: str
+    ) -> float:
         """
         Calcule le score de correspondance de mots-clés entre la requête et le chunk.
 
@@ -1338,10 +1492,12 @@ class DocumentService:
         query_lower = query.lower()
 
         # Extraire les mots de la requête (min 3 caractères)
-        query_words = set(re.findall(r'\b[a-zàâäéèêëïîôùûüÿæœç]{3,}\b', query_lower))
+        query_words = set(re.findall(r"\b[a-zàâäéèêëïîôùûüÿæœç]{3,}\b", query_lower))
 
         # Extraire les mots-clés du chunk
-        chunk_kw = set(kw.strip().lower() for kw in chunk_keywords.split(',') if kw.strip())
+        chunk_kw = set(
+            kw.strip().lower() for kw in chunk_keywords.split(",") if kw.strip()
+        )
 
         if not query_words:
             return 0.0
@@ -1357,7 +1513,9 @@ class DocumentService:
 
         return min(1.0, score)
 
-    def _compute_type_score(self, metadata: Dict[str, Any], intent: Optional[Dict[str, Any]]) -> float:
+    def _compute_type_score(
+        self, metadata: Dict[str, Any], intent: Optional[Dict[str, Any]]
+    ) -> float:
         """
         Calcule le score de correspondance de type de contenu.
 
@@ -1381,7 +1539,9 @@ class DocumentService:
         else:
             return 0.3  # Pénalité si mismatch
 
-    def _apply_diversity_penalty(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _apply_diversity_penalty(
+        self, results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """
         Applique une pénalité de diversité pour éviter trop de chunks du même document.
 

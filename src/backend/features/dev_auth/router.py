@@ -12,6 +12,7 @@ router = APIRouter()
 SRC_DIR = Path(__file__).resolve().parents[3]
 DEV_AUTH_HTML = SRC_DIR / "frontend" / "dev-auth.html"
 
+
 @router.get("/dev-auth.html", response_class=HTMLResponse)
 def get_dev_auth_html() -> HTMLResponse:
     """
@@ -22,7 +23,9 @@ def get_dev_auth_html() -> HTMLResponse:
             html = DEV_AUTH_HTML.read_text(encoding="utf-8")
             return HTMLResponse(html)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lecture dev-auth.html: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Erreur lecture dev-auth.html: {e}"
+        )
 
     # Fallback visible si le fichier statique manque (évite 404 silencieux)
     fallback = """
@@ -35,11 +38,14 @@ def get_dev_auth_html() -> HTMLResponse:
 """
     return HTMLResponse(fallback, status_code=200)
 
+
 # Mini diagnostic pour confirmer le chemin résolu dans le conteneur
 @router.get("/api/_dev-auth-diag")
 def dev_auth_diag():
-    return JSONResponse({
-        "resolved_src_dir": str(SRC_DIR),
-        "dev_auth_html_path": str(DEV_AUTH_HTML),
-        "exists": DEV_AUTH_HTML.exists()
-    })
+    return JSONResponse(
+        {
+            "resolved_src_dir": str(SRC_DIR),
+            "dev_auth_html_path": str(DEV_AUTH_HTML),
+            "exists": DEV_AUTH_HTML.exists(),
+        }
+    )

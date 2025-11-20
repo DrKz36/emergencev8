@@ -63,7 +63,9 @@ async def get_usage_summary(
         - error_breakdown{}
     """
     try:
-        logger.info(f"Admin {admin_claims.get('email')} demande rapport usage ({hours}h)")
+        logger.info(
+            f"Admin {admin_claims.get('email')} demande rapport usage ({hours}h)"
+        )
 
         guardian = UsageGuardian(repository)
         report = await guardian.generate_report(hours=hours)

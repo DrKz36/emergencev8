@@ -21,11 +21,17 @@ def temp_repo(tmp_path: Path) -> Path:
     (tmp_path / "docs" / "architecture").mkdir()
 
     # Créer fichiers surveillés
-    (tmp_path / "AGENT_SYNC.md").write_text("# Agent Sync\nVersion 1.0", encoding="utf-8")
-    (tmp_path / "docs" / "passation.md").write_text("# Passation\nEntry 1", encoding="utf-8")
+    (tmp_path / "AGENT_SYNC.md").write_text(
+        "# Agent Sync\nVersion 1.0", encoding="utf-8"
+    )
+    (tmp_path / "docs" / "passation.md").write_text(
+        "# Passation\nEntry 1", encoding="utf-8"
+    )
     (tmp_path / "AGENTS.md").write_text("# Agents\nAgent 1", encoding="utf-8")
     (tmp_path / "CODEV_PROTOCOL.md").write_text("# Protocol\nV1", encoding="utf-8")
-    (tmp_path / "docs" / "architecture" / "00-Overview.md").write_text("# Overview\nV1", encoding="utf-8")
+    (tmp_path / "docs" / "architecture" / "00-Overview.md").write_text(
+        "# Overview\nV1", encoding="utf-8"
+    )
 
     return tmp_path
 
@@ -55,7 +61,9 @@ async def test_service_lifecycle(sync_service: AutoSyncService) -> None:
 
 
 @pytest.mark.asyncio
-async def test_initialize_checksums(sync_service: AutoSyncService, temp_repo: Path) -> None:
+async def test_initialize_checksums(
+    sync_service: AutoSyncService, temp_repo: Path
+) -> None:
     """Test de l'initialisation des checksums."""
     await sync_service._initialize_checksums()
 
@@ -73,7 +81,9 @@ async def test_initialize_checksums(sync_service: AutoSyncService, temp_repo: Pa
 
 
 @pytest.mark.asyncio
-async def test_detect_file_modification(sync_service: AutoSyncService, temp_repo: Path) -> None:
+async def test_detect_file_modification(
+    sync_service: AutoSyncService, temp_repo: Path
+) -> None:
     """Test de la détection des modifications de fichiers."""
     await sync_service.start()
     await asyncio.sleep(0.5)  # Laisser l'init se faire
@@ -87,7 +97,10 @@ async def test_detect_file_modification(sync_service: AutoSyncService, temp_repo
 
     # Vérifier qu'un événement "modified" a été créé
     assert len(sync_service.pending_changes) > 0
-    event = next((e for e in sync_service.pending_changes if e.file_path == "AGENT_SYNC.md"), None)
+    event = next(
+        (e for e in sync_service.pending_changes if e.file_path == "AGENT_SYNC.md"),
+        None,
+    )
     assert event is not None
     assert event.event_type == "modified"
     assert event.old_checksum is not None
@@ -98,7 +111,9 @@ async def test_detect_file_modification(sync_service: AutoSyncService, temp_repo
 
 
 @pytest.mark.asyncio
-async def test_detect_file_creation(sync_service: AutoSyncService, temp_repo: Path) -> None:
+async def test_detect_file_creation(
+    sync_service: AutoSyncService, temp_repo: Path
+) -> None:
     """Test de la détection de création de fichiers."""
     # Ajouter ROADMAP.md dans les fichiers surveillés
     sync_service.watched_files.append("ROADMAP.md")
@@ -115,7 +130,9 @@ async def test_detect_file_creation(sync_service: AutoSyncService, temp_repo: Pa
 
     # Vérifier événement "created"
     assert len(sync_service.pending_changes) > 0
-    event = next((e for e in sync_service.pending_changes if e.file_path == "ROADMAP.md"), None)
+    event = next(
+        (e for e in sync_service.pending_changes if e.file_path == "ROADMAP.md"), None
+    )
     assert event is not None
     assert event.event_type == "created"
     assert event.old_checksum is None
@@ -125,7 +142,9 @@ async def test_detect_file_creation(sync_service: AutoSyncService, temp_repo: Pa
 
 
 @pytest.mark.asyncio
-async def test_detect_file_deletion(sync_service: AutoSyncService, temp_repo: Path) -> None:
+async def test_detect_file_deletion(
+    sync_service: AutoSyncService, temp_repo: Path
+) -> None:
     """Test de la détection de suppression de fichiers."""
     await sync_service.start()
     await asyncio.sleep(0.5)
@@ -138,7 +157,9 @@ async def test_detect_file_deletion(sync_service: AutoSyncService, temp_repo: Pa
     await asyncio.sleep(2)
 
     # Vérifier événement "deleted"
-    event = next((e for e in sync_service.pending_changes if e.file_path == "AGENTS.md"), None)
+    event = next(
+        (e for e in sync_service.pending_changes if e.file_path == "AGENTS.md"), None
+    )
     assert event is not None
     assert event.event_type == "deleted"
     assert event.old_checksum is not None
@@ -201,7 +222,9 @@ async def test_consolidation_threshold_trigger(temp_repo: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_manual_consolidation(sync_service: AutoSyncService, temp_repo: Path) -> None:
+async def test_manual_consolidation(
+    sync_service: AutoSyncService, temp_repo: Path
+) -> None:
     """Test du déclenchement manuel de consolidation."""
     consolidation_triggered = []
 
@@ -263,7 +286,9 @@ async def test_get_status(sync_service: AutoSyncService) -> None:
 
 
 @pytest.mark.asyncio
-async def test_consolidation_report_generation(sync_service: AutoSyncService, temp_repo: Path) -> None:
+async def test_consolidation_report_generation(
+    sync_service: AutoSyncService, temp_repo: Path
+) -> None:
     """Test de la génération du rapport de consolidation."""
     await sync_service.start()
     await asyncio.sleep(0.5)
@@ -304,6 +329,9 @@ async def test_file_type_detection(sync_service: AutoSyncService) -> None:
     """Test de la détection du type de fichier."""
     assert sync_service._get_file_type("AGENT_SYNC.md") == "sync"
     assert sync_service._get_file_type("docs/passation.md") == "passation"
-    assert sync_service._get_file_type("docs/architecture/00-Overview.md") == "architecture"
+    assert (
+        sync_service._get_file_type("docs/architecture/00-Overview.md")
+        == "architecture"
+    )
     assert sync_service._get_file_type("README.md") == "docs"
     assert sync_service._get_file_type("config.yaml") == "other"

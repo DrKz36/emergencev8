@@ -108,7 +108,9 @@ def write_summary(
         "prompt_tokens": {
             "avg": statistics.mean(prompt_lengths),
             "median": statistics.median(prompt_lengths),
-            "p95": statistics.quantiles(prompt_lengths, n=20)[-1] if len(prompt_lengths) >= 20 else max(prompt_lengths),
+            "p95": statistics.quantiles(prompt_lengths, n=20)[-1]
+            if len(prompt_lengths) >= 20
+            else max(prompt_lengths),
             "max": max(prompt_lengths),
         },
         "tool_counts": {
@@ -123,9 +125,14 @@ def write_summary(
         json.dump(payload, handle, indent=2, ensure_ascii=False)
 
 
-def emit_prompts(summaries: list[SampleSummary], dataset: Path, output_path: Path) -> None:
+def emit_prompts(
+    summaries: list[SampleSummary], dataset: Path, output_path: Path
+) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with dataset.open("r", encoding="utf-8") as source, output_path.open("w", encoding="utf-8") as sink:
+    with (
+        dataset.open("r", encoding="utf-8") as source,
+        output_path.open("w", encoding="utf-8") as sink,
+    ):
         for raw_line, summary in zip(source, summaries, strict=False):
             record = json.loads(raw_line)
             slim = {
@@ -184,4 +191,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

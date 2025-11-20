@@ -41,7 +41,9 @@ async def migrate_auth_sessions(db: DatabaseManager, dry_run: bool = False):
     if "user_id" not in columns:
         print("   ➕ Ajout colonne user_id...")
         if not dry_run:
-            await db.execute("ALTER TABLE auth_sessions ADD COLUMN user_id TEXT", commit=True)
+            await db.execute(
+                "ALTER TABLE auth_sessions ADD COLUMN user_id TEXT", commit=True
+            )
         print("   ✅ Colonne user_id ajoutée")
     else:
         print("   ✅ Colonne user_id déjà présente")
@@ -67,7 +69,7 @@ async def migrate_auth_sessions(db: DatabaseManager, dry_run: bool = False):
                 await db.execute(
                     "UPDATE auth_sessions SET user_id = ? WHERE id = ?",
                     (user_id, session_id),
-                    commit=True
+                    commit=True,
                 )
         print(f"   ✅ {count} sessions backfillées")
     else:
@@ -77,7 +79,7 @@ async def migrate_auth_sessions(db: DatabaseManager, dry_run: bool = False):
     if not dry_run:
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id)",
-            commit=True
+            commit=True,
         )
     print("   ✅ Index créé")
 
@@ -123,7 +125,7 @@ async def migrate_threads(db: DatabaseManager, dry_run: bool = False):
                 AND session_id IS NOT NULL
                 AND EXISTS (SELECT 1 FROM auth_sessions WHERE auth_sessions.id = threads.session_id)
                 """,
-                commit=True
+                commit=True,
             )
         print(f"   ✅ {count} threads backfillés")
     else:
@@ -133,7 +135,7 @@ async def migrate_threads(db: DatabaseManager, dry_run: bool = False):
     if not dry_run:
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads(user_id)",
-            commit=True
+            commit=True,
         )
     print("   ✅ Index créé")
 
@@ -149,7 +151,9 @@ async def migrate_documents(db: DatabaseManager, dry_run: bool = False):
     if "user_id" not in columns:
         print("   ➕ Ajout colonne user_id...")
         if not dry_run:
-            await db.execute("ALTER TABLE documents ADD COLUMN user_id TEXT", commit=True)
+            await db.execute(
+                "ALTER TABLE documents ADD COLUMN user_id TEXT", commit=True
+            )
         print("   ✅ Colonne user_id ajoutée")
     else:
         print("   ✅ Colonne user_id déjà présente")
@@ -179,7 +183,7 @@ async def migrate_documents(db: DatabaseManager, dry_run: bool = False):
                 AND session_id IS NOT NULL
                 AND EXISTS (SELECT 1 FROM auth_sessions WHERE auth_sessions.id = documents.session_id)
                 """,
-                commit=True
+                commit=True,
             )
         print(f"   ✅ {count} documents backfillés")
     else:
@@ -189,7 +193,7 @@ async def migrate_documents(db: DatabaseManager, dry_run: bool = False):
     if not dry_run:
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id)",
-            commit=True
+            commit=True,
         )
     print("   ✅ Index créé")
 
@@ -238,7 +242,9 @@ async def main():
             print("Prochaines étapes:")
             print("1. Tester avec 2 devices (mobile + desktop)")
             print("2. Forcer re-login des utilisateurs (nouveau JWT avec sub)")
-            print("3. Vérifier que les threads/documents apparaissent sur les 2 devices")
+            print(
+                "3. Vérifier que les threads/documents apparaissent sur les 2 devices"
+            )
             print()
         else:
             print("Pour appliquer les changements, relancer sans --dry-run:")
@@ -253,6 +259,7 @@ async def main():
         print()
         print(f"Erreur: {e}")
         import traceback
+
         traceback.print_exc()
         print()
         print("La base de données n'a PAS été modifiée (rollback auto).")

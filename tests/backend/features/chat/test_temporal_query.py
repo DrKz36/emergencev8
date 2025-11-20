@@ -5,9 +5,8 @@ Phase 1 - Mémoire Temporelle
 Date: 2025-10-15
 """
 
-import pytest
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Dict, Any
 
 
@@ -18,7 +17,7 @@ class TestTemporalQueryDetection:
     _TEMPORAL_QUERY_RE = re.compile(
         r"\b(quand|quel\s+jour|quelle\s+heure|à\s+quelle\s+heure|quelle\s+date|"
         r"when|what\s+time|what\s+day|date|timestamp|horodatage)\b",
-        re.IGNORECASE
+        re.IGNORECASE,
     )
 
     def _is_temporal_query(self, text: str) -> bool:
@@ -40,7 +39,9 @@ class TestTemporalQueryDetection:
 
         for query, expected in test_cases:
             result = self._is_temporal_query(query)
-            assert result == expected, f"Failed for: '{query}' (expected {expected}, got {result})"
+            assert result == expected, (
+                f"Failed for: '{query}' (expected {expected}, got {result})"
+            )
 
     def test_detection_questions_anglais(self):
         """Test détection questions temporelles en anglais."""
@@ -54,7 +55,9 @@ class TestTemporalQueryDetection:
 
         for query, expected in test_cases:
             result = self._is_temporal_query(query)
-            assert result == expected, f"Failed for: '{query}' (expected {expected}, got {result})"
+            assert result == expected, (
+                f"Failed for: '{query}' (expected {expected}, got {result})"
+            )
 
     def test_non_temporal_queries(self):
         """Test que les questions non-temporelles ne sont pas détectées."""
@@ -68,7 +71,9 @@ class TestTemporalQueryDetection:
 
         for query, expected in test_cases:
             result = self._is_temporal_query(query)
-            assert result == expected, f"Failed for: '{query}' (expected {expected}, got {result})"
+            assert result == expected, (
+                f"Failed for: '{query}' (expected {expected}, got {result})"
+            )
 
     def test_case_insensitive(self):
         """Test que la détection est insensible à la casse."""
@@ -110,8 +115,21 @@ class TestTemporalHistoryFormatting:
         dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
 
         day = dt.day
-        months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
-                  "juil", "août", "sept", "oct", "nov", "déc"]
+        months = [
+            "",
+            "janv",
+            "fév",
+            "mars",
+            "avr",
+            "mai",
+            "juin",
+            "juil",
+            "août",
+            "sept",
+            "oct",
+            "nov",
+            "déc",
+        ]
         month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
         time_str = f"{dt.hour}h{dt.minute:02d}"
         date_str = f"{day} {month} à {time_str}"
@@ -127,8 +145,21 @@ class TestTemporalHistoryFormatting:
             ("2025-12-31T23:59:00Z", "31 déc à 23h59"),
         ]
 
-        months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
-                  "juil", "août", "sept", "oct", "nov", "déc"]
+        months = [
+            "",
+            "janv",
+            "fév",
+            "mars",
+            "avr",
+            "mai",
+            "juin",
+            "juil",
+            "août",
+            "sept",
+            "oct",
+            "nov",
+            "déc",
+        ]
 
         for iso_date, expected in test_cases:
             dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
@@ -137,7 +168,9 @@ class TestTemporalHistoryFormatting:
             time_str = f"{dt.hour}h{dt.minute:02d}"
             date_str = f"{day} {month} à {time_str}"
 
-            assert date_str == expected, f"Failed for {iso_date}: got '{date_str}', expected '{expected}'"
+            assert date_str == expected, (
+                f"Failed for {iso_date}: got '{date_str}', expected '{expected}'"
+            )
 
     def test_content_preview_truncation(self):
         """Test que le contenu est tronqué à 80 caractères."""
@@ -164,7 +197,9 @@ class TestTemporalContextIntegration:
         lines.append("### Historique récent de cette conversation")
         lines.append("")
         lines.append("**[15 oct à 3h08] Toi :** Peux-tu m'expliquer Docker ?")
-        lines.append("**[15 oct à 3h09] Anima :** Docker est une plateforme de containerisation...")
+        lines.append(
+            "**[15 oct à 3h09] Anima :** Docker est une plateforme de containerisation..."
+        )
 
         context = "\n".join(lines)
 
@@ -215,15 +250,28 @@ def test_integration_full_workflow():
                 "agent_id": "anima",
                 "content": "Docker est une plateforme de containerisation qui permet...",
                 "created_at": "2025-10-15T03:08:50Z",
-            }
+            },
         ]
 
         lines = []
         lines.append("### Historique récent de cette conversation")
         lines.append("")
 
-        months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
-                  "juil", "août", "sept", "oct", "nov", "déc"]
+        months = [
+            "",
+            "janv",
+            "fév",
+            "mars",
+            "avr",
+            "mai",
+            "juin",
+            "juil",
+            "août",
+            "sept",
+            "oct",
+            "nov",
+            "déc",
+        ]
 
         for msg in messages:
             role = msg.get("role", "").lower()

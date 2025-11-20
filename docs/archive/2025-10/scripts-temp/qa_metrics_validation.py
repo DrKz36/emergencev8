@@ -29,9 +29,7 @@ DEFAULT_LOGIN_EMAIL = os.environ.get("EMERGENCE_SMOKE_EMAIL", "")
 DEFAULT_LOGIN_PASSWORD = os.environ.get("EMERGENCE_SMOKE_PASSWORD", "")
 DEFAULT_AGENT = "anima"
 DEFAULT_PERIOD = "7d"
-DEFAULT_TIMELINE_MESSAGE = (
-    "Salut Anima ! Ce message QA verifie que les timelines cockpit remontent bien des donnees."
-)
+DEFAULT_TIMELINE_MESSAGE = "Salut Anima ! Ce message QA verifie que les timelines cockpit remontent bien des donnees."
 DEFAULT_PROMPTS: Sequence[str] = (
     "Quelle est l'architecture d'Emergence?",
     "Explique-moi le système de métriques Prometheus",
@@ -222,7 +220,9 @@ async def fetch_metrics_snapshot(
                     try:
                         values[metric] = float(parts[-1])
                     except ValueError:
-                        LOGGER.warning("Metric %s value not numeric in %s", metric, line)
+                        LOGGER.warning(
+                            "Metric %s value not numeric in %s", metric, line
+                        )
                         values[metric] = 0.0
                 break
         else:
@@ -245,7 +245,9 @@ async def attempt_password_login(
     }
     resp = await client.post("/api/auth/login", json=payload)
     if resp.status_code != 200:
-        LOGGER.warning("Password login failed (%s): %s", resp.status_code, resp.text[:200])
+        LOGGER.warning(
+            "Password login failed (%s): %s", resp.status_code, resp.text[:200]
+        )
         return None
     data = resp.json()
     try:
@@ -307,7 +309,9 @@ async def trigger_memory_analysis(client: httpx.AsyncClient, auth: AuthResult) -
         LOGGER.warning("Memory analysis request error: %s", exc)
         return False
     if resp.status_code != 200:
-        LOGGER.warning("Memory analysis failed (%s): %s", resp.status_code, resp.text[:200])
+        LOGGER.warning(
+            "Memory analysis failed (%s): %s", resp.status_code, resp.text[:200]
+        )
         return False
     return True
 
@@ -456,7 +460,9 @@ async def send_ws_message(
     return completions
 
 
-def compute_timeline_delta(before: TimelineSnapshot, after: TimelineSnapshot) -> TimelineDelta:
+def compute_timeline_delta(
+    before: TimelineSnapshot, after: TimelineSnapshot
+) -> TimelineDelta:
     before_messages, before_threads = _sum_activity(before.activity)
     after_messages, after_threads = _sum_activity(after.activity)
     before_tokens = _sum_tokens(before.tokens)
@@ -504,7 +510,9 @@ async def run_timeline_scenario(
     after = await fetch_timeline_snapshot(client, auth, period=period)
     delta = compute_timeline_delta(before, after)
     if delta.messages <= 0:
-        raise TimelineScenarioError("Timeline activité n'a pas progressé (messages delta <= 0).")
+        raise TimelineScenarioError(
+            "Timeline activité n'a pas progressé (messages delta <= 0)."
+        )
     if delta.tokens <= 0:
         raise TimelineScenarioError("Timeline tokens n'a pas progressé (delta <= 0).")
     activity_today = _today_entry(after.activity)
@@ -536,10 +544,16 @@ async def run_metrics_flow(
 
 
 async def run_read_only_probe(base_url: str) -> ReadOnlyReport:
-    async with httpx.AsyncClient(base_url=base_url, timeout=httpx.Timeout(30.0)) as client:
-        summary_resp = await client.get("/api/dashboard/costs/summary", headers=DEV_BYPASS_HEADERS)
+    async with httpx.AsyncClient(
+        base_url=base_url, timeout=httpx.Timeout(30.0)
+    ) as client:
+        summary_resp = await client.get(
+            "/api/dashboard/costs/summary", headers=DEV_BYPASS_HEADERS
+        )
         timeline_resp = await client.get(
-            "/api/dashboard/timeline/activity", headers=DEV_BYPASS_HEADERS, params={"period": DEFAULT_PERIOD}
+            "/api/dashboard/timeline/activity",
+            headers=DEV_BYPASS_HEADERS,
+            params={"period": DEFAULT_PERIOD},
         )
     summary_sample = None
     if summary_resp.status_code == 200:
@@ -584,7 +598,9 @@ async def run_cli(args: argparse.Namespace) -> QAReport:
 
         auth: Optional[AuthResult] = None
         if not args.skip_timeline or not args.skip_metrics or args.dashboard_probe:
-            auth = await attempt_password_login(client, args.login_email, args.login_password)
+            auth = await attempt_password_login(
+                client, args.login_email, args.login_password
+            )
             login_mode = "password" if auth else "password_failed"
             if auth is None and not args.no_dev_login:
                 auth = await attempt_dev_login(client)
@@ -600,10 +616,14 @@ async def run_cli(args: argparse.Namespace) -> QAReport:
                     trigger_memory=args.trigger_memory,
                 )
                 metrics_after = await fetch_metrics_snapshot(client, PROMETHEUS_METRICS)
-                metrics_report = MetricsReport(before=metrics_before, after=metrics_after)  # type: ignore[arg-type]
+                metrics_report = MetricsReport(
+                    before=metrics_before, after=metrics_after
+                )  # type: ignore[arg-type]
             elif metrics_before:
                 metrics_after = metrics_before
-                metrics_report = MetricsReport(before=metrics_before, after=metrics_before)
+                metrics_report = MetricsReport(
+                    before=metrics_before, after=metrics_before
+                )
 
             if not args.skip_timeline:
                 timeline_report = await run_timeline_scenario(
@@ -624,20 +644,28 @@ async def run_cli(args: argparse.Namespace) -> QAReport:
                         dashboard_status=200,
                         timeline_status=0,
                         summary_sample={
-                            "sessions": summary.get("monitoring", {}).get("total_sessions"),
-                            "documents": summary.get("monitoring", {}).get("total_documents"),
+                            "sessions": summary.get("monitoring", {}).get(
+                                "total_sessions"
+                            ),
+                            "documents": summary.get("monitoring", {}).get(
+                                "total_documents"
+                            ),
                         },
                         timeline_sample=None,
                     )
         else:
             if not args.skip_metrics:
                 metrics_after = await fetch_metrics_snapshot(client, PROMETHEUS_METRICS)
-                metrics_report = MetricsReport(before=metrics_before, after=metrics_after)  # type: ignore[arg-type]
+                metrics_report = MetricsReport(
+                    before=metrics_before, after=metrics_after
+                )  # type: ignore[arg-type]
 
     if metrics_report is None and metrics_before and metrics_after:
         metrics_report = MetricsReport(before=metrics_before, after=metrics_after)
 
-    if (not timeline_report or args.force_read_only_probe) and args.enable_read_only_fallback:
+    if (
+        not timeline_report or args.force_read_only_probe
+    ) and args.enable_read_only_fallback:
         read_only_report = await run_read_only_probe(base_url)
 
     return QAReport(
@@ -689,19 +717,31 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Valide les métriques Prometheus et les timelines cockpit via un seul script."
     )
-    parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="URL de base de l'API Emergence.")
-    parser.add_argument("--login-email", default=DEFAULT_LOGIN_EMAIL, help="Email pour /api/auth/login.")
-    parser.add_argument("--login-password", default=DEFAULT_LOGIN_PASSWORD, help="Mot de passe pour /api/auth/login.")
+    parser.add_argument(
+        "--base-url", default=DEFAULT_BASE_URL, help="URL de base de l'API Emergence."
+    )
+    parser.add_argument(
+        "--login-email", default=DEFAULT_LOGIN_EMAIL, help="Email pour /api/auth/login."
+    )
+    parser.add_argument(
+        "--login-password",
+        default=DEFAULT_LOGIN_PASSWORD,
+        help="Mot de passe pour /api/auth/login.",
+    )
     parser.add_argument(
         "--no-dev-login",
         action="store_true",
         help="Désactive le fallback /api/auth/dev/login si l'auth standard échoue.",
     )
     parser.add_argument(
-        "--skip-metrics", action="store_true", help="Ignore la validation d'incrémentation des métriques."
+        "--skip-metrics",
+        action="store_true",
+        help="Ignore la validation d'incrémentation des métriques.",
     )
     parser.add_argument(
-        "--skip-timeline", action="store_true", help="Ignore le scénario timeline cockpit."
+        "--skip-timeline",
+        action="store_true",
+        help="Ignore le scénario timeline cockpit.",
     )
     parser.add_argument(
         "--chat-prompts",
@@ -719,12 +759,28 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_TIMELINE_MESSAGE,
         help="Message envoyé via WebSocket pour le scénario timeline.",
     )
-    parser.add_argument("--agent", default=DEFAULT_AGENT, help="Agent sollicité pour le scénario timeline.")
-    parser.add_argument("--timeline-period", default=DEFAULT_PERIOD, help="Période timeline (7d, 30d, 90d, 1y).")
-    parser.add_argument("--use-rag", action="store_true", help="Active use_rag lors de l'envoi WS.")
-    parser.add_argument("--ws-timeout", type=int, default=180, help="Timeout WebSocket (secondes).")
-    parser.add_argument("--http-timeout", type=float, default=60.0, help="Timeout HTTPX global.")
-    parser.add_argument("--json-output", help="Chemin de fichier pour exporter le rapport JSON.")
+    parser.add_argument(
+        "--agent",
+        default=DEFAULT_AGENT,
+        help="Agent sollicité pour le scénario timeline.",
+    )
+    parser.add_argument(
+        "--timeline-period",
+        default=DEFAULT_PERIOD,
+        help="Période timeline (7d, 30d, 90d, 1y).",
+    )
+    parser.add_argument(
+        "--use-rag", action="store_true", help="Active use_rag lors de l'envoi WS."
+    )
+    parser.add_argument(
+        "--ws-timeout", type=int, default=180, help="Timeout WebSocket (secondes)."
+    )
+    parser.add_argument(
+        "--http-timeout", type=float, default=60.0, help="Timeout HTTPX global."
+    )
+    parser.add_argument(
+        "--json-output", help="Chemin de fichier pour exporter le rapport JSON."
+    )
     parser.add_argument(
         "--dashboard-probe",
         action="store_true",
@@ -754,7 +810,9 @@ def write_json_report(path: str, report: QAReport) -> None:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s"
+    )
     args = parse_args(argv)
     report = asyncio.run(run_cli(args))
     print(format_report(report))

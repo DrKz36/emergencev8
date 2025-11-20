@@ -3,6 +3,7 @@
 Script de test pour le système de timeout de session.
 Vérifie que les sessions inactives sont bien nettoyées après 3 minutes.
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -11,9 +12,12 @@ from datetime import datetime, timezone, timedelta
 # Ajout du chemin pour les imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from backend.core.session_manager import SessionManager, INACTIVITY_TIMEOUT_MINUTES, CLEANUP_INTERVAL_SECONDS
+from backend.core.session_manager import (
+    SessionManager,
+    INACTIVITY_TIMEOUT_MINUTES,
+    CLEANUP_INTERVAL_SECONDS,
+)
 from backend.core.database.manager import DatabaseManager
-from backend.shared.models import Session
 
 
 async def test_session_timeout():
@@ -44,29 +48,37 @@ async def test_session_timeout():
     session_manager.start_cleanup_task()
 
     # Test 1: Session active (avec activité)
-    print(f"\n[TEST 1] Session avec activite reguliere")
+    print("\n[TEST 1] Session avec activite reguliere")
     print("   Simulation d'activite toutes les 60 secondes pendant 2 minutes...")
     for i in range(2):
         await asyncio.sleep(60)
         session_manager._update_session_activity(test_session_id)
         active_session = session_manager.get_session(test_session_id)
         if active_session:
-            print(f"   [OK] Minute {i+1}: Session toujours active (last_activity: {active_session.last_activity.strftime('%H:%M:%S')})")
+            print(
+                f"   [OK] Minute {i + 1}: Session toujours active (last_activity: {active_session.last_activity.strftime('%H:%M:%S')})"
+            )
         else:
-            print(f"   [ERROR] Minute {i+1}: Session supprimee (ERREUR!)")
+            print(f"   [ERROR] Minute {i + 1}: Session supprimee (ERREUR!)")
             break
 
     # Test 2: Session inactive (sans activité)
-    print(f"\n[TEST 2] Session sans activite pendant {INACTIVITY_TIMEOUT_MINUTES} minutes")
+    print(
+        f"\n[TEST 2] Session sans activite pendant {INACTIVITY_TIMEOUT_MINUTES} minutes"
+    )
     print(f"   Attente de {INACTIVITY_TIMEOUT_MINUTES + 0.5} minutes sans activite...")
 
     # Pour accélérer le test, on modifie artificiellement last_activity
     active_session = session_manager.get_session(test_session_id)
     if active_session:
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=INACTIVITY_TIMEOUT_MINUTES + 0.5)
+        old_time = datetime.now(timezone.utc) - timedelta(
+            minutes=INACTIVITY_TIMEOUT_MINUTES + 0.5
+        )
         active_session.last_activity = old_time
         print(f"   [TIME] Last activity modifiee a: {old_time.strftime('%H:%M:%S')}")
-        print(f"   [WAIT] Attente du prochain cycle de nettoyage ({CLEANUP_INTERVAL_SECONDS}s)...")
+        print(
+            f"   [WAIT] Attente du prochain cycle de nettoyage ({CLEANUP_INTERVAL_SECONDS}s)..."
+        )
 
         # Attendre un cycle de nettoyage
         await asyncio.sleep(CLEANUP_INTERVAL_SECONDS + 5)
@@ -74,9 +86,11 @@ async def test_session_timeout():
         # Vérifier que la session a été nettoyée
         remaining_session = session_manager.get_session(test_session_id)
         if remaining_session is None:
-            print(f"   [OK] Session correctement nettoyee pour inactivite!")
+            print("   [OK] Session correctement nettoyee pour inactivite!")
         else:
-            print(f"   [ERROR] Session toujours active (ERREUR - timeout non fonctionnel!)")
+            print(
+                "   [ERROR] Session toujours active (ERREUR - timeout non fonctionnel!)"
+            )
     else:
         print("   [ERROR] Session deja supprimee (ERREUR!)")
 
@@ -84,7 +98,9 @@ async def test_session_timeout():
     print("\n[STOP] Arret de la tache de nettoyage")
     await session_manager.stop_cleanup_task()
 
-    print(f"\n[OK] Test termine - Sessions actives restantes: {len(session_manager.active_sessions)}")
+    print(
+        f"\n[OK] Test termine - Sessions actives restantes: {len(session_manager.active_sessions)}"
+    )
 
     await db_manager.disconnect()
 
@@ -104,5 +120,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n[ERROR] ERREUR: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

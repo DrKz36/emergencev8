@@ -65,9 +65,7 @@ async def create_thread(token: str, title: str) -> str:
         return data["id"]
 
 
-async def send_messages_ws(
-    token: str, thread_id: str, messages: list[str]
-) -> None:
+async def send_messages_ws(token: str, thread_id: str, messages: list[str]) -> None:
     """Send messages via WebSocket."""
     parsed = httpx.URL(BASE_URL)
     ws_scheme = "wss" if parsed.scheme == "https" else "ws"

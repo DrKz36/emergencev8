@@ -61,17 +61,20 @@ class DashboardService:
     def _get_thresholds_payload(self) -> Dict[str, float]:
         # accepte DAILY_LIMIT / daily_limit, etc. + ENV fallback
         daily = self._get_threshold(
-            "DAILY_LIMIT", "daily_limit",
+            "DAILY_LIMIT",
+            "daily_limit",
             env="COST_DAILY_LIMIT",
             default=1.0,
         )
         weekly = self._get_threshold(
-            "WEEKLY_LIMIT", "weekly_limit",
+            "WEEKLY_LIMIT",
+            "weekly_limit",
             env="COST_WEEKLY_LIMIT",
             default=1.0,
         )
         monthly = self._get_threshold(
-            "MONTHLY_LIMIT", "monthly_limit",
+            "MONTHLY_LIMIT",
+            "monthly_limit",
             env="COST_MONTHLY_LIMIT",
             default=1.0,
         )
@@ -84,8 +87,9 @@ class DashboardService:
     # -------------------------
     # Coûts par agent
     # -------------------------
-    async def get_costs_by_agent(self, *, user_id: Optional[str] = None,
-                                 session_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_costs_by_agent(
+        self, *, user_id: Optional[str] = None, session_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
         Récupère les coûts agrégés par agent avec le modèle utilisé.
 
@@ -117,7 +121,7 @@ class DashboardService:
                 "neo": "Neo",
                 "nexus": "Nexus",
                 "user": "User",
-                "system": "System"
+                "system": "System",
             }
 
             query = f"""
@@ -146,16 +150,20 @@ class DashboardService:
                     logger.debug(f"[dashboard] Agent filtré (non valide): {agent_name}")
                     continue
 
-                display_name = agent_display_names.get(agent_name, agent_name.capitalize())
+                display_name = agent_display_names.get(
+                    agent_name, agent_name.capitalize()
+                )
 
-                result.append({
-                    "agent": display_name,
-                    "model": row_dict.get("model", "unknown"),
-                    "total_cost": float(row_dict.get("total_cost", 0) or 0),
-                    "input_tokens": int(row_dict.get("input_tokens", 0) or 0),
-                    "output_tokens": int(row_dict.get("output_tokens", 0) or 0),
-                    "request_count": int(row_dict.get("request_count", 0) or 0)
-                })
+                result.append(
+                    {
+                        "agent": display_name,
+                        "model": row_dict.get("model", "unknown"),
+                        "total_cost": float(row_dict.get("total_cost", 0) or 0),
+                        "input_tokens": int(row_dict.get("input_tokens", 0) or 0),
+                        "output_tokens": int(row_dict.get("output_tokens", 0) or 0),
+                        "request_count": int(row_dict.get("request_count", 0) or 0),
+                    }
+                )
 
             return result
 
@@ -166,8 +174,9 @@ class DashboardService:
     # -------------------------
     # API principale
     # -------------------------
-    async def get_dashboard_data(self, *, user_id: Optional[str] = None,
-                                session_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_dashboard_data(
+        self, *, user_id: Optional[str] = None, session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Récupère, agrège et formate toutes les données pour le cockpit.
         La structure de l'objet retourné correspond exactement à ce que
@@ -216,7 +225,12 @@ class DashboardService:
                 )
             except Exception as e:
                 logger.warning(f"[dashboard] get_tokens_summary KO: {e}")
-                tokens_summary = {"total": 0, "input": 0, "output": 0, "avgPerMessage": 0}
+                tokens_summary = {
+                    "total": 0,
+                    "input": 0,
+                    "output": 0,
+                    "avgPerMessage": 0,
+                }
 
             documents_raw = self._coerce_list(documents_raw)
             sessions_raw = self._coerce_list(sessions_raw)
@@ -263,7 +277,11 @@ class DashboardService:
                     "current_month_cost": 0.0,
                 },
                 "monitoring": {"total_documents": 0, "total_sessions": 0},
-                "thresholds": {"daily_threshold": 1.0, "weekly_threshold": 1.0, "monthly_threshold": 1.0},
+                "thresholds": {
+                    "daily_threshold": 1.0,
+                    "weekly_threshold": 1.0,
+                    "monthly_threshold": 1.0,
+                },
                 "messages": {"total": 0, "today": 0, "week": 0, "month": 0},
                 "tokens": {"total": 0, "input": 0, "output": 0, "avgPerMessage": 0},
                 "raw_data": {"documents": [], "sessions": []},

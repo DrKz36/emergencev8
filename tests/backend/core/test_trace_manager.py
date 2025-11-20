@@ -4,7 +4,7 @@
 import asyncio
 import time
 import pytest
-from backend.core.tracing import TraceManager, SpanStatus, trace_span
+from backend.core.tracing import TraceManager, trace_span
 
 
 class TestTraceManager:
@@ -111,6 +111,7 @@ class TestTraceSpanDecorator:
     def trace_mgr(self):
         """Fixture: TraceManager propre."""
         from backend.core.tracing import get_trace_manager
+
         mgr = get_trace_manager()
         mgr.clear()
         return mgr
@@ -118,6 +119,7 @@ class TestTraceSpanDecorator:
     @pytest.mark.asyncio
     async def test_async_function_traced(self, trace_mgr):
         """Test: décorateur @trace_span sur fonction async."""
+
         @trace_span("async_operation", agent="test")
         async def async_func():
             await asyncio.sleep(0.01)
@@ -135,6 +137,7 @@ class TestTraceSpanDecorator:
     @pytest.mark.asyncio
     async def test_async_function_error_traced(self, trace_mgr):
         """Test: décorateur @trace_span capture erreurs (status=ERROR)."""
+
         @trace_span("failing_operation")
         async def failing_func():
             raise ValueError("Test error")
@@ -149,6 +152,7 @@ class TestTraceSpanDecorator:
 
     def test_sync_function_traced(self, trace_mgr):
         """Test: décorateur @trace_span sur fonction sync."""
+
         @trace_span("sync_operation", agent="sync_test")
         def sync_func():
             time.sleep(0.01)

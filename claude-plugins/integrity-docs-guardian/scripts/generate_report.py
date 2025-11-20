@@ -12,8 +12,10 @@ from pathlib import Path
 from typing import Dict, List
 
 # Fix Windows console encoding
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8") if hasattr(
+        sys.stdout, "reconfigure"
+    ) else None
 
 # Add parent directory to path for imports
 SCRIPT_DIR = Path(__file__).parent
@@ -69,11 +71,7 @@ def generate_priority_actions(anima_report: Dict, neo_report: Dict) -> List[Dict
         severity = issue.get("severity", "info")
 
         # Map severity to priority
-        priority_map = {
-            "critical": "P0",
-            "warning": "P1",
-            "info": "P3"
-        }
+        priority_map = {"critical": "P0", "warning": "P1", "info": "P3"}
         priority = priority_map.get(severity, "P3")
 
         action = {
@@ -85,7 +83,7 @@ def generate_priority_actions(anima_report: Dict, neo_report: Dict) -> List[Dict
             "affected_files": issue.get("affected_files", []),
             "recommendation": issue.get("recommendation", ""),
             "estimated_effort": estimate_effort(issue),
-            "owner": suggest_owner(issue)
+            "owner": suggest_owner(issue),
         }
         actions.append(action)
 
@@ -95,11 +93,7 @@ def generate_priority_actions(anima_report: Dict, neo_report: Dict) -> List[Dict
         severity = gap.get("severity", "low")
 
         # Map severity to priority
-        priority_map = {
-            "high": "P1",
-            "medium": "P2",
-            "low": "P3"
-        }
+        priority_map = {"high": "P1", "medium": "P2", "low": "P3"}
         priority = priority_map.get(severity, "P3")
 
         action = {
@@ -111,7 +105,7 @@ def generate_priority_actions(anima_report: Dict, neo_report: Dict) -> List[Dict
             "affected_files": gap.get("affected_docs", []),
             "recommendation": gap.get("recommendation", ""),
             "estimated_effort": estimate_effort(gap),
-            "owner": "docs-team"
+            "owner": "docs-team",
         }
         actions.append(action)
 
@@ -155,7 +149,7 @@ def generate_executive_summary(
     overall_status: str,
     anima_report: Dict,
     neo_report: Dict,
-    priority_actions: List[Dict]
+    priority_actions: List[Dict],
 ) -> Dict:
     """Generate executive summary."""
     total_issues = len(priority_actions)
@@ -177,7 +171,7 @@ def generate_executive_summary(
         "critical": critical,
         "warnings": warnings,
         "info": info,
-        "headline": headline
+        "headline": headline,
     }
 
 
@@ -193,13 +187,14 @@ def generate_statistics(anima_report: Dict, neo_report: Dict) -> Dict:
         "docs_files": anima_stats.get("docs_files", 0),
         "issues_by_severity": {
             "critical": neo_stats.get("critical", 0),
-            "warning": neo_stats.get("warnings", 0) + anima_stats.get("high_severity", 0),
-            "info": neo_stats.get("info", 0) + anima_stats.get("low_severity", 0)
+            "warning": neo_stats.get("warnings", 0)
+            + anima_stats.get("high_severity", 0),
+            "info": neo_stats.get("info", 0) + anima_stats.get("low_severity", 0),
         },
         "issues_by_category": {
             "integrity": neo_stats.get("issues_found", 0),
-            "documentation": anima_stats.get("gaps_found", 0)
-        }
+            "documentation": anima_stats.get("gaps_found", 0),
+        },
     }
 
 
@@ -219,15 +214,19 @@ def generate_recommendations(priority_actions: List[Dict]) -> Dict:
     return {
         "immediate": immediate or ["None - all checks passed"],
         "short_term": short_term or ["Continue monitoring"],
-        "long_term": long_term or ["Maintain current practices"]
+        "long_term": long_term or ["Maintain current practices"],
     }
 
 
 def generate_unified_report(anima_report: Dict, neo_report: Dict) -> Dict:
     """Generate the unified Nexus report."""
     # Get commit info from either report
-    commit_hash = anima_report.get("commit_hash") or neo_report.get("commit_hash", "unknown")
-    commit_msg = anima_report.get("commit_message") or neo_report.get("commit_message", "unknown")
+    commit_hash = anima_report.get("commit_hash") or neo_report.get(
+        "commit_hash", "unknown"
+    )
+    commit_msg = anima_report.get("commit_message") or neo_report.get(
+        "commit_message", "unknown"
+    )
 
     # Determine overall status
     overall_status = determine_overall_status(anima_report, neo_report)
@@ -236,7 +235,9 @@ def generate_unified_report(anima_report: Dict, neo_report: Dict) -> Dict:
     priority_actions = generate_priority_actions(anima_report, neo_report)
 
     # Generate executive summary
-    exec_summary = generate_executive_summary(overall_status, anima_report, neo_report, priority_actions)
+    exec_summary = generate_executive_summary(
+        overall_status, anima_report, neo_report, priority_actions
+    )
 
     # Generate statistics
     statistics = generate_statistics(anima_report, neo_report)
@@ -250,31 +251,30 @@ def generate_unified_report(anima_report: Dict, neo_report: Dict) -> Dict:
             "timestamp": datetime.now().isoformat(),
             "commit_hash": commit_hash,
             "commit_message": commit_msg,
-            "nexus_version": "1.0.0"
+            "nexus_version": "1.0.0",
         },
         "executive_summary": exec_summary,
         "agent_status": {
             "anima": {
                 "status": anima_report.get("status", "unknown"),
                 "issues_found": anima_report.get("statistics", {}).get("gaps_found", 0),
-                "updates_proposed": anima_report.get("statistics", {}).get("updates_proposed", 0),
-                "summary": anima_report.get("summary", "No data")
+                "updates_proposed": anima_report.get("statistics", {}).get(
+                    "updates_proposed", 0
+                ),
+                "summary": anima_report.get("summary", "No data"),
             },
             "neo": {
                 "status": neo_report.get("status", "unknown"),
                 "issues_found": neo_report.get("statistics", {}).get("issues_found", 0),
                 "critical": neo_report.get("statistics", {}).get("critical", 0),
                 "warnings": neo_report.get("statistics", {}).get("warnings", 0),
-                "summary": neo_report.get("summary", "No data")
-            }
+                "summary": neo_report.get("summary", "No data"),
+            },
         },
         "priority_actions": priority_actions,
-        "full_reports": {
-            "anima": anima_report,
-            "neo": neo_report
-        },
+        "full_reports": {"anima": anima_report, "neo": neo_report},
         "statistics": statistics,
-        "recommendations": recommendations
+        "recommendations": recommendations,
     }
 
     return report
@@ -312,15 +312,15 @@ def main():
     print(f"   {report['executive_summary']['headline']}")
     print(f"\n📋 Priority Actions: {len(report['priority_actions'])}")
 
-    for action in report['priority_actions'][:3]:  # Show top 3
+    for action in report["priority_actions"][:3]:  # Show top 3
         print(f"   [{action['priority']}] {action['title']}")
 
-    if len(report['priority_actions']) > 3:
+    if len(report["priority_actions"]) > 3:
         print(f"   ... and {len(report['priority_actions']) - 3} more")
 
     # Return exit code based on status
     # Only fail on critical (exit 2), warnings are informational (exit 0)
-    status = report['executive_summary']['status']
+    status = report["executive_summary"]["status"]
     if status == "critical":
         return 2
 

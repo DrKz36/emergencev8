@@ -204,7 +204,9 @@ class AutoSyncService:
 
     async def _initialize_checksums(self) -> None:
         """Initialise les checksums de tous les fichiers surveillés."""
-        logger.info("Initializing checksums for %d watched files", len(self.watched_files))
+        logger.info(
+            "Initializing checksums for %d watched files", len(self.watched_files)
+        )
 
         for rel_path in self.watched_files:
             file_path = self.repo_root / rel_path
@@ -272,7 +274,9 @@ class AutoSyncService:
                     del self.checksums[rel_path]
 
                     sync_status.labels(file_path=rel_path).set(0)  # out_of_sync
-                    sync_changes_detected.labels(file_type=self._get_file_type(rel_path), agent="unknown").inc()
+                    sync_changes_detected.labels(
+                        file_type=self._get_file_type(rel_path), agent="unknown"
+                    ).inc()
 
                     logger.warning("File deleted: %s", rel_path)
                 continue
@@ -300,7 +304,9 @@ class AutoSyncService:
                 )
 
                 sync_status.labels(file_path=rel_path).set(0)  # out_of_sync
-                sync_changes_detected.labels(file_type=self._get_file_type(rel_path), agent="unknown").inc()
+                sync_changes_detected.labels(
+                    file_type=self._get_file_type(rel_path), agent="unknown"
+                ).inc()
 
                 logger.info("File created: %s", rel_path)
 
@@ -324,10 +330,20 @@ class AutoSyncService:
                 )
 
                 sync_status.labels(file_path=rel_path).set(0)  # out_of_sync
-                sync_changes_detected.labels(file_type=self._get_file_type(rel_path), agent=event.agent_owner or "unknown").inc()
+                sync_changes_detected.labels(
+                    file_type=self._get_file_type(rel_path),
+                    agent=event.agent_owner or "unknown",
+                ).inc()
 
-                old_chk_display = event.old_checksum[:8] if event.old_checksum else "None"
-                logger.info("File modified: %s (checksum: %s -> %s)", rel_path, old_chk_display, new_checksum[:8])
+                old_chk_display = (
+                    event.old_checksum[:8] if event.old_checksum else "None"
+                )
+                logger.info(
+                    "File modified: %s (checksum: %s -> %s)",
+                    rel_path,
+                    old_chk_display,
+                    new_checksum[:8],
+                )
 
     def _get_file_type(self, rel_path: str) -> str:
         """Retourne le type de fichier pour les métriques."""
@@ -364,7 +380,10 @@ class AutoSyncService:
         if len(self.pending_changes) >= self.consolidation_threshold:
             trigger = ConsolidationTrigger(
                 trigger_type="threshold",
-                conditions_met={"pending_changes": len(self.pending_changes), "threshold": self.consolidation_threshold},
+                conditions_met={
+                    "pending_changes": len(self.pending_changes),
+                    "threshold": self.consolidation_threshold,
+                },
                 timestamp=datetime.now(),
             )
             await self._trigger_consolidation(trigger)
@@ -373,7 +392,10 @@ class AutoSyncService:
         # Trigger 2 : Intervalle de temps écoulé
         if self.last_consolidation:
             time_since_last = datetime.now() - self.last_consolidation
-            if time_since_last >= self.consolidation_interval and len(self.pending_changes) > 0:
+            if (
+                time_since_last >= self.consolidation_interval
+                and len(self.pending_changes) > 0
+            ):
                 trigger = ConsolidationTrigger(
                     trigger_type="time_based",
                     conditions_met={
@@ -399,7 +421,9 @@ class AutoSyncService:
                 try:
                     callback(trigger)
                 except Exception as e:
-                    logger.error("Error in consolidation callback: %s", e, exc_info=True)
+                    logger.error(
+                        "Error in consolidation callback: %s", e, exc_info=True
+                    )
 
             # Générer rapport de consolidation
             report = await self._generate_consolidation_report(trigger)
@@ -419,7 +443,9 @@ class AutoSyncService:
 
         logger.info("Consolidation completed successfully")
 
-    async def _generate_consolidation_report(self, trigger: ConsolidationTrigger) -> dict[str, Any]:
+    async def _generate_consolidation_report(
+        self, trigger: ConsolidationTrigger
+    ) -> dict[str, Any]:
         """Génère un rapport de consolidation."""
         # Grouper les événements par fichier
         events_by_file: dict[str, list[SyncEvent]] = {}
@@ -435,7 +461,14 @@ class AutoSyncService:
             "total_changes": len(self.pending_changes),
             "files_changed": len(events_by_file),
             "events_by_file": {
-                file_path: [{"event_type": e.event_type, "timestamp": e.timestamp.isoformat(), "agent_owner": e.agent_owner} for e in events]
+                file_path: [
+                    {
+                        "event_type": e.event_type,
+                        "timestamp": e.timestamp.isoformat(),
+                        "agent_owner": e.agent_owner,
+                    }
+                    for e in events
+                ]
                 for file_path, events in events_by_file.items()
             },
         }
@@ -460,14 +493,14 @@ class AutoSyncService:
 
         # Insérer le rapport après le marqueur
         report_text = f"""
-### Consolidation - {report['timestamp']}
+### Consolidation - {report["timestamp"]}
 
-**Type de déclenchement** : `{report['trigger_type']}`
-**Conditions** : {json.dumps(report['conditions_met'], indent=2)}
-**Changements consolidés** : {report['total_changes']} événements sur {report['files_changed']} fichiers
+**Type de déclenchement** : `{report["trigger_type"]}`
+**Conditions** : {json.dumps(report["conditions_met"], indent=2)}
+**Changements consolidés** : {report["total_changes"]} événements sur {report["files_changed"]} fichiers
 
 **Fichiers modifiés** :
-{self._format_events_for_markdown(report['events_by_file'])}
+{self._format_events_for_markdown(report["events_by_file"])}
 
 ---
 """
@@ -486,20 +519,26 @@ class AutoSyncService:
 
         logger.info("Consolidation report written to AGENT_SYNC.md")
 
-    def _format_events_for_markdown(self, events_by_file: dict[str, list[dict[str, Any]]]) -> str:
+    def _format_events_for_markdown(
+        self, events_by_file: dict[str, list[dict[str, Any]]]
+    ) -> str:
         """Formate les événements pour Markdown."""
         lines = []
         for file_path, events in events_by_file.items():
             lines.append(f"- **{file_path}** : {len(events)} événement(s)")
             for event in events:
-                lines.append(f"  - `{event['event_type']}` à {event['timestamp']} (agent: {event['agent_owner'] or 'unknown'})")
+                lines.append(
+                    f"  - `{event['event_type']}` à {event['timestamp']} (agent: {event['agent_owner'] or 'unknown'})"
+                )
         return "\n".join(lines)
 
     # ========================================================================
     # PUBLIC API
     # ========================================================================
 
-    def register_consolidation_callback(self, callback: Callable[[ConsolidationTrigger], None]) -> None:
+    def register_consolidation_callback(
+        self, callback: Callable[[ConsolidationTrigger], None]
+    ) -> None:
         """Enregistre un callback appelé lors de chaque consolidation."""
         self.consolidation_callbacks.append(callback)
 
@@ -527,7 +566,9 @@ class AutoSyncService:
         return {
             "running": self._running,
             "pending_changes": len(self.pending_changes),
-            "last_consolidation": self.last_consolidation.isoformat() if self.last_consolidation else None,
+            "last_consolidation": self.last_consolidation.isoformat()
+            if self.last_consolidation
+            else None,
             "watched_files": len(self.watched_files),
             "checksums_tracked": len(self.checksums),
             "consolidation_threshold": self.consolidation_threshold,

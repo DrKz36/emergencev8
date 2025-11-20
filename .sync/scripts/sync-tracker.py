@@ -254,7 +254,9 @@ class SyncTracker:
             "records": [asdict(record) for record in records],
         }
 
-        Path(output_path).write_text(json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8")
+        Path(output_path).write_text(
+            json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
     def print_recent_syncs(self, limit: int = 10) -> None:
         """Affiche les synchronisations récentes"""
@@ -271,9 +273,13 @@ class SyncTracker:
             print(f"{status_icon} [{record.timestamp}] {record.sync_type.upper()}")
             print(f"   Agent: {record.agent}")
             print(f"   Patch: {record.patch_name}")
-            print(f"   Fichiers: {record.files_modified} | Taille: {record.patch_size_bytes} bytes")
+            print(
+                f"   Fichiers: {record.files_modified} | Taille: {record.patch_size_bytes} bytes"
+            )
             if record.branch_source:
-                print(f"   Branche: {record.branch_source} → {record.branch_target or 'N/A'}")
+                print(
+                    f"   Branche: {record.branch_source} → {record.branch_target or 'N/A'}"
+                )
             if record.error_message:
                 print(f"   Erreur: {record.error_message}")
             print()

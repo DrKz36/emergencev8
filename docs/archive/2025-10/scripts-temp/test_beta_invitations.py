@@ -2,6 +2,7 @@
 Test script for beta invitations endpoints
 Quick verification that the new endpoints work correctly
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -49,7 +50,7 @@ async def test_allowlist():
         print(f"[OK] Found {total} active allowlist entries")
 
         if entries:
-            print(f"\nFirst 5 emails:")
+            print("\nFirst 5 emails:")
             for i, entry in enumerate(entries[:5], 1):
                 print(f"   {i}. {entry.email}")
 
@@ -60,6 +61,7 @@ async def test_allowlist():
     except Exception as e:
         print(f"[FAIL] Error retrieving allowlist: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -87,7 +89,9 @@ async def main():
         print("3. Go to Admin > Invitations Beta tab")
         print("4. Select emails and send invitations")
     else:
-        print("\n[WARNING] Some tests failed. Fix the issues before sending invitations.")
+        print(
+            "\n[WARNING] Some tests failed. Fix the issues before sending invitations."
+        )
 
     print("=" * 60)
 

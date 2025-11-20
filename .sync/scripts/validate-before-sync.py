@@ -103,9 +103,7 @@ class ValidationHook:
         if returncode != 0:
             return None
 
-        py_files = [
-            line for line in stdout.split("\n") if line.strip().endswith(".py")
-        ]
+        py_files = [line for line in stdout.split("\n") if line.strip().endswith(".py")]
 
         if not py_files:
             return ValidationResult(
@@ -218,9 +216,7 @@ class ValidationHook:
             return None
 
         # Linting
-        returncode, stdout, stderr = self.run_command(
-            "ruff", "check", "src/", "tests/"
-        )
+        returncode, stdout, stderr = self.run_command("ruff", "check", "src/", "tests/")
 
         if returncode != 0:
             # Compter les erreurs
@@ -299,7 +295,11 @@ class ValidationHook:
                 return False
 
         # Niveaux de validation
-        if self.level in [ValidationLevel.MINIMAL, ValidationLevel.STANDARD, ValidationLevel.COMPLETE]:
+        if self.level in [
+            ValidationLevel.MINIMAL,
+            ValidationLevel.STANDARD,
+            ValidationLevel.COMPLETE,
+        ]:
             # Build npm
             print("[3/N] Build npm...")
             result = self.check_npm_build()
@@ -355,9 +355,7 @@ class ValidationHook:
 
         for result in self.results:
             icon = "✓" if result.passed else "❌"
-            print(
-                f"{icon} {result.check_name} ({result.duration_seconds:.2f}s)"
-            )
+            print(f"{icon} {result.check_name} ({result.duration_seconds:.2f}s)")
 
         print()
         print(f"Total: {passed_count} réussi(s), {failed_count} échoué(s)")
@@ -375,9 +373,7 @@ def main():
     """Point d'entrée CLI"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Valide le code avant synchronisation"
-    )
+    parser = argparse.ArgumentParser(description="Valide le code avant synchronisation")
     parser.add_argument(
         "--level",
         choices=["minimal", "standard", "complete"],

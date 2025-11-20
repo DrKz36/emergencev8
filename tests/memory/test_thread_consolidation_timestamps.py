@@ -34,6 +34,7 @@ async def db_manager():
 async def vector_service(tmp_path):
     """Fixture pour le service vectoriel (ChromaDB temporaire)."""
     import os
+
     persist_dir = str(tmp_path / "chroma_test")
     os.makedirs(persist_dir, exist_ok=True)
 
@@ -41,7 +42,7 @@ async def vector_service(tmp_path):
     vs = VectorService(
         persist_directory=persist_dir,
         embed_model_name="all-MiniLM-L6-v2",  # Modèle léger
-        auto_reset_on_schema_error=True
+        auto_reset_on_schema_error=True,
     )
     return vs
 
@@ -60,14 +61,13 @@ async def gardener(db_manager, vector_service, memory_analyzer):
     return MemoryGardener(
         db_manager=db_manager,
         vector_service=vector_service,
-        memory_analyzer=memory_analyzer
+        memory_analyzer=memory_analyzer,
     )
 
 
 @pytest.mark.asyncio
 async def test_thread_consolidation_preserves_real_timestamps(
-    db_manager: DatabaseManager,
-    gardener: MemoryGardener
+    db_manager: DatabaseManager, gardener: MemoryGardener
 ):
     """
     Teste que la consolidation d'un thread préserve les timestamps réels des messages.
@@ -94,9 +94,9 @@ async def test_thread_consolidation_preserves_real_timestamps(
             "Discussion Docker et containerisation",
             1,  # archivé
             base_date.isoformat(),
-            base_date.isoformat()
+            base_date.isoformat(),
         ),
-        commit=True
+        commit=True,
     )
 
     # Créer 3 messages avec des dates espacées
@@ -118,7 +118,7 @@ async def test_thread_consolidation_preserves_real_timestamps(
             "role": "user",
             "content": "Comment configurer un CI/CD pipeline avec Docker ?",
             "created_at": (base_date + timedelta(days=2)).isoformat(),
-        }
+        },
     ]
 
     for msg in messages:
@@ -127,8 +127,16 @@ async def test_thread_consolidation_preserves_real_timestamps(
             INSERT INTO messages (id, session_id, thread_id, user_id, role, content, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (msg["id"], session_id, thread_id, user_id, msg["role"], msg["content"], msg["created_at"]),
-            commit=True
+            (
+                msg["id"],
+                session_id,
+                thread_id,
+                user_id,
+                msg["role"],
+                msg["content"],
+                msg["created_at"],
+            ),
+            commit=True,
         )
 
     # ACT: Consolider le thread
@@ -146,7 +154,7 @@ async def test_thread_consolidation_preserves_real_timestamps(
         collection=collection,
         query_text="docker containerisation",
         n_results=5,
-        where_filter={"user_id": user_id, "type": "concept"}
+        where_filter={"user_id": user_id, "type": "concept"},
     )
 
     assert len(concepts) > 0, "Aucun concept trouvé après consolidation"
@@ -158,13 +166,17 @@ async def test_thread_consolidation_preserves_real_timestamps(
     first_mentioned = datetime.fromisoformat(concept_meta["first_mentioned_at"])
     expected_first = base_date
     time_diff_first = abs((first_mentioned - expected_first).total_seconds())
-    assert time_diff_first < 60, f"first_mentioned_at incorrect: {first_mentioned} vs {expected_first}"
+    assert time_diff_first < 60, (
+        f"first_mentioned_at incorrect: {first_mentioned} vs {expected_first}"
+    )
 
     # Le last_mentioned_at doit être proche de la date du dernier message
     last_mentioned = datetime.fromisoformat(concept_meta["last_mentioned_at"])
     expected_last = base_date + timedelta(days=2)
     time_diff_last = abs((last_mentioned - expected_last).total_seconds())
-    assert time_diff_last < 60, f"last_mentioned_at incorrect: {last_mentioned} vs {expected_last}"
+    assert time_diff_last < 60, (
+        f"last_mentioned_at incorrect: {last_mentioned} vs {expected_last}"
+    )
 
     # Vérifier que le thread_id est présent
     assert concept_meta.get("thread_id") == thread_id
@@ -176,11 +188,12 @@ async def test_thread_consolidation_preserves_real_timestamps(
     print("[OK] Test réussi : Les timestamps réels sont correctement préservés")
 
 
-@pytest.mark.skip(reason="Test fragile: dépend de l'extraction de concepts qui varie. À investiguer séparément.")
+@pytest.mark.skip(
+    reason="Test fragile: dépend de l'extraction de concepts qui varie. À investiguer séparément."
+)
 @pytest.mark.asyncio
 async def test_concept_query_returns_historical_dates(
-    db_manager: DatabaseManager,
-    gardener: MemoryGardener
+    db_manager: DatabaseManager, gardener: MemoryGardener
 ):
     """
     Teste qu'un agent peut interroger les concepts et obtenir les dates historiques.
@@ -202,8 +215,17 @@ async def test_concept_query_returns_historical_dates(
         INSERT INTO threads (id, session_id, user_id, type, title, archived, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (thread_id, session_id, user_id, "chat", "Discussion CI/CD", 1, old_date.isoformat(), old_date.isoformat()),
-        commit=True
+        (
+            thread_id,
+            session_id,
+            user_id,
+            "chat",
+            "Discussion CI/CD",
+            1,
+            old_date.isoformat(),
+            old_date.isoformat(),
+        ),
+        commit=True,
     )
 
     await db_manager.execute(
@@ -211,8 +233,16 @@ async def test_concept_query_returns_historical_dates(
         INSERT INTO messages (id, session_id, thread_id, user_id, role, content, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        ("msg_old", session_id, thread_id, user_id, "user", "Je veux mettre en place un pipeline CI/CD", old_date.isoformat()),
-        commit=True
+        (
+            "msg_old",
+            session_id,
+            thread_id,
+            user_id,
+            "user",
+            "Je veux mettre en place un pipeline CI/CD",
+            old_date.isoformat(),
+        ),
+        commit=True,
     )
 
     # ACT: Consolider
@@ -221,9 +251,9 @@ async def test_concept_query_returns_historical_dates(
     # Simuler une requête agent via l'API concept_recall
     # IMPORTANT: Use gardener's knowledge_collection, not the default "emergence_knowledge"
     from backend.features.memory.concept_recall import ConceptRecallTracker
+
     tracker = ConceptRecallTracker(
-        db_manager=db_manager,
-        vector_service=gardener.vector_service
+        db_manager=db_manager, vector_service=gardener.vector_service
     )
     # Override collection to use gardener's collection
     tracker.collection = gardener.knowledge_collection
@@ -237,37 +267,40 @@ async def test_concept_query_returns_historical_dates(
         concept_text="pipeline CI/CD",
         user_id=user_id,
         limit=10,
-        min_score=0.0  # Very low threshold for offline heuristic extraction
+        min_score=0.0,  # Very low threshold for offline heuristic extraction
     )
 
     # ASSERT: L'agent doit pouvoir récupérer le concept avec la date historique
     # Si pas de résultats avec "pipeline CI/CD", essayer "CI/CD" tout court
     if len(history) == 0:
         history = await tracker.query_concept_history(
-            concept_text="CI/CD",
-            user_id=user_id,
-            limit=10
+            concept_text="CI/CD", user_id=user_id, limit=10
         )
 
-    assert len(history) > 0, "Aucun concept historique trouvé (testé 'pipeline CI/CD' et 'CI/CD')"
+    assert len(history) > 0, (
+        "Aucun concept historique trouvé (testé 'pipeline CI/CD' et 'CI/CD')"
+    )
 
     concept = history[0]
     first_date = datetime.fromisoformat(concept["first_mentioned_at"])
 
     # La date doit être ancienne (il y a ~45 jours)
     age_days = (datetime.now(timezone.utc) - first_date).days
-    assert age_days >= 40, f"Le concept devrait être vieux de ~45j, mais age={age_days}j"
+    assert age_days >= 40, (
+        f"Le concept devrait être vieux de ~45j, mais age={age_days}j"
+    )
 
     # Vérifier que le thread_id est présent
     assert thread_id in concept["thread_ids"]
 
-    print(f"[OK] Test réussi : L'agent peut récupérer un concept vieux de {age_days} jours")
+    print(
+        f"[OK] Test réussi : L'agent peut récupérer un concept vieux de {age_days} jours"
+    )
 
 
 @pytest.mark.asyncio
 async def test_empty_thread_handles_gracefully(
-    db_manager: DatabaseManager,
-    gardener: MemoryGardener
+    db_manager: DatabaseManager, gardener: MemoryGardener
 ):
     """
     Teste que la consolidation d'un thread vide ne plante pas.
@@ -280,7 +313,7 @@ async def test_empty_thread_handles_gracefully(
     await db_manager.execute(
         "INSERT INTO threads (id, session_id, user_id, type, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (thread_id, session_id, user_id, "chat", "Thread vide", now, now),
-        commit=True
+        commit=True,
     )
 
     # ACT: Consolider un thread sans messages
@@ -296,4 +329,5 @@ async def test_empty_thread_handles_gracefully(
 if __name__ == "__main__":
     """Exécution manuelle pour debug."""
     import sys
+
     sys.exit(pytest.main([__file__, "-v", "-s"]))

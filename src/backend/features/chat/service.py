@@ -47,7 +47,12 @@ from backend.features.chat import rag_metrics
 from backend.features.chat.rag_cache import create_rag_cache, RAGCache
 
 # 🛡️ P2.3 - Garde-fous agents (RoutePolicy, BudgetGuard, ToolCircuitBreaker)
-from backend.shared.agents_guard import RoutePolicy, BudgetGuard, ToolCircuitBreaker, ModelTier
+from backend.shared.agents_guard import (
+    RoutePolicy,
+    BudgetGuard,
+    ToolCircuitBreaker,
+    ModelTier,
+)
 
 # 🔍 Phase 3 Tracing: Distributed tracing pour observabilité
 from backend.core.tracing import get_trace_manager
@@ -63,8 +68,14 @@ MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
     "gpt-4o": {"input": 5.00 / 1_000_000, "output": 15.00 / 1_000_000},
     "gemini-1.5-flash": {"input": 0.35 / 1_000_000, "output": 0.70 / 1_000_000},
-    "claude-3-5-haiku-20241022": {"input": 0.25 / 1_000_000, "output": 1.25 / 1_000_000},
-    "claude-3-sonnet-20240229": {"input": 3.00 / 1_000_000, "output": 15.00 / 1_000_000},
+    "claude-3-5-haiku-20241022": {
+        "input": 0.25 / 1_000_000,
+        "output": 1.25 / 1_000_000,
+    },
+    "claude-3-sonnet-20240229": {
+        "input": 3.00 / 1_000_000,
+        "output": 15.00 / 1_000_000,
+    },
     "claude-3-opus-20240229": {"input": 15.00 / 1_000_000, "output": 75.00 / 1_000_000},
 }
 
@@ -73,7 +84,10 @@ DEFAULT_TEMPERATURE = float(os.getenv("EMERGENCE_TEMP_DEFAULT", "0.4"))
 CHAT_PROVIDER_FALLBACKS = {
     "google": [("anthropic", "claude-3-5-haiku-20241022"), ("openai", "gpt-4o-mini")],
     "anthropic": [("openai", "gpt-4o-mini"), ("google", "gemini-1.5-flash")],
-    "openai": [("anthropic", "claude-3-5-haiku-20241022"), ("google", "gemini-1.5-flash")],
+    "openai": [
+        ("anthropic", "claude-3-5-haiku-20241022"),
+        ("google", "gemini-1.5-flash"),
+    ],
 }
 
 
@@ -97,7 +111,9 @@ class ChatService:
         cost_tracker: CostTracker,
         vector_service: VectorService,
         settings: Settings,
-        document_service: Optional[Any] = None,  # ✅ Phase 3 RAG: Injection DocumentService
+        document_service: Optional[
+            Any
+        ] = None,  # ✅ Phase 3 RAG: Injection DocumentService
     ):
         self.session_manager = session_manager
         self.cost_tracker = cost_tracker
@@ -106,7 +122,9 @@ class ChatService:
         self.document_service = document_service  # ✅ Phase 3 RAG
 
         # Politique hors historique (quand RAG OFF)
-        self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
+        self.off_history_policy = (
+            os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
+        )
         if self.off_history_policy not in ("stateless", "agent_local"):
             self.off_history_policy = "stateless"
         logger.info(f"ChatService OFF policy: {self.off_history_policy}")
@@ -115,12 +133,16 @@ class ChatService:
             # Clients async (chat streaming)
             self.openai_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
             genai.configure(api_key=self.settings.google_api_key)
-            self.anthropic_client = AsyncAnthropic(api_key=self.settings.anthropic_api_key)
+            self.anthropic_client = AsyncAnthropic(
+                api_key=self.settings.anthropic_api_key
+            )
             # Clients sync (débat — non stream)
             self.openai_sync = OpenAI(api_key=self.settings.openai_api_key)
             self.anthropic_sync = Anthropic(api_key=self.settings.anthropic_api_key)
         except Exception as e:
-            logger.error(f"Erreur lors de l'initialisation des clients API: {e}", exc_info=True)
+            logger.error(
+                f"Erreur lors de l'initialisation des clients API: {e}", exc_info=True
+            )
             raise
 
         # Cache paresseux des collections
@@ -140,7 +162,9 @@ class ChatService:
             logger.info("ConceptRecallTracker initialisé")
         else:
             self.concept_recall_tracker = None
-            logger.warning("ConceptRecallTracker NON initialisé (db_manager ou vector_service manquant)")
+            logger.warning(
+                "ConceptRecallTracker NON initialisé (db_manager ou vector_service manquant)"
+            )
 
         self.memory_query_tool: Optional[MemoryQueryTool]
         try:
@@ -157,7 +181,9 @@ class ChatService:
             logger.info("ProactiveHintEngine initialisé (P2 Sprint 2)")
         else:
             self.hint_engine = None
-            logger.warning("ProactiveHintEngine NON initialisé (vector_service manquant)")
+            logger.warning(
+                "ProactiveHintEngine NON initialisé (vector_service manquant)"
+            )
 
         # ✅ Phase 3 RAG : Cache et métriques
         self.rag_cache: RAGCache = create_rag_cache()
@@ -170,7 +196,7 @@ class ChatService:
             max_blocks=10,
             chunk_tolerance=30,
             cache_enabled=self.rag_cache.enabled,
-            cache_ttl=self.rag_cache.ttl_seconds
+            cache_ttl=self.rag_cache.ttl_seconds,
         )
 
         # 🛡️ P2.3 - Charger config agents_guard et instancier guards
@@ -190,23 +216,32 @@ class ChatService:
                         for agent_id, cfg in guard_config["agents"].items()
                     }
                     self.budget_guard = BudgetGuard(budgets)
-                    logger.info(f"[P2.3] BudgetGuard initialisé pour {len(budgets)} agents")
+                    logger.info(
+                        f"[P2.3] BudgetGuard initialisé pour {len(budgets)} agents"
+                    )
 
                 # RoutePolicy 📋 TODO: Intégration dans _get_agent_config() pour choisir SLM vs LLM
                 # Nécessite refonte logique sélection modèle (agent_configs + confidence scoring)
                 if "routing" in guard_config:
                     routing_cfg = guard_config["routing"]
                     default_tier = routing_cfg.get("default", "slm")
-                    confidence_threshold = routing_cfg.get("thresholds", {}).get("nexus", 0.65)
+                    confidence_threshold = routing_cfg.get("thresholds", {}).get(
+                        "nexus", 0.65
+                    )
                     self.route_policy = RoutePolicy(
                         default_tier=ModelTier(default_tier),
                         confidence_threshold=confidence_threshold,
                     )
-                    logger.info(f"[P2.3] RoutePolicy initialisé (default={default_tier}, threshold={confidence_threshold}) - TODO: intégration active")
+                    logger.info(
+                        f"[P2.3] RoutePolicy initialisé (default={default_tier}, threshold={confidence_threshold}) - TODO: intégration active"
+                    )
 
                 # ToolCircuitBreaker 📋 TODO: Wrapper appels async tools (MemoryQueryTool, ProactiveHintEngine, etc.)
                 # Exemple usage: await self.tool_circuit_breaker.execute("memory_query", self.memory_query_tool.query, ...)
-                if "tools" in guard_config and "circuit_breaker" in guard_config["tools"]:
+                if (
+                    "tools" in guard_config
+                    and "circuit_breaker" in guard_config["tools"]
+                ):
                     cb_cfg = guard_config["tools"]["circuit_breaker"]
                     self.tool_circuit_breaker = ToolCircuitBreaker(
                         timeout_seconds=cb_cfg.get("timeout_s", 30.0),
@@ -215,7 +250,9 @@ class ChatService:
                         max_consecutive_failures=cb_cfg.get("max_failures", 3),
                         reset_after_seconds=cb_cfg.get("reset_after_s", 60.0),
                     )
-                    logger.info(f"[P2.3] ToolCircuitBreaker initialisé (timeout={cb_cfg.get('timeout_s', 30)}s) - TODO: intégration active")
+                    logger.info(
+                        f"[P2.3] ToolCircuitBreaker initialisé (timeout={cb_cfg.get('timeout_s', 30)}s) - TODO: intégration active"
+                    )
             else:
                 logger.warning(f"[P2.3] Config agents_guard non trouvée: {config_path}")
         except Exception as e:
@@ -228,8 +265,10 @@ class ChatService:
         self.prompts = self._load_prompts(self.settings.paths.prompts)
         self.broadcast_agents = self._compute_broadcast_agents()
         if not self.broadcast_agents:
-            self.broadcast_agents = ['anima', 'neo', 'nexus']
-        logger.info(f"ChatService V32.1 initialisé. Prompts chargés: {len(self.prompts)}")
+            self.broadcast_agents = ["anima", "neo", "nexus"]
+        logger.info(
+            f"ChatService V32.1 initialisé. Prompts chargés: {len(self.prompts)}"
+        )
 
     # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, Dict[str, str]]:
@@ -237,6 +276,7 @@ class ChatService:
         Retourne un mapping agent_id -> {"text": <prompt>, "file": <nom_fichier>} en choisissant
         la variante de poids maximum (v3 > v2 > lite par nom).
         """
+
         def weight(name: str) -> int:
             name = name.lower()
             w = 0
@@ -264,8 +304,10 @@ class ChatService:
         for aid, meta in chosen.items():
             logger.info(f"Prompt retenu pour l'agent '{aid}': {meta['file']}")
         # Conserver texte + nom de fichier pour l'UI / debug
-        return {aid: {"text": meta["text"], "file": meta["file"]} for aid, meta in chosen.items()}
-
+        return {
+            aid: {"text": meta["text"], "file": meta["file"]}
+            for aid, meta in chosen.items()
+        }
 
     def _resolve_agent_configs(self) -> Dict[str, Dict[str, Any]]:
         base = {name: dict(cfg) for name, cfg in DEFAULT_AGENT_CONFIGS.items()}
@@ -282,10 +324,11 @@ class ChatService:
                 base[name] = merged
         return base
 
-
     def _compute_broadcast_agents(self) -> List[str]:
         agents_cfg = self._resolve_agent_configs()
-        candidates = [aid for aid in agents_cfg.keys() if aid not in {"default", "global"}]
+        candidates = [
+            aid for aid in agents_cfg.keys() if aid not in {"default", "global"}
+        ]
 
         ordered: List[str] = []
         for preferred in ("anima", "neo", "nexus"):
@@ -296,7 +339,7 @@ class ChatService:
             if aid not in ordered:
                 ordered.append(aid)
 
-        prompt_ids = [p.replace('_lite', '') for p in self.prompts.keys()]
+        prompt_ids = [p.replace("_lite", "") for p in self.prompts.keys()]
         for prompt_id in prompt_ids:
             if prompt_id not in ordered and prompt_id not in {"default", "global"}:
                 ordered.append(prompt_id)
@@ -318,7 +361,10 @@ class ChatService:
         provider = _normalize_provider(provider_raw)
 
         # ENV toggle pour protéger les coûts quand souhaité.
-        if clean_agent_id == "anima" and os.getenv("EMERGENCE_FORCE_CHEAP_ANIMA", "0").strip() == "1":
+        if (
+            clean_agent_id == "anima"
+            and os.getenv("EMERGENCE_FORCE_CHEAP_ANIMA", "0").strip() == "1"
+        ):
             provider = "openai"
             model = "gpt-4o-mini"
             logger.info("Override coût activé (ENV): anima → openai:gpt-4o-mini")
@@ -330,12 +376,18 @@ class ChatService:
             fallback_order.append("default")
         if "anima" in agent_configs and "anima" not in fallback_order:
             fallback_order.append("anima")
-        fallback_order.extend([k for k in agent_configs.keys() if k not in fallback_order])
+        fallback_order.extend(
+            [k for k in agent_configs.keys() if k not in fallback_order]
+        )
 
         resolved_id = None
         for candidate in fallback_order:
             cfg = agent_configs.get(candidate, {})
-            cand_provider = provider if candidate == clean_agent_id else _normalize_provider(cfg.get("provider"))
+            cand_provider = (
+                provider
+                if candidate == clean_agent_id
+                else _normalize_provider(cfg.get("provider"))
+            )
             cand_model = model if candidate == clean_agent_id else cfg.get("model")
             if not cand_provider or not cand_model:
                 continue
@@ -343,7 +395,9 @@ class ChatService:
             provider = cand_provider
             model = cand_model
             if candidate != clean_agent_id:
-                logger.warning("Agent '%s' non configuré, fallback sur '%s'", agent_id, candidate)
+                logger.warning(
+                    "Agent '%s' non configuré, fallback sur '%s'", agent_id, candidate
+                )
             break
 
         bundle = (
@@ -362,7 +416,10 @@ class ChatService:
             )
 
         return provider, model, system_prompt
-    def _ensure_fr_tutoiement(self, agent_id: str, provider: str, system_prompt: str) -> str:
+
+    def _ensure_fr_tutoiement(
+        self, agent_id: str, provider: str, system_prompt: str
+    ) -> str:
         """
         Préambule de style prioritaire, cross-provider.
         - Tutoiement OBLIGATOIRE, auto-correction si 'vous' utilisé.
@@ -405,10 +462,7 @@ class ChatService:
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
     def _extract_relevant_excerpt(
-        self,
-        text: str,
-        query: str,
-        max_length: int = 300
+        self, text: str, query: str, max_length: int = 300
     ) -> str:
         """
         Extrait un extrait centré sur les mots-clés de la requête.
@@ -430,7 +484,7 @@ class ChatService:
             return text.strip()
 
         # Découper en phrases
-        sentences = re.split(r'(?<=[.!?])\s+', text)
+        sentences = re.split(r"(?<=[.!?])\s+", text)
 
         if not query or not query.strip():
             # Sans requête, prendre les premières phrases
@@ -441,9 +495,9 @@ class ChatService:
                     break
                 result.append(sentence)
                 current_len += len(sentence) + 1
-            excerpt = ' '.join(result)
+            excerpt = " ".join(result)
             if len(text) > len(excerpt):
-                excerpt += '...'
+                excerpt += "..."
             return excerpt.strip()
 
         # Trouver la phrase la plus pertinente
@@ -454,7 +508,9 @@ class ChatService:
         for i, sentence in enumerate(sentences):
             sentence_lower = sentence.lower()
             # Score = nombre de mots-clés présents
-            score = sum(1 for word in query_words if len(word) >= 3 and word in sentence_lower)
+            score = sum(
+                1 for word in query_words if len(word) >= 3 and word in sentence_lower
+            )
             if score > best_score:
                 best_score = score
                 best_sentence_idx = i
@@ -463,14 +519,14 @@ class ChatService:
         start_idx = max(0, best_sentence_idx - 1)
         end_idx = min(len(sentences), best_sentence_idx + 2)
 
-        excerpt = ' '.join(sentences[start_idx:end_idx])
+        excerpt = " ".join(sentences[start_idx:end_idx])
 
         # Truncate proprement si encore trop long
         if len(excerpt) > max_length:
             # Couper au dernier espace avant max_length
-            excerpt = excerpt[:max_length].rsplit(' ', 1)[0] + '...'
+            excerpt = excerpt[:max_length].rsplit(" ", 1)[0] + "..."
         elif len(text) > len(excerpt):
-            excerpt += '...'
+            excerpt += "..."
 
         return excerpt.strip()
 
@@ -495,8 +551,8 @@ class ChatService:
             if not word:
                 continue
             # Remplacer (case-insensitive) en conservant la casse originale
-            pattern = re.compile(r'\b(' + re.escape(word) + r')\b', re.IGNORECASE)
-            text = pattern.sub(r'**\1**', text)
+            pattern = re.compile(r"\b(" + re.escape(word) + r")\b", re.IGNORECASE)
+            text = pattern.sub(r"**\1**", text)
 
         return text
 
@@ -518,10 +574,10 @@ class ChatService:
         """
         if not query:
             return {
-                'wants_integral_citation': False,
-                'content_type': None,
-                'keywords': [],
-                'expanded_query': query
+                "wants_integral_citation": False,
+                "content_type": None,
+                "keywords": [],
+                "expanded_query": query,
             }
 
         query_lower = query.lower()
@@ -529,44 +585,63 @@ class ChatService:
 
         # Détection citation intégrale / exacte
         integral_patterns = [
-            r'(cit|retrouv|donn|montr).*(intégral|complet|entier|exact)',
-            r'\b(intégral|exactement|exact|textuel|tel quel)\b',
-            r'de manière (intégrale|complète|exacte)',
-            r'en entier',
-            r'cite-moi.*passages',  # "Cite-moi 3 passages"
-            r'cite.*ce qui est écrit',  # "Cite ce qui est écrit sur..."
+            r"(cit|retrouv|donn|montr).*(intégral|complet|entier|exact)",
+            r"\b(intégral|exactement|exact|textuel|tel quel)\b",
+            r"de manière (intégrale|complète|exacte)",
+            r"en entier",
+            r"cite-moi.*passages",  # "Cite-moi 3 passages"
+            r"cite.*ce qui est écrit",  # "Cite ce qui est écrit sur..."
         ]
-        intents['wants_integral_citation'] = any(
+        intents["wants_integral_citation"] = any(
             re.search(pattern, query_lower, re.I) for pattern in integral_patterns
         )
 
         # Détection type de contenu
-        if re.search(r'\b(poème|poem|vers|strophe)\b', query_lower, re.I):
-            intents['content_type'] = 'poem'
-        elif re.search(r'\b(section|chapitre|partie)\b', query_lower, re.I):
-            intents['content_type'] = 'section'
-        elif re.search(r'\b(conversation|dialogue|échange)\b', query_lower, re.I):
-            intents['content_type'] = 'conversation'
+        if re.search(r"\b(poème|poem|vers|strophe)\b", query_lower, re.I):
+            intents["content_type"] = "poem"
+        elif re.search(r"\b(section|chapitre|partie)\b", query_lower, re.I):
+            intents["content_type"] = "section"
+        elif re.search(r"\b(conversation|dialogue|échange)\b", query_lower, re.I):
+            intents["content_type"] = "conversation"
         else:
-            intents['content_type'] = None
+            intents["content_type"] = None
 
         # Extraction keywords (filtrer stopwords)
         stopwords = {
-            'le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'et', 'ou',
-            'peux', 'tu', 'me', 'mon', 'ma', 'ce', 'que', 'qui', 'appelé',
-            'citer', 'manière', 'ai'
+            "le",
+            "la",
+            "les",
+            "un",
+            "une",
+            "des",
+            "de",
+            "du",
+            "et",
+            "ou",
+            "peux",
+            "tu",
+            "me",
+            "mon",
+            "ma",
+            "ce",
+            "que",
+            "qui",
+            "appelé",
+            "citer",
+            "manière",
+            "ai",
         }
-        words = re.findall(r'\b[a-zàâäéèêëïîôùûüÿæœç]{3,}\b', query_lower)
+        words = re.findall(r"\b[a-zàâäéèêëïîôùûüÿæœç]{3,}\b", query_lower)
         keywords = [w for w in words if w not in stopwords]
-        intents['keywords'] = keywords
+        intents["keywords"] = keywords
 
         # Expansion de requête pour "poème fondateur"
         expanded = query
-        if 'fondateur' in keywords and intents['content_type'] == 'poem':
+        if "fondateur" in keywords and intents["content_type"] == "poem":
             # Ajouter des termes associés pour améliorer le matching
             expanded += " origine premier initial création commencement"
 
-        intents['expanded_query'] = expanded
+        intents["expanded_query"] = expanded
 
         return intents
 
@@ -575,7 +650,7 @@ class ChatService:
         hit: Dict[str, Any],
         user_intent: Dict[str, Any],
         doc_occurrence_count: Dict[Any, int],
-        index_in_results: int
+        index_in_results: int,
     ) -> float:
         """
         Calcul de score sémantique multi-critères pour le re-ranking RAG.
@@ -599,8 +674,8 @@ class ChatService:
         Returns:
             Score final (plus bas = plus pertinent, compatible avec distance ChromaDB)
         """
-        md = hit.get('metadata', {})
-        base_distance = hit.get('distance', 1.0)
+        md = hit.get("metadata", {})
+        base_distance = hit.get("distance", 1.0)
 
         # ==========================================
         # 1. SIMILARITÉ VECTORIELLE (40%)
@@ -615,14 +690,14 @@ class ChatService:
         completeness_score = 0.0
 
         # 2.1 Bonus fusion de chunks
-        merged_count = md.get('merged_chunks', 0)
+        merged_count = md.get("merged_chunks", 0)
         if merged_count > 1:
             # Plus de chunks fusionnés = contenu plus complet
             completeness_score -= min(merged_count * 0.05, 0.15)  # Max -0.15
 
         # 2.2 Bonus longueur (contenus longs plus informatifs)
-        line_start = md.get('line_start', 0)
-        line_end = md.get('line_end', 0)
+        line_start = md.get("line_start", 0)
+        line_end = md.get("line_end", 0)
         line_count = max(0, line_end - line_start)
 
         if line_count >= 40:
@@ -631,7 +706,7 @@ class ChatService:
             completeness_score -= 0.05
 
         # 2.3 Bonus is_complete flag
-        if md.get('is_complete'):
+        if md.get("is_complete"):
             completeness_score -= 0.05
 
         # Normaliser à [0, 1]
@@ -643,8 +718,8 @@ class ChatService:
         # ==========================================
         keyword_score = 1.0  # Par défaut neutre
 
-        chunk_keywords = md.get('keywords', '').lower()
-        user_keywords = user_intent.get('keywords', [])
+        chunk_keywords = md.get("keywords", "").lower()
+        user_keywords = user_intent.get("keywords", [])
 
         if chunk_keywords and user_keywords:
             matches = sum(1 for kw in user_keywords if kw in chunk_keywords)
@@ -654,7 +729,7 @@ class ChatService:
                 keyword_score = 1.0 - (match_ratio * 0.5)  # Max -50%
 
         # Boost supplémentaire pour keywords critiques
-        if 'fondateur' in chunk_keywords and 'fondateur' in user_keywords:
+        if "fondateur" in chunk_keywords and "fondateur" in user_keywords:
             keyword_score *= 0.7  # Boost additionnel
 
         # ==========================================
@@ -662,11 +737,11 @@ class ChatService:
         # ==========================================
         recency_score = 0.5  # Par défaut neutre
 
-        created_at = md.get('created_at')
+        created_at = md.get("created_at")
         if created_at:
             try:
                 if isinstance(created_at, str):
-                    doc_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    doc_date = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
                 else:
                     doc_date = created_at
 
@@ -691,7 +766,7 @@ class ChatService:
         # ==========================================
         diversity_score = 0.5  # Par défaut neutre
 
-        doc_id = md.get('document_id')
+        doc_id = md.get("document_id")
         if doc_id is not None:
             occurrences = doc_occurrence_count.get(doc_id, 1)
 
@@ -707,13 +782,13 @@ class ChatService:
         # ==========================================
         content_type_score = 0.5  # Par défaut neutre
 
-        chunk_type = md.get('chunk_type', '')
-        wanted_type = user_intent.get('content_type')
+        chunk_type = md.get("chunk_type", "")
+        wanted_type = user_intent.get("content_type")
 
         if wanted_type and chunk_type:
             if chunk_type == wanted_type:
                 content_type_score = 0.0  # Match parfait
-            elif wanted_type == 'poem' and chunk_type in ('verse', 'poetry'):
+            elif wanted_type == "poem" and chunk_type in ("verse", "poetry"):
                 content_type_score = 0.2  # Match partiel
             else:
                 content_type_score = 0.8  # Pas de match
@@ -722,12 +797,12 @@ class ChatService:
         # SCORE FINAL PONDÉRÉ
         # ==========================================
         final_score = (
-            0.40 * vector_score +
-            0.20 * completeness_normalized +
-            0.15 * keyword_score +
-            0.10 * recency_score +
-            0.10 * diversity_score +
-            0.05 * content_type_score
+            0.40 * vector_score
+            + 0.20 * completeness_normalized
+            + 0.15 * keyword_score
+            + 0.10 * recency_score
+            + 0.10 * diversity_score
+            + 0.05 * content_type_score
         )
 
         return float(final_score)
@@ -736,7 +811,7 @@ class ChatService:
         self,
         doc_hits: List[Dict[str, Any]],
         max_blocks: int = 10,
-        user_intent: Optional[Dict[str, Any]] = None
+        user_intent: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Regroupe les chunks adjacents du même document pour reconstituer les contenus fragmentés.
@@ -768,8 +843,8 @@ class ChatService:
         # Grouper par document_id
         by_document: Dict[Any, List[Dict[str, Any]]] = {}
         for hit in doc_hits:
-            md = hit.get('metadata', {})
-            doc_id = md.get('document_id')
+            md = hit.get("metadata", {})
+            doc_id = md.get("document_id")
             if doc_id is not None:
                 if doc_id not in by_document:
                     by_document[doc_id] = []
@@ -780,15 +855,14 @@ class ChatService:
         for doc_id, chunks in by_document.items():
             # Trier par line_start pour détecter l'adjacence
             chunks_sorted = sorted(
-                chunks,
-                key=lambda x: x.get('metadata', {}).get('line_start', 0)
+                chunks, key=lambda x: x.get("metadata", {}).get("line_start", 0)
             )
 
             i = 0
             while i < len(chunks_sorted):
                 current = chunks_sorted[i]
-                current_md = current.get('metadata', {})
-                current_end = current_md.get('line_end', 0)
+                current_md = current.get("metadata", {})
+                current_end = current_md.get("line_end", 0)
 
                 # Collecter les chunks adjacents
                 adjacent_group = [current]
@@ -796,13 +870,13 @@ class ChatService:
 
                 while j < len(chunks_sorted):
                     next_chunk = chunks_sorted[j]
-                    next_md = next_chunk.get('metadata', {})
-                    next_start = next_md.get('line_start', 0)
+                    next_md = next_chunk.get("metadata", {})
+                    next_start = next_md.get("line_start", 0)
 
                     # Vérifier si consécutif (tolérance de 30 lignes pour capturer chunks séparés par lignes vides)
                     if next_start <= current_end + 30:
                         adjacent_group.append(next_chunk)
-                        current_end = max(current_end, next_md.get('line_end', 0))
+                        current_end = max(current_end, next_md.get("line_end", 0))
                         j += 1
                     else:
                         break
@@ -810,27 +884,36 @@ class ChatService:
                 # Fusionner si plusieurs chunks adjacents
                 if len(adjacent_group) > 1:
                     # Fusionner les textes
-                    merged_text = "\n".join([chunk.get('text', '') for chunk in adjacent_group])
+                    merged_text = "\n".join(
+                        [chunk.get("text", "") for chunk in adjacent_group]
+                    )
 
                     # Créer métadonnées fusionnées
-                    first_md = adjacent_group[0].get('metadata', {})
-                    last_md = adjacent_group[-1].get('metadata', {})
+                    first_md = adjacent_group[0].get("metadata", {})
+                    last_md = adjacent_group[-1].get("metadata", {})
 
                     merged_md = dict(first_md)
-                    merged_md['line_start'] = first_md.get('line_start', 0)
-                    merged_md['line_end'] = last_md.get('line_end', 0)
-                    merged_md['line_range'] = f"{merged_md['line_start']}-{merged_md['line_end']}"
-                    merged_md['is_complete'] = all(c.get('metadata', {}).get('is_complete', False) for c in adjacent_group)
-                    merged_md['merged_chunks'] = len(adjacent_group)
+                    merged_md["line_start"] = first_md.get("line_start", 0)
+                    merged_md["line_end"] = last_md.get("line_end", 0)
+                    merged_md["line_range"] = (
+                        f"{merged_md['line_start']}-{merged_md['line_end']}"
+                    )
+                    merged_md["is_complete"] = all(
+                        c.get("metadata", {}).get("is_complete", False)
+                        for c in adjacent_group
+                    )
+                    merged_md["merged_chunks"] = len(adjacent_group)
 
                     # Calculer score moyen
-                    avg_score = sum(c.get('distance', 0) for c in adjacent_group) / len(adjacent_group)
+                    avg_score = sum(c.get("distance", 0) for c in adjacent_group) / len(
+                        adjacent_group
+                    )
 
                     merged_hit = {
-                        'text': merged_text.strip(),
-                        'metadata': merged_md,
-                        'distance': avg_score,
-                        'id': f"{doc_id}_merged_{i}"
+                        "text": merged_text.strip(),
+                        "metadata": merged_md,
+                        "distance": avg_score,
+                        "id": f"{doc_id}_merged_{i}",
                     }
 
                     merged_hits.append(merged_hit)
@@ -850,9 +933,11 @@ class ChatService:
             # Compter occurrences par document_id (pour score diversité)
             doc_occurrence_count: Dict[Any, int] = {}
             for hit in merged_hits:
-                doc_id = hit.get('metadata', {}).get('document_id')
+                doc_id = hit.get("metadata", {}).get("document_id")
                 if doc_id is not None:
-                    doc_occurrence_count[doc_id] = doc_occurrence_count.get(doc_id, 0) + 1
+                    doc_occurrence_count[doc_id] = (
+                        doc_occurrence_count.get(doc_id, 0) + 1
+                    )
 
             # Calculer scores sémantiques multi-critères
             scored_hits = []
@@ -869,28 +954,28 @@ class ChatService:
         else:
             # Fallback vers ancien système (Phase 2) si pas d'intent
             def compute_sort_key(hit: Dict[str, Any]) -> float:
-                base_distance = hit.get('distance', 1.0)
-                md = hit.get('metadata', {})
-                merged_count = md.get('merged_chunks', 0)
-                chunk_type = md.get('chunk_type', 'prose')
-                line_start = md.get('line_start', 0)
-                line_end = md.get('line_end', 0)
+                base_distance = hit.get("distance", 1.0)
+                md = hit.get("metadata", {})
+                merged_count = md.get("merged_chunks", 0)
+                chunk_type = md.get("chunk_type", "prose")
+                line_start = md.get("line_start", 0)
+                line_end = md.get("line_end", 0)
                 line_count = max(0, line_end - line_start)
 
                 boost = 1.0
                 if merged_count > 1:
                     boost *= 0.4
 
-                if chunk_type == 'poem' and merged_count >= 2:
+                if chunk_type == "poem" and merged_count >= 2:
                     if line_count >= 40:
                         boost *= 0.2
                     elif line_count >= 25:
                         boost *= 0.5
 
-                keywords = md.get('keywords', '')
-                if 'fondateur' in keywords.lower():
+                keywords = md.get("keywords", "")
+                if "fondateur" in keywords.lower():
                     boost *= 0.4
-                elif 'espoir' in keywords.lower() and chunk_type == 'poem':
+                elif "espoir" in keywords.lower() and chunk_type == "poem":
                     boost *= 0.7
 
                 return float(base_distance * boost)
@@ -907,17 +992,19 @@ class ChatService:
 
         # Log des top 3 pour debugging
         for i, hit in enumerate(result[:3]):
-            md = hit.get('metadata', {})
-            line_count = md.get('line_end', 0) - md.get('line_start', 0)
+            md = hit.get("metadata", {})
+            line_count = md.get("line_end", 0) - md.get("line_start", 0)
             logger.info(
-                f"[RAG Merge] Top {i+1}: lines {md.get('line_range', 'N/A')} ({line_count} lines), "
+                f"[RAG Merge] Top {i + 1}: lines {md.get('line_range', 'N/A')} ({line_count} lines), "
                 f"type={md.get('chunk_type', 'N/A')}, merged={md.get('merged_chunks', 0)}, "
                 f"score={hit.get('distance', 0):.3f}, keywords={md.get('keywords', 'N/A')[:30]}"
             )
 
         return result
 
-    def _format_rag_context(self, doc_hits: List[Dict[str, Any]], max_tokens: int = 50000) -> str:
+    def _format_rag_context(
+        self, doc_hits: List[Dict[str, Any]], max_tokens: int = 50000
+    ) -> str:
         """
         Formate le contexte RAG en exploitant les métadonnées sémantiques.
 
@@ -944,29 +1031,31 @@ class ChatService:
         max_chars = max_tokens * 4  # Approximation: 1 token ≈ 4 caractères
 
         for hit in doc_hits:
-            text = (hit.get('text') or '').strip()
+            text = (hit.get("text") or "").strip()
             if not text:
                 continue
 
             # ✅ Phase 3.2: Stop si dépasse la limite
             if total_chars + len(text) > max_chars:
-                logger.warning(f"[RAG Context] Limite atteinte ({total_chars}/{max_chars} chars), truncating remaining docs")
+                logger.warning(
+                    f"[RAG Context] Limite atteinte ({total_chars}/{max_chars} chars), truncating remaining docs"
+                )
                 break
 
             total_chars += len(text)
 
-            md = hit.get('metadata', {})
-            chunk_type = md.get('chunk_type', 'prose')
-            section_title = md.get('section_title', '')
-            line_range = md.get('line_range', '')
-            merged_count = md.get('merged_chunks', 0)
+            md = hit.get("metadata", {})
+            chunk_type = md.get("chunk_type", "prose")
+            section_title = md.get("section_title", "")
+            line_range = md.get("line_range", "")
+            merged_count = md.get("merged_chunks", 0)
 
             # Tracker contenus complets
             if merged_count > 1:
                 has_complete_content = True
 
             # Construire le header selon le type
-            if chunk_type == 'poem':
+            if chunk_type == "poem":
                 has_poem = True
                 header = "[POÈME"
                 if merged_count > 1:
@@ -976,7 +1065,7 @@ class ChatService:
                     header += f" {section_title}"
                 if line_range:
                     header += f" (lignes {line_range})"
-            elif chunk_type == 'section':
+            elif chunk_type == "section":
                 header = "[SECTION"
                 if merged_count > 1:
                     header += " - CONTENU COMPLET"
@@ -985,7 +1074,7 @@ class ChatService:
                     header += f" {section_title}"
                 if line_range:
                     header += f" (lignes {line_range})"
-            elif chunk_type == 'conversation':
+            elif chunk_type == "conversation":
                 header = "[CONVERSATION"
                 if merged_count > 1:
                     header += " - CONTENU COMPLET"
@@ -1030,7 +1119,7 @@ class ChatService:
         if has_complete_content:
             instruction_parts.append(
                 "\n🟠 RÈGLE pour les CONTENUS COMPLETS :\n"
-                "   • Les blocs marqués \"CONTENU COMPLET\" contiennent la version intégrale.\n"
+                '   • Les blocs marqués "CONTENU COMPLET" contiennent la version intégrale.\n'
                 "   • Pour toute demande de citation (section, conversation, passage),\n"
                 "     copie le texte TEL QUEL depuis le bloc correspondant.\n"
                 "   • Ne recompose pas, ne synthétise pas : CITE TEXTUELLEMENT.\n"
@@ -1045,7 +1134,9 @@ class ChatService:
 
         # ✅ Phase 3.2: Log de la taille du contexte généré
         result_tokens = len(result) // 4  # Approximation
-        logger.info(f"[RAG Context] Generated context: {len(result)} chars (~{result_tokens} tokens), {len(blocks)} blocks")
+        logger.info(
+            f"[RAG Context] Generated context: {len(result)} chars (~{result_tokens} tokens), {len(blocks)} blocks"
+        )
 
         return result
 
@@ -1090,8 +1181,18 @@ class ChatService:
                     except Exception:
                         payload = {}
             if not payload:
-                for key in ("id", "session_id", "role", "content", "message", "agent", "agent_id",
-                            "timestamp", "cost_info", "meta"):
+                for key in (
+                    "id",
+                    "session_id",
+                    "role",
+                    "content",
+                    "message",
+                    "agent",
+                    "agent_id",
+                    "timestamp",
+                    "cost_info",
+                    "meta",
+                ):
                     if hasattr(message, key):
                         payload[key] = getattr(message, key)
 
@@ -1101,7 +1202,12 @@ class ChatService:
         return payload
 
     def _try_get_user_id(self, session_id: str) -> Optional[str]:
-        for attr in ("get_user_id_for_session", "get_user", "get_owner", "get_session_owner"):
+        for attr in (
+            "get_user_id_for_session",
+            "get_user",
+            "get_owner",
+            "get_session_owner",
+        ):
             try:
                 fn = getattr(self.session_manager, attr, None)
                 if callable(fn):
@@ -1151,7 +1257,11 @@ class ChatService:
 
             # Parser date
             try:
-                dt = datetime.fromisoformat(first_date_iso.replace("Z", "+00:00")) if first_date_iso else None
+                dt = (
+                    datetime.fromisoformat(first_date_iso.replace("Z", "+00:00"))
+                    if first_date_iso
+                    else None
+                )
             except Exception:
                 dt = None
 
@@ -1159,8 +1269,21 @@ class ChatService:
             temporal_hint = ""
             if dt:
                 day = dt.day
-                months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
-                          "juil", "août", "sept", "oct", "nov", "déc"]
+                months = [
+                    "",
+                    "janv",
+                    "fév",
+                    "mars",
+                    "avr",
+                    "mai",
+                    "juin",
+                    "juil",
+                    "août",
+                    "sept",
+                    "oct",
+                    "nov",
+                    "déc",
+                ]
                 month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
                 date_str = f"{day} {month}"
 
@@ -1168,7 +1291,9 @@ class ChatService:
                     date_str += f" à {dt.hour}h{dt.minute:02d}"
 
                 if mention_count > 1:
-                    temporal_hint = f" (1ère mention: {date_str}, abordé {mention_count} fois"
+                    temporal_hint = (
+                        f" (1ère mention: {date_str}, abordé {mention_count} fois"
+                    )
                     if thread_count > 1:
                         temporal_hint += f" dans {thread_count} conversations"
                     temporal_hint += ")"
@@ -1186,7 +1311,7 @@ class ChatService:
         r"résume|résumer|quels?\s+sujets?|quelles?\s+conversations?|"
         r"de\s+quoi\s+on\s+a\s+parlé|qu'on\s+a\s+abordé|historique|"
         r"nombre\s+de\s+fois|combien\s+de\s+fois)\b",
-        re.IGNORECASE
+        re.IGNORECASE,
     )
 
     def _is_mot_code_query(self, text: str) -> bool:
@@ -1200,10 +1325,7 @@ class ChatService:
         return bool(self._TEMPORAL_QUERY_RE.search(text))
 
     async def _get_cached_consolidated_memory(
-        self,
-        user_id: str,
-        query_text: str,
-        n_results: int = 5
+        self, user_id: str, query_text: str, n_results: int = 5
     ) -> List[Dict[str, Any]]:
         """
         Récupère les concepts consolidés depuis le cache ou ChromaDB.
@@ -1223,8 +1345,12 @@ class ChatService:
 
         # Vérifier si la collection knowledge existe
         if self._knowledge_collection is None:
-            knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
-            self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
+            knowledge_name = os.getenv(
+                "EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge"
+            )
+            self._knowledge_collection = self.vector_service.get_or_create_collection(
+                knowledge_name
+            )
 
         # Utiliser le cache RAG avec une clé spécifique pour la mémoire consolidée
         # On préfixe la query pour différencier du cache RAG documents
@@ -1237,17 +1363,19 @@ class ChatService:
             cache_query,
             where_filter,
             agent_id="memory_consolidation",
-            selected_doc_ids=None
+            selected_doc_ids=None,
         )
 
         if cached_result:
             # Cache HIT
             duration = time.time() - start_time
-            logger.debug(f"[TemporalCache] HIT: {duration*1000:.1f}ms pour '{query_text[:50]}'")
+            logger.debug(
+                f"[TemporalCache] HIT: {duration * 1000:.1f}ms pour '{query_text[:50]}'"
+            )
 
             # Le cache stocke doc_hits et rag_sources
             # Pour la mémoire consolidée, on utilise doc_hits comme entries
-            consolidated_entries = cached_result.get('doc_hits', [])
+            consolidated_entries = cached_result.get("doc_hits", [])
 
             # Métriques
             rag_metrics.record_cache_hit()
@@ -1255,7 +1383,9 @@ class ChatService:
             return cast(list[dict[str, Any]], consolidated_entries)
 
         # Cache MISS - Recherche dans ChromaDB
-        logger.debug(f"[TemporalCache] MISS: Recherche ChromaDB pour '{query_text[:50]}'")
+        logger.debug(
+            f"[TemporalCache] MISS: Recherche ChromaDB pour '{query_text[:50]}'"
+        )
 
         try:
             search_start = time.time()
@@ -1265,7 +1395,7 @@ class ChatService:
                 query_texts=[query_text],
                 n_results=n_results,
                 where=where_filter,
-                include=["metadatas", "documents"]
+                include=["metadatas", "documents"],
             )
             search_duration = time.time() - search_start
 
@@ -1277,24 +1407,38 @@ class ChatService:
 
                 for i, metadata in enumerate(metadatas):
                     # Extraire timestamp des concepts consolidés
-                    timestamp = metadata.get("timestamp") or metadata.get("created_at") or metadata.get("first_mentioned_at")
+                    timestamp = (
+                        metadata.get("timestamp")
+                        or metadata.get("created_at")
+                        or metadata.get("first_mentioned_at")
+                    )
 
                     # Extraire contenu: priorité document > concept_text > summary
                     if i < len(documents) and documents[i]:
                         content = documents[i]
                     else:
-                        content = metadata.get("concept_text") or metadata.get("summary") or metadata.get("value") or ""
+                        content = (
+                            metadata.get("concept_text")
+                            or metadata.get("summary")
+                            or metadata.get("value")
+                            or ""
+                        )
 
                     concept_type = metadata.get("type", "concept")
 
                     if timestamp and content:
-                        consolidated_entries.append({
-                            "timestamp": timestamp,
-                            "content": content[:80] + ("..." if len(content) > 80 else ""),
-                            "type": concept_type,
-                            "metadata": metadata  # Garder metadata pour le cache
-                        })
-                        logger.debug(f"[TemporalHistory] Concept consolidé trouvé: {concept_type} @ {timestamp[:10]}")
+                        consolidated_entries.append(
+                            {
+                                "timestamp": timestamp,
+                                "content": content[:80]
+                                + ("..." if len(content) > 80 else ""),
+                                "type": concept_type,
+                                "metadata": metadata,  # Garder metadata pour le cache
+                            }
+                        )
+                        logger.debug(
+                            f"[TemporalHistory] Concept consolidé trouvé: {concept_type} @ {timestamp[:10]}"
+                        )
 
             # Stocker dans le cache
             # Note: RAGCache attend doc_hits et rag_sources
@@ -1305,25 +1449,28 @@ class ChatService:
                 agent_id="memory_consolidation",
                 doc_hits=consolidated_entries,
                 rag_sources=[],  # Pas de sources RAG pour mémoire consolidée
-                selected_doc_ids=None
+                selected_doc_ids=None,
             )
 
             # Métriques
             rag_metrics.record_cache_miss()
             rag_metrics.record_temporal_search_duration(search_duration)
             rag_metrics.record_temporal_concepts_found(len(consolidated_entries))
-            logger.info(f"[TemporalCache] ChromaDB search: {search_duration*1000:.0f}ms, found {len(consolidated_entries)} concepts")
+            logger.info(
+                f"[TemporalCache] ChromaDB search: {search_duration * 1000:.0f}ms, found {len(consolidated_entries)} concepts"
+            )
 
             return consolidated_entries
 
         except Exception as e:
-            logger.warning(f"[TemporalHistory] Erreur recherche knowledge: {e}", exc_info=True)
+            logger.warning(
+                f"[TemporalHistory] Erreur recherche knowledge: {e}", exc_info=True
+            )
             rag_metrics.record_cache_miss()  # Compter comme miss en cas d'erreur
             return []
 
     async def _group_concepts_by_theme(
-        self,
-        consolidated_entries: List[Dict[str, Any]]
+        self, consolidated_entries: List[Dict[str, Any]]
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Groupe les concepts consolidés par similarité sémantique.
@@ -1357,6 +1504,7 @@ class ChatService:
 
             # Calculer similarité cosine
             from sklearn.metrics.pairwise import cosine_similarity
+
             similarity_matrix = cosine_similarity(embeddings)
 
             # Clustering simple avec seuil
@@ -1381,7 +1529,9 @@ class ChatService:
 
                 group_id += 1
 
-            logger.info(f"[ThematicGrouping] {len(consolidated_entries)} concepts → {len(groups)} groupes")
+            logger.info(
+                f"[ThematicGrouping] {len(consolidated_entries)} concepts → {len(groups)} groupes"
+            )
 
             return groups
 
@@ -1418,14 +1568,42 @@ class ChatService:
 
         # Stop words simples (français + anglais)
         stop_words = {
-            'être', 'avoir', 'faire', 'dire', 'aller', 'voir', 'savoir',
-            'pouvoir', 'vouloir', 'venir', 'devoir', 'prendre', 'donner',
-            'utilisateur', 'demande', 'question', 'discussion', 'parler',
-            'the', 'and', 'for', 'that', 'with', 'this', 'from', 'they',
-            'have', 'will', 'what', 'been', 'more', 'when', 'there'
+            "être",
+            "avoir",
+            "faire",
+            "dire",
+            "aller",
+            "voir",
+            "savoir",
+            "pouvoir",
+            "vouloir",
+            "venir",
+            "devoir",
+            "prendre",
+            "donner",
+            "utilisateur",
+            "demande",
+            "question",
+            "discussion",
+            "parler",
+            "the",
+            "and",
+            "for",
+            "that",
+            "with",
+            "this",
+            "from",
+            "they",
+            "have",
+            "will",
+            "what",
+            "been",
+            "more",
+            "when",
+            "there",
         }
 
-        pattern = re.compile(r'\b[a-zA-ZÀ-ÿ]{4,}\b')
+        pattern = re.compile(r"\b[a-zA-ZÀ-ÿ]{4,}\b")
         word_freq: Counter[str] = Counter()
 
         for concept in concepts:
@@ -1469,7 +1647,7 @@ class ChatService:
         user_id: str,
         agent_id: Optional[str] = None,
         limit: int = 20,
-        last_user_message: str = ""
+        last_user_message: str = "",
     ) -> str:
         """
         Construit un contexte historique enrichi avec timestamps pour répondre
@@ -1484,7 +1662,12 @@ class ChatService:
         try:
             # 🆕 Détection questions exhaustives AVANT de récupérer les messages
             # Pour chercher dans TOUTES les conversations archivées
-            is_exhaustive_query = bool(re.search(r'\b(tous|toutes|tout|exhaustif|complet|résumer tout|toutes?\s+(nos|mes)\s+conversations?)\b', last_user_message.lower()))
+            is_exhaustive_query = bool(
+                re.search(
+                    r"\b(tous|toutes|tout|exhaustif|complet|résumer tout|toutes?\s+(nos|mes)\s+conversations?)\b",
+                    last_user_message.lower(),
+                )
+            )
 
             # Pour questions exhaustives, on skip les messages du thread actuel
             # et on se base UNIQUEMENT sur la timeline globale des conversations archivées
@@ -1496,7 +1679,7 @@ class ChatService:
                     thread_id,
                     session_id=session_id,
                     user_id=user_id,
-                    limit=limit
+                    limit=limit,
                 )
 
             lines = []
@@ -1506,7 +1689,9 @@ class ChatService:
             # Utilise n_results dynamique basé sur le nombre de messages
             # Pour questions exhaustives ("tous", "résumer tout"), chercher plus de concepts
             if is_exhaustive_query:
-                n_results = 50  # Pour questions exhaustives, chercher beaucoup plus de concepts
+                n_results = (
+                    50  # Pour questions exhaustives, chercher beaucoup plus de concepts
+                )
             else:
                 n_results = min(5, max(3, len(messages) // 4)) if messages else 5
 
@@ -1514,16 +1699,16 @@ class ChatService:
             if last_user_message and user_id:
                 # Utiliser la nouvelle méthode cachée (Phase 3)
                 consolidated_entries = await self._get_cached_consolidated_memory(
-                    user_id=user_id,
-                    query_text=last_user_message,
-                    n_results=n_results
+                    user_id=user_id, query_text=last_user_message, n_results=n_results
                 )
 
             # 🆕 PHASE 3 - PRIORITÉ 3: Groupement thématique
             grouped_concepts = {}
             if len(consolidated_entries) >= 3:
                 # Activer groupement si 3+ concepts
-                grouped_concepts = await self._group_concepts_by_theme(consolidated_entries)
+                grouped_concepts = await self._group_concepts_by_theme(
+                    consolidated_entries
+                )
                 logger.info(f"[ThematicGrouping] {len(grouped_concepts)} groupes créés")
             else:
                 # Pas de groupement si peu de concepts
@@ -1538,12 +1723,12 @@ class ChatService:
 
                     # 🆕 Log pour debug mode exhaustif
                     if is_exhaustive_query:
-                        logger.info(f"[ExhaustiveQuery] Question globale détectée - cherche dans TOUTES les conversations archivées (limit={timeline_limit})")
+                        logger.info(
+                            f"[ExhaustiveQuery] Question globale détectée - cherche dans TOUTES les conversations archivées (limit={timeline_limit})"
+                        )
 
                     timeline = await self.memory_query_tool.get_conversation_timeline(
-                        user_id=user_id,
-                        limit=timeline_limit,
-                        agent_id=agent_id
+                        user_id=user_id, limit=timeline_limit, agent_id=agent_id
                     )
                     period_labels = {
                         "this_week": "**Cette semaine:**",
@@ -1564,7 +1749,9 @@ class ChatService:
                             if count >= max_topics_per_period:
                                 break
                         timeline_section.append("")
-                    formatted_timeline = "\n".join(line for line in timeline_section if line.strip())
+                    formatted_timeline = "\n".join(
+                        line for line in timeline_section if line.strip()
+                    )
                     if formatted_timeline:
                         lines.append("**Synthèse chronologique consolidée :**")
                         lines.append("")
@@ -1572,7 +1759,9 @@ class ChatService:
                         lines.append("")
                         timeline_added = True
                 except Exception as timeline_err:
-                    logger.warning(f"[TemporalHistory] Timeline consolidation échouée: {timeline_err}")
+                    logger.warning(
+                        f"[TemporalHistory] Timeline consolidation échouée: {timeline_err}"
+                    )
 
             # Préparer les messages du thread (pour affichage séparé)
             thread_events = []
@@ -1587,23 +1776,42 @@ class ChatService:
                     continue
 
                 if created_at:
-                    thread_events.append({
-                        "timestamp": created_at,
-                        "role": role,
-                        "content": content,
-                        "agent_id": message_agent_id,
-                        "source": "thread"
-                    })
+                    thread_events.append(
+                        {
+                            "timestamp": created_at,
+                            "role": role,
+                            "content": content,
+                            "agent_id": message_agent_id,
+                            "source": "thread",
+                        }
+                    )
 
             # Trier les messages par date (du plus ancien au plus récent)
             try:
-                thread_events.sort(key=lambda x: datetime.fromisoformat(x["timestamp"].replace("Z", "+00:00")))
+                thread_events.sort(
+                    key=lambda x: datetime.fromisoformat(
+                        x["timestamp"].replace("Z", "+00:00")
+                    )
+                )
             except Exception as sort_err:
                 logger.debug(f"[TemporalHistory] Tri impossible: {sort_err}")
 
             # Formater les groupes thématiques
-            months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
-                      "juil", "août", "sept", "oct", "nov", "déc"]
+            months = [
+                "",
+                "janv",
+                "fév",
+                "mars",
+                "avr",
+                "mai",
+                "juin",
+                "juil",
+                "août",
+                "sept",
+                "oct",
+                "nov",
+                "déc",
+            ]
 
             if grouped_concepts and not timeline_added:
                 lines.append("**Thèmes abordés:**")
@@ -1614,10 +1822,14 @@ class ChatService:
                         # Pas de titre de groupe pour concepts non groupés
                         for concept in concepts:
                             try:
-                                dt = datetime.fromisoformat(concept["timestamp"].replace("Z", "+00:00"))
+                                dt = datetime.fromisoformat(
+                                    concept["timestamp"].replace("Z", "+00:00")
+                                )
                                 date_str = f"{dt.day} {months[dt.month]} à {dt.hour}h{dt.minute:02d}"
                                 preview = concept["content"]
-                                lines.append(f"**[{date_str}] Mémoire ({concept['type']}) :** {preview}")
+                                lines.append(
+                                    f"**[{date_str}] Mémoire ({concept['type']}) :** {preview}"
+                                )
                             except Exception:
                                 pass
                     else:
@@ -1626,14 +1838,22 @@ class ChatService:
                         count = len(concepts)
                         label = "échange" if count == 1 else "échanges"
 
-                        lines.append(f"**[{title}]** Discussion récurrente ({count} {label})")
+                        lines.append(
+                            f"**[{title}]** Discussion récurrente ({count} {label})"
+                        )
 
                         for concept in concepts:
                             try:
-                                dt = datetime.fromisoformat(concept["timestamp"].replace("Z", "+00:00"))
+                                dt = datetime.fromisoformat(
+                                    concept["timestamp"].replace("Z", "+00:00")
+                                )
                                 date_str = f"{dt.day} {months[dt.month]} à {dt.hour}h{dt.minute:02d}"
                                 # Preview raccourci pour groupes
-                                preview = concept["content"][:60] + "..." if len(concept["content"]) > 60 else concept["content"]
+                                preview = (
+                                    concept["content"][:60] + "..."
+                                    if len(concept["content"]) > 60
+                                    else concept["content"]
+                                )
                                 lines.append(f"  - {date_str}: {preview}")
                             except Exception:
                                 pass
@@ -1643,20 +1863,28 @@ class ChatService:
             # Formater les messages récents (garder les 10 plus récents)
             if thread_events:
                 lines.append("**Messages récents:**")
-                recent_messages = thread_events[-10:] if len(thread_events) > 10 else thread_events
+                recent_messages = (
+                    thread_events[-10:] if len(thread_events) > 10 else thread_events
+                )
 
                 for event in recent_messages:
                     try:
                         # Parser la date
-                        dt = datetime.fromisoformat(event["timestamp"].replace("Z", "+00:00"))
+                        dt = datetime.fromisoformat(
+                            event["timestamp"].replace("Z", "+00:00")
+                        )
                         day = dt.day
-                        month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
+                        month = (
+                            months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
+                        )
                         time_str = f"{dt.hour}h{dt.minute:02d}"
                         date_str = f"{day} {month} à {time_str}"
 
                         # Extraire un aperçu du contenu
                         content = event.get("content", "")
-                        preview = content[:80].strip() if isinstance(content, str) else ""
+                        preview = (
+                            content[:80].strip() if isinstance(content, str) else ""
+                        )
                         if len(content) > 80:
                             preview += "..."
 
@@ -1666,12 +1894,16 @@ class ChatService:
                         if role == "user":
                             lines.append(f"**[{date_str}] Toi :** {preview}")
                         elif role == "assistant" and event_agent_id:
-                            lines.append(f"**[{date_str}] {event_agent_id.title()} :** {preview}")
+                            lines.append(
+                                f"**[{date_str}] {event_agent_id.title()} :** {preview}"
+                            )
                     except Exception:
                         pass
 
             if len(consolidated_entries) > 0 or len(thread_events) > 0:
-                logger.info(f"[TemporalHistory] Contexte enrichi: {len(thread_events)} messages + {len(consolidated_entries)} concepts consolidés ({len(grouped_concepts)} groupes)")
+                logger.info(
+                    f"[TemporalHistory] Contexte enrichi: {len(thread_events)} messages + {len(consolidated_entries)} concepts consolidés ({len(grouped_concepts)} groupes)"
+                )
 
             # 🔥 FIX: Toujours retourner au moins une ligne (même si vide)
             # pour que le header "### Historique des sujets abordés" soit ajouté par _merge_blocks()
@@ -1682,19 +1914,31 @@ class ChatService:
             return "\n".join(lines)
 
         except Exception as e:
-            logger.warning(f"[TemporalHistory] Erreur construction contexte : {e}", exc_info=True)
+            logger.warning(
+                f"[TemporalHistory] Erreur construction contexte : {e}", exc_info=True
+            )
             # Retourner quand même un message pour que le header soit ajouté
             return "*(Aucun sujet trouvé dans l'historique)*"
 
-    def _fetch_mot_code_for_agent(self, agent_id: str, user_id: Optional[str]) -> Optional[str]:
+    def _fetch_mot_code_for_agent(
+        self, agent_id: str, user_id: Optional[str]
+    ) -> Optional[str]:
         if self._knowledge_collection is None:
-            knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
-            self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
+            knowledge_name = os.getenv(
+                "EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge"
+            )
+            self._knowledge_collection = self.vector_service.get_or_create_collection(
+                knowledge_name
+            )
             if self._knowledge_collection is None:
                 return None
 
         collection = self._knowledge_collection  # type: ignore[unreachable]
-        clauses = [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]
+        clauses = [
+            {"type": "fact"},
+            {"key": "mot-code"},
+            {"agent": (agent_id or "").lower()},
+        ]
         if user_id:
             clauses.append({"user_id": user_id})
         where = {"$and": clauses}
@@ -1702,7 +1946,13 @@ class ChatService:
         ids = got.get("ids", []) or []
         if not ids:
             got = collection.get(
-                where={"$and": [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]},
+                where={
+                    "$and": [
+                        {"type": "fact"},
+                        {"key": "mot-code"},
+                        {"agent": (agent_id or "").lower()},
+                    ]
+                },
                 include=["documents", "metadatas"],
             )
             ids = got.get("ids", []) or []
@@ -1739,7 +1989,7 @@ class ChatService:
         session_id: str,
         user_id: str,
         user_message: str,
-        connection_manager: ConnectionManager
+        connection_manager: ConnectionManager,
     ) -> None:
         """
         Generate and emit proactive hints after agent response (P2 Sprint 2).
@@ -1755,19 +2005,16 @@ class ChatService:
 
         try:
             hints = await self.hint_engine.generate_hints(
-                user_id=user_id,
-                current_context={"message": user_message}
+                user_id=user_id, current_context={"message": user_message}
             )
 
             if hints:
                 await connection_manager.send_personal_message(
                     {
                         "type": "ws:proactive_hint",
-                        "payload": {
-                            "hints": [h.to_dict() for h in hints]
-                        }
+                        "payload": {"hints": [h.to_dict() for h in hints]},
                     },
-                    session_id
+                    session_id,
                 )
 
                 logger.info(
@@ -1780,7 +2027,11 @@ class ChatService:
             # Non-blocking: don't fail main flow
 
     async def _build_memory_context(
-        self, session_id: str, last_user_message: str, top_k: int = 5, agent_id: Optional[str] = None
+        self,
+        session_id: str,
+        last_user_message: str,
+        top_k: int = 5,
+        agent_id: Optional[str] = None,
     ) -> str:
         """
         ✅ Phase 3 RAG : Recherche documentaire avec scoring multi-critères + formatage Phase 3.1
@@ -1792,7 +2043,9 @@ class ChatService:
         🆕 Phase 4 RAG : Détection requêtes exhaustives pour augmenter top_k dynamiquement
         """
         # 🔍 P3 Tracing: Start retrieval span
-        span_id = self.trace_manager.start_span("retrieval", attrs={"agent": agent_id or "unknown", "top_k": top_k})
+        span_id = self.trace_manager.start_span(
+            "retrieval", attrs={"agent": agent_id or "unknown", "top_k": top_k}
+        )
         result_text = ""
         trace_status = "OK"
 
@@ -1805,12 +2058,14 @@ class ChatService:
             # 🆕 Phase 4 RAG : Détection requêtes exhaustives pour gros documents
             # Pattern similaire à _build_temporal_context() ligne 1487
             # 🔥 Phase 4.1: Inclut mots SANS accent (resume, detail, etc.) pour support clavier US/international
-            is_exhaustive_query = bool(re.search(
-                r'\b(tous|toutes|tout|exhaustif|complet|résumer|résumé|résume|resume|resumer|'
-                r'analyse|analyser|détail|détaillé|detail|detaille|intégral|integral|'
-                r'entier|concepts?|global|synthèse|synthese)\b',
-                last_user_message.lower()
-            ))
+            is_exhaustive_query = bool(
+                re.search(
+                    r"\b(tous|toutes|tout|exhaustif|complet|résumer|résumé|résume|resume|resumer|"
+                    r"analyse|analyser|détail|détaillé|detail|detaille|intégral|integral|"
+                    r"entier|concepts?|global|synthèse|synthese)\b",
+                    last_user_message.lower(),
+                )
+            )
 
             # Augmenter dynamiquement top_k pour requêtes exhaustives
             if is_exhaustive_query and top_k < 100:
@@ -1833,7 +2088,7 @@ class ChatService:
                         session_id=session_id,
                         user_id=uid,
                         top_k=top_k,  # Maintenant peut être 100 pour requêtes exhaustives
-                        intent=intent
+                        intent=intent,
                     )
 
                     if document_results:
@@ -1847,12 +2102,18 @@ class ChatService:
                         result_text = self._format_rag_context(document_results)
                         return result_text
                 except Exception as e:
-                    logger.error(f"Erreur recherche documents Phase 3: {e}", exc_info=True)
+                    logger.error(
+                        f"Erreur recherche documents Phase 3: {e}", exc_info=True
+                    )
 
             # Fallback: Recherche dans la mémoire conversationnelle (ancien système)
             if self._knowledge_collection is None:
-                knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
-                self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
+                knowledge_name = os.getenv(
+                    "EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge"
+                )
+                self._knowledge_collection = (
+                    self.vector_service.get_or_create_collection(knowledge_name)
+                )
                 if self._knowledge_collection is None:
                     return ""
 
@@ -1940,9 +2201,13 @@ class ChatService:
                 touched_metas.append(updated_meta)
             if touched_ids and knowledge_col is not None:
                 try:
-                    self.vector_service.update_metadatas(knowledge_col, touched_ids, touched_metas)
+                    self.vector_service.update_metadatas(
+                        knowledge_col, touched_ids, touched_metas
+                    )
                 except Exception as err:
-                    logger.warning(f"Impossible de mettre à jour la vitalité mémoire: {err}")
+                    logger.warning(
+                        f"Impossible de mettre à jour la vitalité mémoire: {err}"
+                    )
 
             result_text = "\n".join(lines[:top_k])
             return result_text
@@ -1966,21 +2231,37 @@ class ChatService:
         normalized: List[Dict[str, Any]] = []
         # 🔥 FIX: Injecter le contexte même si use_rag=False quand c'est du contexte temporel
         # (pour les questions "résume sujets", Anima doit voir le header même si RAG désactivé)
-        should_inject_context = rag_context and (use_rag or "Historique des sujets abordés" in rag_context)
+        should_inject_context = rag_context and (
+            use_rag or "Historique des sujets abordés" in rag_context
+        )
         if should_inject_context:
             if provider == "google":
-                normalized.append({"role": "user", "parts": [f"[RAG_CONTEXT]\n{rag_context}"]})
+                normalized.append(
+                    {"role": "user", "parts": [f"[RAG_CONTEXT]\n{rag_context}"]}
+                )
             else:
-                normalized.append({"role": "user", "content": f"[RAG_CONTEXT]\n{rag_context}"})
+                normalized.append(
+                    {"role": "user", "content": f"[RAG_CONTEXT]\n{rag_context}"}
+                )
         for m in history:
             role = m.get("role")
             text = m.get("content") or m.get("message") or ""
             if not text:
                 continue
             if provider == "google":
-                normalized.append({"role": "user" if role in (Role.USER, "user") else "model", "parts": [text]})
+                normalized.append(
+                    {
+                        "role": "user" if role in (Role.USER, "user") else "model",
+                        "parts": [text],
+                    }
+                )
             else:
-                normalized.append({"role": "user" if role in (Role.USER, "user") else "assistant", "content": text})
+                normalized.append(
+                    {
+                        "role": "user" if role in (Role.USER, "user") else "assistant",
+                        "content": text,
+                    }
+                )
         return normalized
 
     @staticmethod
@@ -1994,17 +2275,17 @@ class ChatService:
             parts: List[str] = []
             for item in raw:
                 try:
-                    if hasattr(item, 'text'):
-                        text_value = getattr(item, 'text')
+                    if hasattr(item, "text"):
+                        text_value = getattr(item, "text")
                     elif isinstance(item, dict):
-                        text_value = item.get('text')
+                        text_value = item.get("text")
                     else:
                         text_value = None
                     if text_value:
                         parts.append(str(text_value))
                 except Exception:
                     continue
-            return ''.join(parts)
+            return "".join(parts)
         try:
             return str(raw)
         except Exception:
@@ -2022,7 +2303,13 @@ class ChatService:
 
     # ---------- providers (stream) ----------
     async def _get_llm_response_stream(
-        self, provider: str, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any], agent_id: str = "unknown"
+        self,
+        provider: str,
+        model: str,
+        system_prompt: str,
+        history: List[Dict[str, Any]],
+        cost_info_container: Dict[str, Any],
+        agent_id: str = "unknown",
     ) -> AsyncGenerator[str, None]:
         """
         Stream LLM response avec BudgetGuard (P2.3).
@@ -2031,7 +2318,10 @@ class ChatService:
             agent_id: ID de l'agent (anima, neo, nexus) pour tracking budget
         """
         # 🔍 P3 Tracing: Start llm_generate span
-        span_id = self.trace_manager.start_span("llm_generate", attrs={"agent": agent_id, "provider": provider, "model": model})
+        span_id = self.trace_manager.start_span(
+            "llm_generate",
+            attrs={"agent": agent_id, "provider": provider, "model": model},
+        )
 
         # 🛡️ P2.3 - BudgetGuard: Estimer tokens input avant appel
         estimated_input_tokens = 0
@@ -2050,11 +2340,17 @@ class ChatService:
 
         try:
             if provider == "openai":
-                streamer = self._get_openai_stream(model, system_prompt, history, cost_info_container)
+                streamer = self._get_openai_stream(
+                    model, system_prompt, history, cost_info_container
+                )
             elif provider == "google":
-                streamer = self._get_gemini_stream(model, system_prompt, history, cost_info_container)
+                streamer = self._get_gemini_stream(
+                    model, system_prompt, history, cost_info_container
+                )
             elif provider == "anthropic":
-                streamer = self._get_anthropic_stream(model, system_prompt, history, cost_info_container)
+                streamer = self._get_anthropic_stream(
+                    model, system_prompt, history, cost_info_container
+                )
             else:
                 # 🔍 P3 Tracing: End span on error
                 self.trace_manager.end_span(span_id, status="ERROR")
@@ -2066,11 +2362,15 @@ class ChatService:
             # 🛡️ P2.3 - BudgetGuard: Consommer tokens réels APRÈS stream
             if self.budget_guard and cost_info_container:
                 try:
-                    total_tokens = cost_info_container.get("input_tokens", 0) + cost_info_container.get("output_tokens", 0)
+                    total_tokens = cost_info_container.get(
+                        "input_tokens", 0
+                    ) + cost_info_container.get("output_tokens", 0)
                     if total_tokens > 0:
                         self.budget_guard.consume(agent_id, total_tokens)
                 except Exception as e:
-                    logger.warning(f"[BudgetGuard] Failed to consume tokens for {agent_id}: {e}")
+                    logger.warning(
+                        f"[BudgetGuard] Failed to consume tokens for {agent_id}: {e}"
+                    )
 
             # 🔍 P3 Tracing: End llm_generate span (success)
             self.trace_manager.end_span(span_id, status="OK")
@@ -2080,7 +2380,11 @@ class ChatService:
             raise
 
     async def _get_openai_stream(
-        self, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
+        self,
+        model: str,
+        system_prompt: str,
+        history: List[Dict[str, Any]],
+        cost_info_container: Dict[str, Any],
     ) -> AsyncGenerator[str, None]:
         messages = [{"role": "system", "content": system_prompt}] + history
         usage_seen = False
@@ -2111,7 +2415,8 @@ class ChatService:
                         {
                             "input_tokens": in_tok,
                             "output_tokens": out_tok,
-                            "total_cost": (in_tok * pricing["input"]) + (out_tok * pricing["output"]),
+                            "total_cost": (in_tok * pricing["input"])
+                            + (out_tok * pricing["output"]),
                         }
                     )
         except Exception as e:
@@ -2119,20 +2424,36 @@ class ChatService:
             raise
 
     async def _get_gemini_stream(
-        self, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
+        self,
+        model: str,
+        system_prompt: str,
+        history: List[Dict[str, Any]],
+        cost_info_container: Dict[str, Any],
     ) -> AsyncGenerator[str, None]:
         try:
-            model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
+            model_instance = genai.GenerativeModel(
+                model_name=model, system_instruction=system_prompt
+            )
             resp = await model_instance.generate_content_async(
-                history, stream=True, generation_config={"temperature": DEFAULT_TEMPERATURE}
+                history,
+                stream=True,
+                generation_config={"temperature": DEFAULT_TEMPERATURE},
             )
             async for chunk in resp:
                 try:
                     text = getattr(chunk, "text", None)
                     if not text and getattr(chunk, "candidates", None):
                         cand = chunk.candidates[0]
-                        if getattr(cand, "content", None) and getattr(cand.content, "parts", None):
-                            text = "".join([getattr(p, "text", "") or str(p) for p in cand.content.parts if p])
+                        if getattr(cand, "content", None) and getattr(
+                            cand.content, "parts", None
+                        ):
+                            text = "".join(
+                                [
+                                    getattr(p, "text", "") or str(p)
+                                    for p in cand.content.parts
+                                    if p
+                                ]
+                            )
                     if text:
                         yield text
                 except Exception:
@@ -2146,7 +2467,11 @@ class ChatService:
             raise
 
     async def _get_anthropic_stream(
-        self, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
+        self,
+        model: str,
+        system_prompt: str,
+        history: List[Dict[str, Any]],
+        cost_info_container: Dict[str, Any],
     ) -> AsyncGenerator[str, None]:
         try:
             history_params = cast(List[MessageParam], history)
@@ -2178,7 +2503,8 @@ class ChatService:
                             {
                                 "input_tokens": in_tok,
                                 "output_tokens": out_tok,
-                                "total_cost": (in_tok * pricing["input"]) + (out_tok * pricing["output"]),
+                                "total_cost": (in_tok * pricing["input"])
+                                + (out_tok * pricing["output"]),
                             }
                         )
                 except Exception:
@@ -2188,7 +2514,9 @@ class ChatService:
             raise
 
     # ---------- réponses structurées ----------
-    async def get_structured_llm_response(self, agent_id: str, prompt: str, json_schema: Dict[str, Any]) -> Dict[str, Any]:
+    async def get_structured_llm_response(
+        self, agent_id: str, prompt: str, json_schema: Dict[str, Any]
+    ) -> Dict[str, Any]:
         provider, model, system_prompt = self._get_agent_config(agent_id)
         system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_prompt)
 
@@ -2196,15 +2524,17 @@ class ChatService:
         timeout_seconds = float(os.getenv("MEMORY_ANALYSIS_TIMEOUT", "30"))
 
         if provider == "google":
-            model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-            schema_hint = json.dumps(json_schema, ensure_ascii=False)
-            full_prompt = (
-                f"{prompt}\n\nIMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA : {schema_hint}"
+            model_instance = genai.GenerativeModel(
+                model_name=model, system_instruction=system_prompt
             )
+            schema_hint = json.dumps(json_schema, ensure_ascii=False)
+            full_prompt = f"{prompt}\n\nIMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA : {schema_hint}"
             try:
                 google_resp = await asyncio.wait_for(
-                    model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}]),
-                    timeout=timeout_seconds
+                    model_instance.generate_content_async(
+                        [{"role": "user", "parts": [full_prompt]}]
+                    ),
+                    timeout=timeout_seconds,
                 )
                 text = getattr(google_resp, "text", "") or ""
                 try:
@@ -2219,12 +2549,17 @@ class ChatService:
                 raise  # Propagate pour fallback analyzer
         elif provider == "openai":
             # ⚠️ OpenAI exige que le prompt contienne "json" pour response_format=json_object
-            json_prompt = f"{prompt}\n\n**IMPORTANT: Réponds UNIQUEMENT en JSON valide.**"
+            json_prompt = (
+                f"{prompt}\n\n**IMPORTANT: Réponds UNIQUEMENT en JSON valide.**"
+            )
             openai_resp = await self.openai_client.chat.completions.create(
                 model=model,
                 temperature=0,
                 response_format={"type": "json_object"},
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": json_prompt}],
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": json_prompt},
+                ],
             )
             content = (openai_resp.choices[0].message.content or "").strip()
             return json.loads(content) if content else {}
@@ -2270,17 +2605,30 @@ class ChatService:
         is_broadcast = origin == "global"
 
         try:
-            start_payload: dict[str, Any] = {"agent_id": agent_id, "id": temp_message_id}
+            start_payload: dict[str, Any] = {
+                "agent_id": agent_id,
+                "id": temp_message_id,
+            }
             if opinion_request:
                 opinion_meta = dict(opinion_request.get("opinion_meta") or {})
                 if opinion_request.get("source_agent_id") is not None:
-                    opinion_meta.setdefault("source_agent_id", opinion_request.get("source_agent_id"))
+                    opinion_meta.setdefault(
+                        "source_agent_id", opinion_request.get("source_agent_id")
+                    )
                 if opinion_request.get("target_message_id") is not None:
-                    opinion_meta.setdefault("target_message_id", opinion_request.get("target_message_id"))
+                    opinion_meta.setdefault(
+                        "target_message_id", opinion_request.get("target_message_id")
+                    )
                 if opinion_request.get("request_note_id"):
-                    opinion_meta.setdefault("request_note_id", opinion_request.get("request_note_id"))
-                if opinion_meta.get("request_id") and not opinion_meta.get("request_note_id"):
-                    opinion_meta.setdefault("request_note_id", opinion_meta.get("request_id"))
+                    opinion_meta.setdefault(
+                        "request_note_id", opinion_request.get("request_note_id")
+                    )
+                if opinion_meta.get("request_id") and not opinion_meta.get(
+                    "request_note_id"
+                ):
+                    opinion_meta.setdefault(
+                        "request_note_id", opinion_meta.get("request_id")
+                    )
                 opinion_meta.setdefault("reviewer_agent_id", agent_id)
                 opinion_meta.setdefault("agent_id", agent_id)
                 meta_payload: dict[str, Any] = {"opinion": opinion_meta}
@@ -2297,7 +2645,9 @@ class ChatService:
             if opinion_request:
                 instruction_text = (opinion_request.get("instruction") or "").strip()
                 if instruction_text:
-                    history.append({"role": Role.USER.value, "content": instruction_text})
+                    history.append(
+                        {"role": Role.USER.value, "content": instruction_text}
+                    )
 
             last_user_message_obj = next(
                 (m for m in reversed(history) if self._is_user_role(m.get("role"))),
@@ -2306,12 +2656,18 @@ class ChatService:
             last_user_message = ""
             if last_user_message_obj:
                 last_user_message = (
-                    str(last_user_message_obj.get("content") or last_user_message_obj.get("message") or "")
+                    str(
+                        last_user_message_obj.get("content")
+                        or last_user_message_obj.get("message")
+                        or ""
+                    )
                 ).strip()
 
             selected_doc_ids = self._sanitize_doc_ids(doc_ids)
             if not selected_doc_ids and isinstance(last_user_message_obj, dict):
-                selected_doc_ids = self._sanitize_doc_ids(last_user_message_obj.get("doc_ids"))
+                selected_doc_ids = self._sanitize_doc_ids(
+                    last_user_message_obj.get("doc_ids")
+                )
 
             thread_id = None
             try:
@@ -2326,12 +2682,14 @@ class ChatService:
             if self.concept_recall_tracker and last_user_message and uid and thread_id:
                 try:
                     message_id = str(uuid4())
-                    recalls = await self.concept_recall_tracker.detect_recurring_concepts(
-                        message_text=last_user_message,
-                        user_id=uid,
-                        thread_id=thread_id,
-                        message_id=message_id,
-                        session_id=session_id,
+                    recalls = (
+                        await self.concept_recall_tracker.detect_recurring_concepts(
+                            message_text=last_user_message,
+                            user_id=uid,
+                            thread_id=thread_id,
+                            message_id=message_id,
+                            session_id=session_id,
+                        )
                     )
                     if recalls:
                         logger.info(
@@ -2358,15 +2716,19 @@ class ChatService:
                         user_id=uid,
                         agent_id=agent_id,
                         limit=20,
-                        last_user_message=last_user_message
+                        last_user_message=last_user_message,
                     )
                     if temporal_context:
                         # Enregistrer taille du contexte enrichi
-                        context_size = len(temporal_context.encode('utf-8'))
+                        context_size = len(temporal_context.encode("utf-8"))
                         rag_metrics.record_temporal_context_size(context_size)
-                        logger.info(f"[TemporalQuery] Contexte historique enrichi pour question temporelle ({context_size} bytes)")
+                        logger.info(
+                            f"[TemporalQuery] Contexte historique enrichi pour question temporelle ({context_size} bytes)"
+                        )
                 except Exception as temporal_err:
-                    logger.warning(f"[TemporalQuery] Enrichissement historique échoué : {temporal_err}")
+                    logger.warning(
+                        f"[TemporalQuery] Enrichissement historique échoué : {temporal_err}"
+                    )
 
             allowed_doc_ids: List[int] = []
             if thread_id:
@@ -2395,7 +2757,9 @@ class ChatService:
                     )
 
             if allowed_doc_ids:
-                filtered_doc_ids = [doc_id for doc_id in selected_doc_ids if doc_id in allowed_doc_ids]
+                filtered_doc_ids = [
+                    doc_id for doc_id in selected_doc_ids if doc_id in allowed_doc_ids
+                ]
                 if selected_doc_ids and not filtered_doc_ids:
                     logger.info(
                         "Selected doc IDs are outside thread scope (session=%s thread=%s ids=%s)",
@@ -2440,19 +2804,28 @@ class ChatService:
                         timestamp=datetime.now(timezone.utc).isoformat(),
                         cost_info={},
                     )
-                    await self.session_manager.add_message_to_session(session_id, final_agent_message)
+                    await self.session_manager.add_message_to_session(
+                        session_id, final_agent_message
+                    )
                     payload = final_agent_message.model_dump(mode="json")
                     payload["agent_id"] = agent_id
                     if "message" in payload:
                         payload["content"] = payload.pop("message")
-                    payload.setdefault("meta", {"provider": "memory", "model": "mot-code", "fallback": False})
+                    payload.setdefault(
+                        "meta",
+                        {"provider": "memory", "model": "mot-code", "fallback": False},
+                    )
                     await connection_manager.send_personal_message(
                         {"type": "ws:chat_stream_end", "payload": payload}, session_id
                     )
                     if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
                         try:
-                            db_manager = getattr(self.session_manager, "db_manager", None)
-                            analyzer = getattr(self.session_manager, "memory_analyzer", None)
+                            db_manager = getattr(
+                                self.session_manager, "db_manager", None
+                            )
+                            analyzer = getattr(
+                                self.session_manager, "memory_analyzer", None
+                            )
                             if db_manager and analyzer:
                                 gardener = MemoryGardener(
                                     db_manager=db_manager,
@@ -2474,21 +2847,32 @@ class ChatService:
             # Mémoire (STM/LTM)
             stm = self._try_get_session_summary(session_id)
             ltm_block = (
-                await self._build_memory_context(session_id, last_user_message, top_k=5, agent_id=agent_id)
+                await self._build_memory_context(
+                    session_id, last_user_message, top_k=5, agent_id=agent_id
+                )
                 if last_user_message
                 else ""
             )
 
             if use_rag:
-                memory_context = self._merge_blocks([("Résumé de session", stm)]) if stm else ""
+                memory_context = (
+                    self._merge_blocks([("Résumé de session", stm)]) if stm else ""
+                )
                 ltm_count_for_banner = self._count_bullets(ltm_block)
             else:
-                memory_context = self._merge_blocks([("Résumé de session", stm), ("Faits & souvenirs", ltm_block)])
+                memory_context = self._merge_blocks(
+                    [("Résumé de session", stm), ("Faits & souvenirs", ltm_block)]
+                )
                 ltm_count_for_banner = self._count_bullets(ltm_block)
 
             injected = bool(memory_context and memory_context.strip())
             if injected:
-                history = [{"role": Role.USER.value, "content": f"[MEMORY_CONTEXT]\n{memory_context}"}] + history
+                history = [
+                    {
+                        "role": Role.USER.value,
+                        "content": f"[MEMORY_CONTEXT]\n{memory_context}",
+                    }
+                ] + history
 
             try:
                 await connection_manager.send_personal_message(
@@ -2510,13 +2894,21 @@ class ChatService:
 
             # RAG documents
             rag_context = ""
-            should_search_docs = bool(use_rag and (last_user_message or selected_doc_ids))
+            should_search_docs = bool(
+                use_rag and (last_user_message or selected_doc_ids)
+            )
             if should_search_docs:
                 await connection_manager.send_personal_message(
-                    {"type": "ws:rag_status", "payload": {"status": "searching", "agent_id": agent_id}}, session_id
+                    {
+                        "type": "ws:rag_status",
+                        "payload": {"status": "searching", "agent_id": agent_id},
+                    },
+                    session_id,
                 )
                 if self._doc_collection is None:
-                    self._doc_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
+                    self._doc_collection = self.vector_service.get_or_create_collection(
+                        config.DOCUMENT_COLLECTION_NAME
+                    )
 
                 # ✅ Phase 2 RAG Milestone 4 : Détection d'intention utilisateur
                 user_intent = self._parse_user_intent(last_user_message)
@@ -2533,22 +2925,30 @@ class ChatService:
                 where_clauses: List[Dict[str, Any]] = list(base_clauses)
 
                 # ✅ Phase 2 RAG Milestone 4 : Filtrage sémantique par type de contenu
-                if user_intent.get('content_type'):
-                    where_clauses.append({"chunk_type": user_intent['content_type']})
-                    logger.info(f"[RAG Filter] Filtering by chunk_type={user_intent['content_type']}")
+                if user_intent.get("content_type"):
+                    where_clauses.append({"chunk_type": user_intent["content_type"]})
+                    logger.info(
+                        f"[RAG Filter] Filtering by chunk_type={user_intent['content_type']}"
+                    )
 
                 # ✅ Phase 2 RAG Milestone 4 : Priorité aux chunks complets si citation intégrale demandée
                 # MAIS rendre ce filtre optionnel pour ne pas trop restreindre
-                if user_intent.get('wants_integral_citation'):
+                if user_intent.get("wants_integral_citation"):
                     # On ne force pas is_complete=True car ça peut exclure des résultats pertinents
                     # On l'utilisera plutôt pour le tri/ranking plus tard
-                    logger.info("[RAG Filter] Wants integral citation (will prioritize complete chunks in ranking)")
+                    logger.info(
+                        "[RAG Filter] Wants integral citation (will prioritize complete chunks in ranking)"
+                    )
 
                 if selected_doc_ids:
                     if len(selected_doc_ids) == 1:
-                        doc_filter: Dict[str, Any] = {"document_id": selected_doc_ids[0]}
+                        doc_filter: Dict[str, Any] = {
+                            "document_id": selected_doc_ids[0]
+                        }
                     else:
-                        doc_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
+                        doc_filter = {
+                            "$or": [{"document_id": did} for did in selected_doc_ids]
+                        }
                     where_clauses.append(doc_filter)
 
                 if not where_clauses:
@@ -2559,16 +2959,24 @@ class ChatService:
                     where_filter = {"$and": where_clauses}
 
                 # ✅ Phase 2 RAG Milestone 4 : Utiliser requête expandue
-                query_text = user_intent.get('expanded_query') or (last_user_message or "").strip()
+                query_text = (
+                    user_intent.get("expanded_query")
+                    or (last_user_message or "").strip()
+                )
                 if not query_text and selected_doc_ids:
-                    query_text = " ".join(f"document:{doc_id}" for doc_id in selected_doc_ids) or "selected documents"
+                    query_text = (
+                        " ".join(f"document:{doc_id}" for doc_id in selected_doc_ids)
+                        or "selected documents"
+                    )
 
                 logger.info(f"[RAG Query] expanded_query='{query_text[:100]}...'")
 
                 # ✅ Phase 3 RAG : Enregistrer métriques + vérifier cache
-                rag_metrics.record_query(agent_id, has_intent=bool(user_intent.get('content_type')))
-                if user_intent.get('content_type'):
-                    rag_metrics.record_content_type_query(user_intent['content_type'])
+                rag_metrics.record_query(
+                    agent_id, has_intent=bool(user_intent.get("content_type"))
+                )
+                if user_intent.get("content_type"):
+                    rag_metrics.record_content_type_query(user_intent["content_type"])
 
                 # Tenter de récupérer depuis le cache
                 cached_result = self.rag_cache.get(
@@ -2578,16 +2986,20 @@ class ChatService:
                 if cached_result:
                     # Cache hit !
                     rag_metrics.record_cache_hit()
-                    doc_hits = cached_result.get('doc_hits', [])
-                    rag_sources = cached_result.get('rag_sources', [])
-                    logger.info(f"[RAG Cache] HIT - Restored {len(doc_hits)} chunks from cache")
+                    doc_hits = cached_result.get("doc_hits", [])
+                    rag_sources = cached_result.get("rag_sources", [])
+                    logger.info(
+                        f"[RAG Cache] HIT - Restored {len(doc_hits)} chunks from cache"
+                    )
                 else:
                     rag_sources = []
                     # Cache miss, exécuter la query
                     rag_metrics.record_cache_miss()
 
                     # ✅ Phase 1 Optimisation: Recherche hybride (vectorielle + BM25)
-                    with rag_metrics.track_duration(rag_metrics.rag_query_phase3_duration_seconds):
+                    with rag_metrics.track_duration(
+                        rag_metrics.rag_query_phase3_duration_seconds
+                    ):
                         raw_doc_hits = self.vector_service.hybrid_query(
                             collection=self._doc_collection,
                             query_text=query_text or " ",
@@ -2599,11 +3011,13 @@ class ChatService:
 
                     # ✅ Phase 2 RAG Optimisation : Fusionner les chunks adjacents pour reconstituer contenus complets
                     # ✅ Phase 3 RAG Optimisation : Utiliser nouveau scoring multi-critères
-                    with rag_metrics.track_duration(rag_metrics.rag_merge_duration_seconds):
+                    with rag_metrics.track_duration(
+                        rag_metrics.rag_merge_duration_seconds
+                    ):
                         doc_hits = self._merge_adjacent_chunks(
                             raw_doc_hits or [],
                             max_blocks=10,
-                            user_intent=user_intent  # ✅ Passé pour scoring avancé
+                            user_intent=user_intent,  # ✅ Passé pour scoring avancé
                         )
 
                     # Enregistrer le nombre de chunks fusionnés
@@ -2613,7 +3027,7 @@ class ChatService:
                         rag_metrics.record_chunks_merged(raw_count - merged_count)
 
                     # Construire rag_sources pour UI
-                    for h in (doc_hits or []):
+                    for h in doc_hits or []:
                         md = h.get("metadata") or {}
                         full_text = (h.get("text") or "").strip()
 
@@ -2621,7 +3035,7 @@ class ChatService:
                         excerpt = self._extract_relevant_excerpt(
                             full_text,
                             query_text,
-                            max_length=300  # Plus long que les 220 précédents
+                            max_length=300,  # Plus long que les 220 précédents
                         )
 
                         # ✅ Phase 1: Highlighting des mots-clés pour l'UI
@@ -2635,7 +3049,9 @@ class ChatService:
                                 "document_id": md.get("document_id"),
                                 "filename": md.get("filename"),
                                 "page": md.get("page"),
-                                "section": md.get("section"),  # ✅ Section si disponible
+                                "section": md.get(
+                                    "section"
+                                ),  # ✅ Section si disponible
                                 "excerpt": excerpt,
                                 "highlighted": highlighted,  # ✅ Version avec highlighting
                                 "score": round(score, 3),  # ✅ Score de pertinence
@@ -2660,43 +3076,57 @@ class ChatService:
                 # ✅ Phase 3 RAG : Stocker dans le cache si cache miss
                 if not cached_result and doc_hits:
                     self.rag_cache.set(
-                        query_text, where_filter, agent_id,
-                        doc_hits, rag_sources, selected_doc_ids
+                        query_text,
+                        where_filter,
+                        agent_id,
+                        doc_hits,
+                        rag_sources,
+                        selected_doc_ids,
                     )
 
                 # ✅ Phase 3 RAG : Collecter métriques qualité
                 if doc_hits:
                     # Diversité des sources (nombre de documents uniques)
-                    unique_docs = len(set(
-                        h.get('metadata', {}).get('document_id')
-                        for h in doc_hits
-                        if h.get('metadata', {}).get('document_id') is not None
-                    ))
+                    unique_docs = len(
+                        set(
+                            h.get("metadata", {}).get("document_id")
+                            for h in doc_hits
+                            if h.get("metadata", {}).get("document_id") is not None
+                        )
+                    )
 
                     # Top score (premier résultat = meilleur)
-                    top_score = doc_hits[0].get('distance', 0) if doc_hits else 0
+                    top_score = doc_hits[0].get("distance", 0) if doc_hits else 0
 
                     # Mettre à jour l'agrégateur de métriques
                     self.rag_metrics_aggregator.add_result(
                         chunks_returned=len(doc_hits),
-                        raw_chunks=len(raw_doc_hits or []) if not cached_result else len(doc_hits),
+                        raw_chunks=len(raw_doc_hits or [])
+                        if not cached_result
+                        else len(doc_hits),
                         merged_blocks=len(doc_hits),
                         top_score=top_score,
-                        unique_docs=unique_docs
+                        unique_docs=unique_docs,
                     )
 
                 # ✅ Phase 2 RAG : Formater le contexte avec métadonnées sémantiques
                 doc_block = self._format_rag_context(doc_hits or [])
-                mem_block = await self._build_memory_context(session_id, last_user_message, agent_id=agent_id)
+                mem_block = await self._build_memory_context(
+                    session_id, last_user_message, agent_id=agent_id
+                )
 
                 # Injecter contexte de récurrence si détecté
                 blocks_to_merge = []
                 # Contexte temporel enrichi (pour questions "quels sujets", "résume conversations", etc.)
                 if temporal_context:
-                    blocks_to_merge.append(("Historique des sujets abordés", temporal_context))
+                    blocks_to_merge.append(
+                        ("Historique des sujets abordés", temporal_context)
+                    )
                 # Contexte de récurrence ponctuelle (pour concepts spécifiques récurrents)
                 elif recall_context:
-                    blocks_to_merge.append(("🔗 Connexions avec discussions passées", recall_context))
+                    blocks_to_merge.append(
+                        ("🔗 Connexions avec discussions passées", recall_context)
+                    )
                 if mem_block:
                     blocks_to_merge.append(("Mémoire (concepts clés)", mem_block))
                 if doc_block:
@@ -2704,16 +3134,24 @@ class ChatService:
 
                 rag_context = self._merge_blocks(blocks_to_merge)
                 await connection_manager.send_personal_message(
-                    {"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id
+                    {
+                        "type": "ws:rag_status",
+                        "payload": {"status": "found", "agent_id": agent_id},
+                    },
+                    session_id,
                 )
 
             # 🆕 INJECTION CONTEXTE TEMPOREL (même si use_rag=False)
             # Le contexte temporel doit être disponible pour les questions méta sur l'historique
             if temporal_context and not rag_context:
                 # Si RAG n'a pas été activé mais qu'on a un contexte temporel, l'injecter quand même
-                rag_context = self._merge_blocks([("Historique des sujets abordés", temporal_context)])
+                rag_context = self._merge_blocks(
+                    [("Historique des sujets abordés", temporal_context)]
+                )
 
-            raw_concat = "\n".join([(m.get("content") or m.get("message", "")) for m in history])
+            raw_concat = "\n".join(
+                [(m.get("content") or m.get("message", "")) for m in history]
+            )
             raw_tokens = self._extract_sensitive_tokens(raw_concat)
             await connection_manager.send_personal_message(
                 {
@@ -2733,11 +3171,17 @@ class ChatService:
 
             provider, model, system_prompt = self._get_agent_config(agent_id)
             primary_provider, primary_model = provider, model
-            system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_prompt)
+            system_prompt = self._ensure_fr_tutoiement(
+                agent_id, provider, system_prompt
+            )
             model_used = primary_model
 
             # Récupération du nom de fichier du prompt pour debug UI
-            bundle = self.prompts.get(agent_id) or self.prompts.get(agent_id.replace("_lite", "")) or {}
+            bundle = (
+                self.prompts.get(agent_id)
+                or self.prompts.get(agent_id.replace("_lite", ""))
+                or {}
+            )
             prompt_file = bundle.get("file", "")
 
             try:
@@ -2756,17 +3200,19 @@ class ChatService:
                 )
 
                 # 🆕 Handshake protocol: Send HELLO for agent-specific context sync
-                if uid and hasattr(connection_manager, 'send_agent_hello'):
+                if uid and hasattr(connection_manager, "send_agent_hello"):
                     try:
                         await connection_manager.send_agent_hello(
                             session_id=session_id,
                             agent_id=agent_id,
                             model=primary_model,
                             provider=primary_provider,
-                            user_id=uid
+                            user_id=uid,
                         )
                     except Exception as hello_err:
-                        logger.debug(f"[ChatService] HELLO handshake failed: {hello_err}")
+                        logger.debug(
+                            f"[ChatService] HELLO handshake failed: {hello_err}"
+                        )
 
             except Exception:
                 pass
@@ -2788,7 +3234,12 @@ class ChatService:
             )
 
             norm_concat = "\n".join(
-                ["".join(p.get("parts", [])) if provider == "google" else p.get("content", "") for p in normalized_history]
+                [
+                    "".join(p.get("parts", []))
+                    if provider == "google"
+                    else p.get("content", "")
+                    for p in normalized_history
+                ]
             )
             norm_tokens = self._extract_sensitive_tokens(norm_concat)
             await connection_manager.send_personal_message(
@@ -2810,15 +3261,25 @@ class ChatService:
             async def _stream_with(provider_name, model_name, hist):
                 return await self._ensure_async_stream(
                     self._get_llm_response_stream(
-                        provider_name, model_name, system_prompt, hist, cost_info_container, agent_id=agent_id  # P2.3
+                        provider_name,
+                        model_name,
+                        system_prompt,
+                        hist,
+                        cost_info_container,
+                        agent_id=agent_id,  # P2.3
                     )
                 )
+
             success = False
             try:
-                async for chunk in (await _stream_with(primary_provider, primary_model, normalized_history)):
+                async for chunk in await _stream_with(
+                    primary_provider, primary_model, normalized_history
+                ):
                     if not chunk:
                         continue
-                    new_total, delta = self._compute_chunk_delta(full_response_text, chunk)
+                    new_total, delta = self._compute_chunk_delta(
+                        full_response_text, chunk
+                    )
                     full_response_text = new_total
                     if not delta:
                         continue
@@ -2826,7 +3287,11 @@ class ChatService:
                         logger.info("chunk_debug primary raw=%r delta=%r", chunk, delta)
                     except Exception:
                         pass
-                    chunk_payload = {"agent_id": agent_id, "id": temp_message_id, "chunk": delta}
+                    chunk_payload = {
+                        "agent_id": agent_id,
+                        "id": temp_message_id,
+                        "chunk": delta,
+                    }
                     if is_broadcast:
                         chunk_payload["broadcast_origin"] = origin
                     await connection_manager.send_personal_message(
@@ -2874,20 +3339,30 @@ class ChatService:
                         )
                     )
 
-                    norm2 = self._normalize_history_for_llm(prov2, history, rag_context, use_rag, agent_id)
+                    norm2 = self._normalize_history_for_llm(
+                        prov2, history, rag_context, use_rag, agent_id
+                    )
                     try:
-                        async for chunk in (await _stream_with(prov2, model2, norm2)):
+                        async for chunk in await _stream_with(prov2, model2, norm2):
                             if not chunk:
                                 continue
-                            new_total, delta = self._compute_chunk_delta(full_response_text, chunk)
+                            new_total, delta = self._compute_chunk_delta(
+                                full_response_text, chunk
+                            )
                             full_response_text = new_total
                             if not delta:
                                 continue
                             try:
-                                logger.info("chunk_debug fallback raw=%r delta=%r", chunk, delta)
+                                logger.info(
+                                    "chunk_debug fallback raw=%r delta=%r", chunk, delta
+                                )
                             except Exception:
                                 pass
-                            chunk_payload = {"agent_id": agent_id, "id": temp_message_id, "chunk": delta}
+                            chunk_payload = {
+                                "agent_id": agent_id,
+                                "id": temp_message_id,
+                                "chunk": delta,
+                            }
                             if is_broadcast:
                                 chunk_payload["broadcast_origin"] = origin
                             await connection_manager.send_personal_message(
@@ -2934,13 +3409,23 @@ class ChatService:
             if opinion_request:
                 opinion_meta = dict(opinion_request.get("opinion_meta") or {})
                 if opinion_request.get("source_agent_id") is not None:
-                    opinion_meta.setdefault("source_agent_id", opinion_request.get("source_agent_id"))
+                    opinion_meta.setdefault(
+                        "source_agent_id", opinion_request.get("source_agent_id")
+                    )
                 if opinion_request.get("target_message_id") is not None:
-                    opinion_meta.setdefault("target_message_id", opinion_request.get("target_message_id"))
+                    opinion_meta.setdefault(
+                        "target_message_id", opinion_request.get("target_message_id")
+                    )
                 if opinion_request.get("request_note_id"):
-                    opinion_meta.setdefault("request_note_id", opinion_request.get("request_note_id"))
-                if opinion_meta.get("request_id") and not opinion_meta.get("request_note_id"):
-                    opinion_meta.setdefault("request_note_id", opinion_meta.get("request_id"))
+                    opinion_meta.setdefault(
+                        "request_note_id", opinion_request.get("request_note_id")
+                    )
+                if opinion_meta.get("request_id") and not opinion_meta.get(
+                    "request_note_id"
+                ):
+                    opinion_meta.setdefault(
+                        "request_note_id", opinion_meta.get("request_id")
+                    )
                 opinion_meta.setdefault("reviewer_agent_id", agent_id)
                 opinion_meta.setdefault("agent_id", agent_id)
                 message_meta["opinion"] = opinion_meta
@@ -2958,7 +3443,9 @@ class ChatService:
                 except Exception:
                     pass
             final_agent_message.meta = message_meta
-            await self.session_manager.add_message_to_session(session_id, final_agent_message)
+            await self.session_manager.add_message_to_session(
+                session_id, final_agent_message
+            )
             await self.cost_tracker.record_cost(
                 agent=agent_id,
                 model=model_used,
@@ -3023,7 +3510,7 @@ class ChatService:
                         session_id=session_id,
                         user_id=uid,
                         user_message=last_user_message,
-                        connection_manager=connection_manager
+                        connection_manager=connection_manager,
                     )
                 )
 
@@ -3031,12 +3518,18 @@ class ChatService:
             logger.error(f"Erreur streaming {agent_id}: {e}", exc_info=True)
             try:
                 await connection_manager.send_personal_message(
-                    {"type": "ws:error", "payload": {"message": f"Erreur interne pour l'agent {agent_id}: {e}"}},
+                    {
+                        "type": "ws:error",
+                        "payload": {
+                            "message": f"Erreur interne pour l'agent {agent_id}: {e}"
+                        },
+                    },
                     session_id,
                 )
             except Exception as send_error:
                 logger.error(
-                    f"Impossible d'envoyer l'erreur au client (session {session_id}): {send_error}", exc_info=True
+                    f"Impossible d'envoyer l'erreur au client (session {session_id}): {send_error}",
+                    exc_info=True,
                 )
 
     # ===========================
@@ -3060,7 +3553,9 @@ class ChatService:
         Retourne: {"text": str, "provider": str, "model": str, "fallback": bool, "cost_info": {...}}
         """
         provider, model, system_prompt = self._get_agent_config(agent_id)
-        system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_override or system_prompt)
+        system_prompt = self._ensure_fr_tutoiement(
+            agent_id, provider, system_override or system_prompt
+        )
 
         rag_context = ""
         base_prompt = prompt or ""
@@ -3080,9 +3575,13 @@ class ChatService:
                 where_clauses: List[Dict[str, Any]] = list(base_clauses)
                 if selected_doc_ids:
                     if len(selected_doc_ids) == 1:
-                        doc_filter: Dict[str, Any] = {"document_id": selected_doc_ids[0]}
+                        doc_filter: Dict[str, Any] = {
+                            "document_id": selected_doc_ids[0]
+                        }
                     else:
-                        doc_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
+                        doc_filter = {
+                            "$or": [{"document_id": did} for did in selected_doc_ids]
+                        }
                     where_clauses.append(doc_filter)
 
                 if not where_clauses:
@@ -3098,10 +3597,16 @@ class ChatService:
                     where_filter=where_filter,
                 )
                 doc_block = "\n".join(
-                    [f"- {h.get('text', '').strip()}" for h in (doc_hits or []) if h.get("text")]
+                    [
+                        f"- {h.get('text', '').strip()}"
+                        for h in (doc_hits or [])
+                        if h.get("text")
+                    ]
                 )
                 if doc_block.strip():
-                    rag_context = self._merge_blocks([("Documents pertinents", doc_block)])
+                    rag_context = self._merge_blocks(
+                        [("Documents pertinents", doc_block)]
+                    )
             except Exception:
                 pass
 
@@ -3120,7 +3625,9 @@ class ChatService:
                     continue
         raw_history.append({"role": Role.USER, "content": base_prompt})
 
-        async def run_once(provider_name: str, model_name: str) -> Tuple[str, Dict[str, Any]]:
+        async def run_once(
+            provider_name: str, model_name: str
+        ) -> Tuple[str, Dict[str, Any]]:
             normalized = self._normalize_history_for_llm(
                 provider_name,
                 raw_history,
@@ -3218,7 +3725,6 @@ class ChatService:
             "cost_info": cost_info,
         }
 
-
     # ---------- entrypoint WS ----------
     def process_user_message_for_agents(
         self,
@@ -3231,23 +3737,29 @@ class ChatService:
                 return chat_request.get(key)
             return getattr(chat_request, key, None)
 
-        agent_id = (_get_value('agent_id') or '').strip().lower()
-        use_rag = bool(_get_value('use_rag'))
-        doc_ids = self._sanitize_doc_ids(_get_value('doc_ids'))
-        cm = connection_manager or getattr(self.session_manager, 'connection_manager', None)
+        agent_id = (_get_value("agent_id") or "").strip().lower()
+        use_rag = bool(_get_value("use_rag"))
+        doc_ids = self._sanitize_doc_ids(_get_value("doc_ids"))
+        cm = connection_manager or getattr(
+            self.session_manager, "connection_manager", None
+        )
 
         if not agent_id:
-            logger.error('process_user_message_for_agents: agent_id manquant')
+            logger.error("process_user_message_for_agents: agent_id manquant")
             return
         if cm is None:
-            logger.error('process_user_message_for_agents: connection_manager manquant')
+            logger.error("process_user_message_for_agents: connection_manager manquant")
             return
 
-        if agent_id == 'global':
-            targets = [aid for aid in dict.fromkeys(self.broadcast_agents) if aid and aid != 'global']
+        if agent_id == "global":
+            targets = [
+                aid
+                for aid in dict.fromkeys(self.broadcast_agents)
+                if aid and aid != "global"
+            ]
             if not targets:
-                targets = ['anima', 'neo', 'nexus']
-            origin_marker = 'global'
+                targets = ["anima", "neo", "nexus"]
+            origin_marker = "global"
         else:
             targets = [agent_id]
             origin_marker = None
@@ -3268,8 +3780,6 @@ class ChatService:
         # Fire-and-forget: les tasks s'exécutent en parallèle sans bloquer
         for task in tasks:
             asyncio.create_task(task)
-
-
 
     def _build_opinion_instruction(
         self,
@@ -3324,8 +3834,6 @@ class ChatService:
 
         return "\n".join(part for part in instruction_parts if part)
 
-
-
     async def request_opinion(
         self,
         session_id: str,
@@ -3336,45 +3844,55 @@ class ChatService:
         connection_manager: ConnectionManager,
         request_id: Optional[str] = None,
     ) -> None:
-        target = (target_agent_id or '').strip().lower()
+        target = (target_agent_id or "").strip().lower()
         if not target:
-            logger.error('request_opinion: target agent missing')
+            logger.error("request_opinion: target agent missing")
             return
-        if target == 'global':
-            logger.warning('request_opinion: target agent "global" invalid, fallback anima')
-            target = 'anima'
-        if target not in self.broadcast_agents and target not in {'anima', 'neo', 'nexus'}:
+        if target == "global":
+            logger.warning(
+                'request_opinion: target agent "global" invalid, fallback anima'
+            )
+            target = "anima"
+        if target not in self.broadcast_agents and target not in {
+            "anima",
+            "neo",
+            "nexus",
+        }:
             await connection_manager.send_personal_message(
                 {
-                    'type': 'ws:error',
-                    'payload': {'message': f"Agent {target_agent_id!r} indisponible pour un avis."},
+                    "type": "ws:error",
+                    "payload": {
+                        "message": f"Agent {target_agent_id!r} indisponible pour un avis."
+                    },
                 },
                 session_id,
             )
             return
 
-        clean_source = (source_agent_id or '').strip().lower() or None
+        clean_source = (source_agent_id or "").strip().lower() or None
 
         original_message = None
         if message_id:
             try:
-                original_message = self.session_manager.get_message_by_id(session_id, message_id)
+                original_message = self.session_manager.get_message_by_id(
+                    session_id, message_id
+                )
             except Exception:
                 original_message = None
 
-        content = (message_text or '').strip()
+        content = (message_text or "").strip()
         if not content and isinstance(original_message, dict):
             content = str(
-                original_message.get('content')
-                or original_message.get('message')
-                or ''
+                original_message.get("content") or original_message.get("message") or ""
             ).strip()
 
         if not content:
             await connection_manager.send_personal_message(
                 {
-                    'type': 'ws:error',
-                    'payload': {'message': "Impossible de récupérer la réponse à analyser."},
+                    "type": "ws:error",
+                    "payload": {
+                        "message": "Impossible de récupérer la réponse à analyser."
+                    },
                 },
                 session_id,
             )
@@ -3388,11 +3906,17 @@ class ChatService:
                     if not item:
                         continue
                     try:
-                        if str(item.get('id')) == str(message_id):
+                        if str(item.get("id")) == str(message_id):
                             for previous in reversed(history[:idx]):
-                                if previous and str(previous.get('role') or '').lower().endswith('user'):
+                                if previous and str(
+                                    previous.get("role") or ""
+                                ).lower().endswith("user"):
                                     user_prompt = (
-                                        str(previous.get('content') or previous.get('message') or '')
+                                        str(
+                                            previous.get("content")
+                                            or previous.get("message")
+                                            or ""
+                                        )
                                     ).strip()
                                     if user_prompt:
                                         break
@@ -3409,7 +3933,9 @@ class ChatService:
             note_id = note_id[:256]
         note_id = note_id or str(uuid4())
 
-        request_display = f"Avis demandé à {target} sur la réponse de {clean_source or 'cet agent'}."
+        request_display = (
+            f"Avis demandé à {target} sur la réponse de {clean_source or 'cet agent'}."
+        )
         user_note = ChatMessage(
             id=note_id,
             session_id=session_id,
@@ -3433,7 +3959,10 @@ class ChatService:
         try:
             await self.session_manager.add_message_to_session(session_id, user_note)
         except Exception:
-            logger.warning('request_opinion: unable to persist user note for request', exc_info=True)
+            logger.warning(
+                "request_opinion: unable to persist user note for request",
+                exc_info=True,
+            )
 
         instruction = self._build_opinion_instruction(
             target_agent_id=target,
@@ -3443,12 +3972,12 @@ class ChatService:
         )
 
         opinion_meta = {
-            'of_message_id': message_id,
-            'source_agent_id': clean_source,
-            'requested_at': datetime.now(timezone.utc).isoformat(),
-            'request_note_id': note_id,
-            'request_id': note_id,
-            'reviewer_agent_id': target,
+            "of_message_id": message_id,
+            "source_agent_id": clean_source,
+            "requested_at": datetime.now(timezone.utc).isoformat(),
+            "request_note_id": note_id,
+            "request_id": note_id,
+            "reviewer_agent_id": target,
         }
 
         await self._process_agent_response_stream(
@@ -3496,7 +4025,9 @@ class ChatService:
         return unique
 
     @staticmethod
-    def _compute_chunk_delta(previous_text: str, raw_chunk: Optional[str]) -> Tuple[str, str]:
+    def _compute_chunk_delta(
+        previous_text: str, raw_chunk: Optional[str]
+    ) -> Tuple[str, str]:
         if raw_chunk is None:
             return previous_text, ""
         try:
@@ -3510,7 +4041,7 @@ class ChatService:
         if chunk == previous_text:
             return previous_text, ""
         if chunk.startswith(previous_text):
-            return chunk, chunk[len(previous_text):]
+            return chunk, chunk[len(previous_text) :]
         if previous_text.startswith(chunk):
             return previous_text, ""
         if previous_text.endswith(chunk):
@@ -3532,4 +4063,6 @@ class ChatService:
 
     # ---------- diverses ----------
     def _count_bullets(self, text: str) -> int:
-        return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))
+        return sum(
+            1 for line in (text or "").splitlines() if line.strip().startswith("- ")
+        )

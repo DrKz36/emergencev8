@@ -15,8 +15,10 @@ from dataclasses import dataclass, asdict
 from collections import defaultdict
 
 # Fix Windows console encoding
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8") if hasattr(
+        sys.stdout, "reconfigure"
+    ) else None
 
 # Configuration
 SCRIPT_DIR = Path(__file__).parent
@@ -33,6 +35,7 @@ CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 @dataclass
 class ModelPricing:
     """Pricing information for an AI model"""
+
     model: str
     provider: str
     input_cost_per_1k: float  # USD per 1k tokens
@@ -45,6 +48,7 @@ class ModelPricing:
 @dataclass
 class ModelUsage:
     """Detected usage of an AI model in codebase"""
+
     model: str
     provider: str
     file_path: str
@@ -55,6 +59,7 @@ class ModelUsage:
 @dataclass
 class CostRecommendation:
     """Recommendation for cost optimization"""
+
     current_model: str
     current_provider: str
     suggested_model: str
@@ -77,7 +82,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=10.00,
             context_window=128000,
             released="2024-05-13",
-            status="current"
+            status="current",
         ),
         "gpt-4o-mini": ModelPricing(
             model="gpt-4o-mini",
@@ -86,7 +91,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=0.60,
             context_window=128000,
             released="2024-07-18",
-            status="current"
+            status="current",
         ),
         "gpt-4-turbo": ModelPricing(
             model="gpt-4-turbo",
@@ -95,7 +100,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=30.00,
             context_window=128000,
             released="2024-04-09",
-            status="current"
+            status="current",
         ),
         "gpt-3.5-turbo": ModelPricing(
             model="gpt-3.5-turbo",
@@ -104,7 +109,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=1.50,
             context_window=16385,
             released="2023-03-01",
-            status="deprecated"
+            status="deprecated",
         ),
         "text-embedding-3-small": ModelPricing(
             model="text-embedding-3-small",
@@ -113,7 +118,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=0.00,
             context_window=8191,
             released="2024-01-25",
-            status="current"
+            status="current",
         ),
         "text-embedding-3-large": ModelPricing(
             model="text-embedding-3-large",
@@ -122,7 +127,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=0.00,
             context_window=8191,
             released="2024-01-25",
-            status="current"
+            status="current",
         ),
     },
     "google": {
@@ -133,7 +138,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=5.00,
             context_window=2000000,
             released="2024-05-14",
-            status="current"
+            status="current",
         ),
         "gemini-1.5-flash": ModelPricing(
             model="gemini-1.5-flash",
@@ -142,7 +147,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=0.30,
             context_window=1000000,
             released="2024-05-14",
-            status="current"
+            status="current",
         ),
         "gemini-2.0-flash-exp": ModelPricing(
             model="gemini-2.0-flash-exp",
@@ -151,7 +156,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=0.00,
             context_window=1000000,
             released="2024-12-11",
-            status="experimental"
+            status="experimental",
         ),
         "text-embedding-004": ModelPricing(
             model="text-embedding-004",
@@ -160,7 +165,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=0.00,
             context_window=2048,
             released="2024-09-24",
-            status="current"
+            status="current",
         ),
     },
     "anthropic": {
@@ -171,7 +176,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=15.00,
             context_window=200000,
             released="2024-10-22",
-            status="current"
+            status="current",
         ),
         "claude-3-5-haiku-20241022": ModelPricing(
             model="claude-3-5-haiku-20241022",
@@ -180,7 +185,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=4.00,
             context_window=200000,
             released="2024-11-04",
-            status="current"
+            status="current",
         ),
         "claude-3-opus-20240229": ModelPricing(
             model="claude-3-opus-20240229",
@@ -189,7 +194,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=75.00,
             context_window=200000,
             released="2024-02-29",
-            status="current"
+            status="current",
         ),
         "claude-3-sonnet-20240229": ModelPricing(
             model="claude-3-sonnet-20240229",
@@ -198,7 +203,7 @@ PRICING_DATABASE = {
             output_cost_per_1k=15.00,
             context_window=200000,
             released="2024-02-29",
-            status="deprecated"
+            status="deprecated",
         ),
         "claude-3-haiku-20240307": ModelPricing(
             model="claude-3-haiku-20240307",
@@ -207,9 +212,9 @@ PRICING_DATABASE = {
             output_cost_per_1k=1.25,
             context_window=200000,
             released="2024-03-07",
-            status="deprecated"
+            status="deprecated",
         ),
-    }
+    },
 }
 
 
@@ -219,18 +224,16 @@ MODEL_PATTERNS = [
     r'model\s*[=:]\s*["\']([^"\']+)["\']',
     r'engine\s*[=:]\s*["\']([^"\']+)["\']',
     r'provider\s*[=:]\s*["\']([^"\']+)["\']',
-
     # Environment variables
     r'OPENAI_MODEL["\']?\s*[=:]\s*["\']([^"\']+)["\']',
     r'GEMINI_MODEL["\']?\s*[=:]\s*["\']([^"\']+)["\']',
     r'ANTHROPIC_MODEL["\']?\s*[=:]\s*["\']([^"\']+)["\']',
     r'AI_MODEL["\']?\s*[=:]\s*["\']([^"\']+)["\']',
-
     # Model names directly
-    r'(gpt-[34][-.a-z0-9]*)',
-    r'(gemini-[12][-.a-z0-9]*)',
-    r'(claude-[23][-.a-z0-9]*)',
-    r'(text-embedding-[-.a-z0-9]+)',
+    r"(gpt-[34][-.a-z0-9]*)",
+    r"(gemini-[12][-.a-z0-9]*)",
+    r"(claude-[23][-.a-z0-9]*)",
+    r"(text-embedding-[-.a-z0-9]+)",
 ]
 
 
@@ -247,7 +250,17 @@ def scan_codebase() -> List[ModelUsage]:
         REPO_ROOT / "config",
     ]
 
-    file_patterns = ["*.py", "*.js", "*.ts", "*.jsx", "*.tsx", "*.json", "*.yaml", "*.yml", ".env*"]
+    file_patterns = [
+        "*.py",
+        "*.js",
+        "*.ts",
+        "*.jsx",
+        "*.tsx",
+        "*.json",
+        "*.yaml",
+        "*.yml",
+        ".env*",
+    ]
     exclude_patterns = ["node_modules", ".venv", "venv", "__pycache__", "*.pyc"]
 
     files_scanned = 0
@@ -258,15 +271,17 @@ def scan_codebase() -> List[ModelUsage]:
             continue
 
         for pattern in file_patterns:
-            for file_path in scan_path.rglob(pattern if '*' in pattern else f'**/{pattern}'):
+            for file_path in scan_path.rglob(
+                pattern if "*" in pattern else f"**/{pattern}"
+            ):
                 # Skip excluded directories
                 if any(excl in str(file_path) for excl in exclude_patterns):
                     continue
 
                 try:
-                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                         content = f.read()
-                        lines = content.split('\n')
+                        lines = content.split("\n")
 
                         for line_num, line in enumerate(lines, 1):
                             for pattern in MODEL_PATTERNS:
@@ -282,14 +297,14 @@ def scan_codebase() -> List[ModelUsage]:
                                     # Get context (3 lines before and after)
                                     start = max(0, line_num - 3)
                                     end = min(len(lines), line_num + 3)
-                                    context = '\n'.join(lines[start:end])
+                                    context = "\n".join(lines[start:end])
 
                                     usage = ModelUsage(
                                         model=model_name,
                                         provider=provider,
                                         file_path=str(file_path.relative_to(REPO_ROOT)),
                                         line_number=line_num,
-                                        context=context[:200]  # Limit context length
+                                        context=context[:200],  # Limit context length
                                     )
                                     usages.append(usage)
                                     models_found.add(f"{provider}:{model_name}")
@@ -310,12 +325,12 @@ def detect_provider(model_name: str) -> Optional[str]:
     """Detect provider from model name"""
     model_lower = model_name.lower()
 
-    if 'gpt' in model_lower or 'text-embedding' in model_lower:
-        return 'openai'
-    elif 'gemini' in model_lower:
-        return 'google'
-    elif 'claude' in model_lower:
-        return 'anthropic'
+    if "gpt" in model_lower or "text-embedding" in model_lower:
+        return "openai"
+    elif "gemini" in model_lower:
+        return "google"
+    elif "claude" in model_lower:
+        return "anthropic"
 
     return None
 
@@ -350,11 +365,11 @@ def analyze_costs(usages: List[ModelUsage]) -> Tuple[Dict, List[CostRecommendati
     # Default usage estimation (can be overridden with real data)
     # Realistic values based on actual usage (~80 CHF/month)
     DEFAULT_MONTHLY_REQUESTS = 200  # ~200 requests/month
-    DEFAULT_INPUT_TOKENS = 400      # ~400 tokens per request
-    DEFAULT_OUTPUT_TOKENS = 300     # ~300 tokens per request
+    DEFAULT_INPUT_TOKENS = 400  # ~400 tokens per request
+    DEFAULT_OUTPUT_TOKENS = 300  # ~300 tokens per request
 
     for model_key, model_usages in models_by_usage.items():
-        provider, model = model_key.split(':')
+        provider, model = model_key.split(":")
         pricing = get_pricing(model, provider)
 
         if not pricing:
@@ -366,7 +381,7 @@ def analyze_costs(usages: List[ModelUsage]) -> Tuple[Dict, List[CostRecommendati
             pricing,
             DEFAULT_MONTHLY_REQUESTS,
             DEFAULT_INPUT_TOKENS,
-            DEFAULT_OUTPUT_TOKENS
+            DEFAULT_OUTPUT_TOKENS,
         )
 
         current_model_info = {
@@ -376,16 +391,16 @@ def analyze_costs(usages: List[ModelUsage]) -> Tuple[Dict, List[CostRecommendati
             "count": len(model_usages),
             "current_cost": {
                 "input_per_1k": pricing.input_cost_per_1k,
-                "output_per_1k": pricing.output_cost_per_1k
+                "output_per_1k": pricing.output_cost_per_1k,
             },
             "estimated_monthly_volume": {
                 "requests": DEFAULT_MONTHLY_REQUESTS,
                 "input_tokens": DEFAULT_MONTHLY_REQUESTS * DEFAULT_INPUT_TOKENS,
-                "output_tokens": DEFAULT_MONTHLY_REQUESTS * DEFAULT_OUTPUT_TOKENS
+                "output_tokens": DEFAULT_MONTHLY_REQUESTS * DEFAULT_OUTPUT_TOKENS,
             },
             "estimated_monthly_cost": round(monthly_cost, 2),
             "context_window": pricing.context_window,
-            "status": pricing.status
+            "status": pricing.status,
         }
         current_models.append(current_model_info)
 
@@ -398,10 +413,18 @@ def analyze_costs(usages: List[ModelUsage]) -> Tuple[Dict, List[CostRecommendati
 
     summary = {
         "models_analyzed": len(current_models),
-        "total_monthly_cost": round(sum(m["estimated_monthly_cost"] for m in current_models), 2),
-        "potential_savings": round(sum(r.monthly_savings for r in recommendations if r.monthly_savings > 0), 2),
-        "high_priority_count": len([r for r in recommendations if r.priority == "HIGH"]),
-        "deprecated_models": len([m for m in current_models if m["status"] == "deprecated"])
+        "total_monthly_cost": round(
+            sum(m["estimated_monthly_cost"] for m in current_models), 2
+        ),
+        "potential_savings": round(
+            sum(r.monthly_savings for r in recommendations if r.monthly_savings > 0), 2
+        ),
+        "high_priority_count": len(
+            [r for r in recommendations if r.priority == "HIGH"]
+        ),
+        "deprecated_models": len(
+            [m for m in current_models if m["status"] == "deprecated"]
+        ),
     }
 
     print(f"   ✅ Analyzed {summary['models_analyzed']} model(s)")
@@ -410,17 +433,14 @@ def analyze_costs(usages: List[ModelUsage]) -> Tuple[Dict, List[CostRecommendati
     print(f"   🔴 High priority recommendations: {summary['high_priority_count']}")
     print(f"   ⚠️  Deprecated models: {summary['deprecated_models']}\n")
 
-    return {
-        "summary": summary,
-        "current_models": current_models
-    }, recommendations
+    return {"summary": summary, "current_models": current_models}, recommendations
 
 
 def calculate_monthly_cost(
     pricing: ModelPricing,
     monthly_requests: int,
     avg_input_tokens: int,
-    avg_output_tokens: int
+    avg_output_tokens: int,
 ) -> float:
     """Calculate estimated monthly cost"""
     total_input_tokens = monthly_requests * avg_input_tokens
@@ -432,7 +452,9 @@ def calculate_monthly_cost(
     return input_cost + output_cost
 
 
-def find_alternatives(current: ModelPricing, current_monthly_cost: float) -> List[CostRecommendation]:
+def find_alternatives(
+    current: ModelPricing, current_monthly_cost: float
+) -> List[CostRecommendation]:
     """Find alternative models with better cost/performance"""
     recommendations = []
     seen_alternatives = set()  # Track alternatives to avoid duplicates
@@ -460,11 +482,15 @@ def find_alternatives(current: ModelPricing, current_monthly_cost: float) -> Lis
                 alt_pricing,
                 200,  # Realistic monthly requests
                 400,  # Realistic input tokens
-                300   # Realistic output tokens
+                300,  # Realistic output tokens
             )
 
             savings = current_monthly_cost - alt_monthly_cost
-            cost_change_percent = ((alt_monthly_cost - current_monthly_cost) / current_monthly_cost) * 100 if current_monthly_cost > 0 else 0
+            cost_change_percent = (
+                ((alt_monthly_cost - current_monthly_cost) / current_monthly_cost) * 100
+                if current_monthly_cost > 0
+                else 0
+            )
 
             # Only recommend if there's a significant difference
             if abs(cost_change_percent) < 5:
@@ -500,7 +526,7 @@ def find_alternatives(current: ModelPricing, current_monthly_cost: float) -> Lis
                 monthly_savings=round(savings, 2),
                 performance_delta=estimate_performance_delta(current, alt_pricing),
                 priority=priority,
-                action=action
+                action=action,
             )
             recommendations.append(recommendation)
 
@@ -513,14 +539,19 @@ def estimate_performance_delta(current: ModelPricing, alternative: ModelPricing)
     """Estimate performance difference (-100 to +100)"""
     # Simple heuristic based on context window and price
     context_ratio = (alternative.context_window / current.context_window - 1) * 50
-    price_ratio = ((alternative.input_cost_per_1k + alternative.output_cost_per_1k) /
-                   (current.input_cost_per_1k + current.output_cost_per_1k) - 1) * 30
+    price_ratio = (
+        (alternative.input_cost_per_1k + alternative.output_cost_per_1k)
+        / (current.input_cost_per_1k + current.output_cost_per_1k)
+        - 1
+    ) * 30
 
     delta = int(context_ratio + price_ratio)
     return max(-100, min(100, delta))
 
 
-def generate_reports(analysis: Dict, recommendations: List[CostRecommendation]) -> Tuple[str, str]:
+def generate_reports(
+    analysis: Dict, recommendations: List[CostRecommendation]
+) -> Tuple[str, str]:
     """Generate Markdown and JSON reports"""
     timestamp = datetime.now()
     date_str = timestamp.strftime("%Y%m%d")
@@ -531,22 +562,24 @@ def generate_reports(analysis: Dict, recommendations: List[CostRecommendation]) 
 
     # Generate Markdown report
     md_content = generate_markdown_report(analysis, recommendations, timestamp)
-    with open(md_file, 'w', encoding='utf-8') as f:
+    with open(md_file, "w", encoding="utf-8") as f:
         f.write(md_content)
 
     # Generate JSON report
     json_content = {
         "timestamp": timestamp.isoformat(),
         **analysis,
-        "recommendations": [asdict(r) for r in recommendations]
+        "recommendations": [asdict(r) for r in recommendations],
     }
-    with open(json_file, 'w', encoding='utf-8') as f:
+    with open(json_file, "w", encoding="utf-8") as f:
         json.dump(json_content, f, indent=2)
 
     return str(md_file), str(json_file)
 
 
-def generate_markdown_report(analysis: Dict, recommendations: List[CostRecommendation], timestamp: datetime) -> str:
+def generate_markdown_report(
+    analysis: Dict, recommendations: List[CostRecommendation], timestamp: datetime
+) -> str:
     """Generate Markdown report content"""
     summary = analysis["summary"]
     current_models = analysis["current_models"]
@@ -555,25 +588,25 @@ def generate_markdown_report(analysis: Dict, recommendations: List[CostRecommend
 
 **Date:** {timestamp.strftime("%Y-%m-%d %H:%M:%S")}
 **Agent:** Theia (CostWatcher)
-**Status:** {'🟢 OPTIMIZED' if summary['potential_savings'] < 100 else '🟡 OPTIMIZATION AVAILABLE' if summary['potential_savings'] < 500 else '🔴 HIGH SAVINGS POTENTIAL'}
+**Status:** {"🟢 OPTIMIZED" if summary["potential_savings"] < 100 else "🟡 OPTIMIZATION AVAILABLE" if summary["potential_savings"] < 500 else "🔴 HIGH SAVINGS POTENTIAL"}
 
 ---
 
 ## 📊 Executive Summary
 
-- **Models Analyzed:** {summary['models_analyzed']}
-- **Total Monthly Cost:** ${summary['total_monthly_cost']:.2f}
-- **Potential Savings:** ${summary['potential_savings']:.2f}
-- **Optimization Score:** {100 - int((summary['potential_savings'] / max(summary['total_monthly_cost'], 1)) * 100)}/100
-- **High Priority Recommendations:** {summary['high_priority_count']}
-- **Deprecated Models:** {summary['deprecated_models']}
+- **Models Analyzed:** {summary["models_analyzed"]}
+- **Total Monthly Cost:** ${summary["total_monthly_cost"]:.2f}
+- **Potential Savings:** ${summary["potential_savings"]:.2f}
+- **Optimization Score:** {100 - int((summary["potential_savings"] / max(summary["total_monthly_cost"], 1)) * 100)}/100
+- **High Priority Recommendations:** {summary["high_priority_count"]}
+- **Deprecated Models:** {summary["deprecated_models"]}
 
 """
 
-    if summary['potential_savings'] > 100:
+    if summary["potential_savings"] > 100:
         md += f"""
 ### 🎯 Key Opportunity
-**You could save ${summary['potential_savings']:.2f}/month ({(summary['potential_savings'] / summary['total_monthly_cost'] * 100):.1f}%) by optimizing model usage!**
+**You could save ${summary["potential_savings"]:.2f}/month ({(summary["potential_savings"] / summary["total_monthly_cost"] * 100):.1f}%) by optimizing model usage!**
 
 """
 
@@ -586,7 +619,13 @@ def generate_markdown_report(analysis: Dict, recommendations: List[CostRecommend
 """
 
     for model in current_models:
-        status_emoji = "✅" if model['status'] == "current" else "⚠️" if model['status'] == "deprecated" else "🧪"
+        status_emoji = (
+            "✅"
+            if model["status"] == "current"
+            else "⚠️"
+            if model["status"] == "deprecated"
+            else "🧪"
+        )
         md += f"| {model['model']} | {model['provider']} | ${model['current_cost']['input_per_1k']:.2f} | ${model['current_cost']['output_per_1k']:.2f} | ${model['estimated_monthly_cost']:.2f} | {model['count']} | {status_emoji} {model['status']} |\n"
 
     md += """
@@ -640,7 +679,7 @@ def generate_markdown_report(analysis: Dict, recommendations: List[CostRecommend
 
     for model in current_models:
         md += f"### {model['provider']}: {model['model']}\n\n"
-        for location in model['usage_locations']:
+        for location in model["usage_locations"]:
             md += f"- `{location}`\n"
         md += "\n"
 
@@ -699,7 +738,7 @@ def main():
     print(f"  High priority actions: {summary['high_priority_count']}")
     print()
 
-    if summary['potential_savings'] > 100:
+    if summary["potential_savings"] > 100:
         print(f"  🎯 You could save ${summary['potential_savings']:.2f}/month!")
         print(f"  📋 Review report: {md_file}")
         print()
@@ -716,5 +755,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

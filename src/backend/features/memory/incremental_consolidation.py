@@ -97,7 +97,9 @@ class IncrementalConsolidator:
         """
         try:
             # 1. Get sliding window (last 10 messages)
-            window = recent_messages[-10:] if len(recent_messages) > 10 else recent_messages
+            window = (
+                recent_messages[-10:] if len(recent_messages) > 10 else recent_messages
+            )
 
             if len(window) < 3:  # Not enough messages to consolidate
                 return {"status": "skipped", "reason": "insufficient_messages"}
@@ -128,12 +130,12 @@ class IncrementalConsolidator:
                         existing_entities = meta.get("entities", [])
 
                         # Merge concepts (dedupe)
-                        merged_concepts = list(
-                            set(existing_concepts + new_concepts)
-                        )[:10]  # Keep top 10
-                        merged_entities = list(
-                            set(existing_entities + new_entities)
-                        )[:10]
+                        merged_concepts = list(set(existing_concepts + new_concepts))[
+                            :10
+                        ]  # Keep top 10
+                        merged_entities = list(set(existing_entities + new_entities))[
+                            :10
+                        ]
 
                         # Enrich summary (append recent context)
                         if existing_summary:

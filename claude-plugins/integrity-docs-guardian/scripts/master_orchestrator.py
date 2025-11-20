@@ -12,7 +12,7 @@ import time
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import logging
 
 # Setup paths
@@ -27,21 +27,20 @@ CONFIG_FILE = ROOT_DIR / "config" / "guardian_config.json"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Setup logging (with UTF-8 encoding for Windows)
-import sys
 import io
 
 # Force UTF-8 for stdout/stderr on Windows
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
+    format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler(REPORTS_DIR / "orchestrator.log", encoding='utf-8'),
-        logging.StreamHandler()
-    ]
+        logging.FileHandler(REPORTS_DIR / "orchestrator.log", encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -68,12 +67,14 @@ class GuardianLock:
             else:
                 # Check if lock is stale (> 5 minutes old)
                 try:
-                    with open(LOCK_FILE, 'r') as f:
+                    with open(LOCK_FILE, "r") as f:
                         lock_data = json.load(f)
 
-                    lock_age = time.time() - lock_data.get('timestamp', 0)
+                    lock_age = time.time() - lock_data.get("timestamp", 0)
                     if lock_age > 300:  # 5 minutes
-                        logger.warning(f"⚠️  Stale lock detected (age: {lock_age:.0f}s). Force releasing...")
+                        logger.warning(
+                            f"⚠️  Stale lock detected (age: {lock_age:.0f}s). Force releasing..."
+                        )
                         self.release()
                         self._create_lock()
                         self.acquired = True
@@ -96,9 +97,9 @@ class GuardianLock:
             "locked_by": self.agent_name,
             "timestamp": time.time(),
             "pid": os.getpid(),
-            "operation": self.operation
+            "operation": self.operation,
         }
-        with open(LOCK_FILE, 'w') as f:
+        with open(LOCK_FILE, "w") as f:
             json.dump(lock_data, f, indent=2)
 
     def release(self):
@@ -130,10 +131,7 @@ class AgentExecutor:
         agent_config = self.config.get("agents", {}).get(agent_name, {})
         if not agent_config.get("enabled", True):
             logger.warning(f"⏸️  {agent_name} is disabled in config")
-            return {
-                "status": "skipped",
-                "reason": "disabled_in_config"
-            }
+            return {"status": "skipped", "reason": "disabled_in_config"}
 
         # Map agent to script
         agent_scripts = {
@@ -142,24 +140,18 @@ class AgentExecutor:
             "prodguardian": "check_prod_logs.py",
             "argus": "argus_analyzer.py",
             "theia": "analyze_ai_costs.py",
-            "nexus": "generate_report.py"
+            "nexus": "generate_report.py",
         }
 
         script_name = agent_scripts.get(agent_name)
         if not script_name:
             logger.error(f"❌ Unknown agent: {agent_name}")
-            return {
-                "status": "error",
-                "error": f"Unknown agent: {agent_name}"
-            }
+            return {"status": "error", "error": f"Unknown agent: {agent_name}"}
 
         script_path = SCRIPT_DIR / script_name
         if not script_path.exists():
             logger.error(f"❌ Script not found: {script_path}")
-            return {
-                "status": "error",
-                "error": f"Script not found: {script_path}"
-            }
+            return {"status": "error", "error": f"Script not found: {script_path}"}
 
         # Execute agent
         start_time = time.time()
@@ -169,13 +161,15 @@ class AgentExecutor:
                 cwd=PROJECT_ROOT,
                 capture_output=True,
                 text=True,
-                timeout=120  # 2 minutes max per agent
+                timeout=120,  # 2 minutes max per agent
             )
 
             execution_time = time.time() - start_time
 
             if result.returncode == 0:
-                logger.info(f"✅ {agent_name} completed successfully ({execution_time:.1f}s)")
+                logger.info(
+                    f"✅ {agent_name} completed successfully ({execution_time:.1f}s)"
+                )
 
                 # Load agent report
                 report_files = {
@@ -184,24 +178,26 @@ class AgentExecutor:
                     "prodguardian": "prod_report.json",
                     "argus": "dev_logs_report.json",
                     "theia": "cost_report.json",
-                    "nexus": "unified_report.json"
+                    "nexus": "unified_report.json",
                 }
 
-                report_file = REPORTS_DIR / report_files.get(agent_name, f"{agent_name}_report.json")
+                report_file = REPORTS_DIR / report_files.get(
+                    agent_name, f"{agent_name}_report.json"
+                )
                 if report_file.exists():
-                    with open(report_file, 'r') as f:
+                    with open(report_file, "r") as f:
                         report = json.load(f)
                     return {
                         "status": "success",
                         "execution_time": execution_time,
-                        "report": report
+                        "report": report,
                     }
                 else:
                     logger.warning(f"⚠️  {agent_name} completed but report not found")
                     return {
                         "status": "success",
                         "execution_time": execution_time,
-                        "report": None
+                        "report": None,
                     }
             else:
                 logger.error(f"❌ {agent_name} failed (exit code: {result.returncode})")
@@ -210,7 +206,7 @@ class AgentExecutor:
                     "status": "error",
                     "execution_time": execution_time,
                     "error": result.stderr,
-                    "stdout": result.stdout
+                    "stdout": result.stdout,
                 }
 
         except subprocess.TimeoutExpired:
@@ -218,14 +214,14 @@ class AgentExecutor:
             return {
                 "status": "timeout",
                 "execution_time": 120,
-                "error": "Agent execution timed out"
+                "error": "Agent execution timed out",
             }
         except Exception as e:
             logger.error(f"❌ {agent_name} crashed: {e}")
             return {
                 "status": "crashed",
                 "execution_time": time.time() - start_time,
-                "error": str(e)
+                "error": str(e),
             }
 
 
@@ -263,7 +259,7 @@ class MasterOrchestrator:
     def _load_config(self) -> Dict[str, Any]:
         """Load guardian configuration"""
         if CONFIG_FILE.exists():
-            with open(CONFIG_FILE, 'r') as f:
+            with open(CONFIG_FILE, "r") as f:
                 return json.load(f)
         else:
             logger.warning("⚠️  Config file not found, using defaults")
@@ -272,11 +268,9 @@ class MasterOrchestrator:
                     "anima": {"enabled": True},
                     "neo": {"enabled": True},
                     "prodguardian": {"enabled": True},
-                    "nexus": {"enabled": True}
+                    "nexus": {"enabled": True},
                 },
-                "orchestration": {
-                    "max_parallel_agents": 4
-                }
+                "orchestration": {"max_parallel_agents": 4},
             }
 
     def run_full_orchestration(self) -> Dict[str, Any]:
@@ -291,7 +285,6 @@ class MasterOrchestrator:
         # Step 1: Acquire lock
         logger.info("\n[Step 1/9] Acquiring orchestration lock...")
         with GuardianLock("master_orchestrator", "full_orchestration"):
-
             # Step 2: Context detection
             logger.info("\n[Step 2/9] Detecting context...")
             context = self._detect_context()
@@ -336,22 +329,20 @@ class MasterOrchestrator:
         """Detect current system context"""
         context = {
             "timestamp": datetime.now().isoformat(),
-            "orchestration_id": self.orchestration_id
+            "orchestration_id": self.orchestration_id,
         }
 
         # Git context
         try:
             commit_hash = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"],
-                cwd=PROJECT_ROOT,
-                text=True
+                ["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, text=True
             ).strip()
             context["commit_hash"] = commit_hash
 
             branch = subprocess.check_output(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
                 cwd=PROJECT_ROOT,
-                text=True
+                text=True,
             ).strip()
             context["branch"] = branch
 
@@ -376,7 +367,7 @@ class MasterOrchestrator:
         succeeded = sum(1 for r in results.values() if r.get("status") == "success")
         failed = len(results) - succeeded
 
-        logger.info(f"\n📊 Agent Execution Summary:")
+        logger.info("\n📊 Agent Execution Summary:")
         logger.info(f"   Succeeded: {succeeded}/{len(results)}")
         logger.info(f"   Failed: {failed}/{len(results)}")
 
@@ -386,7 +377,7 @@ class MasterOrchestrator:
         self,
         context: Dict[str, Any],
         agent_results: Dict[str, Any],
-        conflicts: List[Dict[str, Any]]
+        conflicts: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         """Generate unified report from all agents"""
 
@@ -417,18 +408,18 @@ class MasterOrchestrator:
                 "orchestration_id": context["orchestration_id"],
                 "commit_hash": context.get("commit_hash"),
                 "branch": context.get("branch"),
-                "version": "3.0.0"
+                "version": "3.0.0",
             },
             "executive_summary": {
                 "status": status,
                 "total_issues": total_issues,
                 "critical": critical,
                 "warnings": warnings,
-                "headline": self._generate_headline(total_issues, critical, warnings)
+                "headline": self._generate_headline(total_issues, critical, warnings),
             },
             "agent_results": agent_results,
             "conflicts_detected": conflicts,
-            "recommendations": self._generate_recommendations(agent_results)
+            "recommendations": self._generate_recommendations(agent_results),
         }
 
         return unified_report
@@ -436,7 +427,9 @@ class MasterOrchestrator:
     def _generate_headline(self, total: int, critical: int, warnings: int) -> str:
         """Generate executive summary headline"""
         if critical > 0:
-            return f"🔴 {critical} critical issue(s) detected - immediate action required"
+            return (
+                f"🔴 {critical} critical issue(s) detected - immediate action required"
+            )
         elif warnings > 0:
             return f"🟡 {warnings} warning(s) detected - review recommended"
         elif total > 0:
@@ -444,7 +437,9 @@ class MasterOrchestrator:
         else:
             return "🎉 All checks passed - no issues detected"
 
-    def _generate_recommendations(self, agent_results: Dict[str, Any]) -> Dict[str, List[str]]:
+    def _generate_recommendations(
+        self, agent_results: Dict[str, Any]
+    ) -> Dict[str, List[str]]:
         """Generate prioritized recommendations"""
         immediate = []
         short_term = []
@@ -467,7 +462,7 @@ class MasterOrchestrator:
         return {
             "immediate": immediate,
             "short_term": short_term,
-            "long_term": long_term
+            "long_term": long_term,
         }
 
     def _request_validation(self, unified_report: Dict[str, Any]) -> Dict[str, Any]:
@@ -489,7 +484,7 @@ class MasterOrchestrator:
     def _save_global_report(self, unified_report: Dict[str, Any]):
         """Save unified report to disk"""
         output_file = REPORTS_DIR / "global_report.json"
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(unified_report, f, indent=2)
 
         logger.info(f"   Report saved: {output_file}")
@@ -506,14 +501,14 @@ class MasterOrchestrator:
         print("=" * 60)
         print(f"\nStatus: {summary['status'].upper()}")
         print(f"Headline: {summary['headline']}")
-        print(f"\nIssues Found:")
+        print("\nIssues Found:")
         print(f"  Total: {summary['total_issues']}")
         print(f"  Critical: {summary['critical']}")
         print(f"  Warnings: {summary['warnings']}")
 
         recs = report["recommendations"]
         if recs["immediate"]:
-            print(f"\n⚠️  Immediate Actions Required:")
+            print("\n⚠️  Immediate Actions Required:")
             for i, rec in enumerate(recs["immediate"][:3], 1):
                 print(f"  {i}. {rec}")
 
@@ -532,7 +527,7 @@ class MasterOrchestrator:
                 cwd=PROJECT_ROOT,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
             )
 
             if result.returncode == 0:

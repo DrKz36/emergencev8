@@ -4,7 +4,6 @@ Script de nettoyage du répertoire racine - 2025-10-18
 Déplace les fichiers obsolètes vers docs/archive/2025-10/
 """
 
-import os
 import shutil
 from pathlib import Path
 
@@ -22,7 +21,6 @@ MOVES = {
     "PHASE3_FIX_V4_CONTEXT_LIMIT.md": "docs/archive/2025-10/phase3/",
     "PHASE3_RAG_FINAL_STATUS.md": "docs/archive/2025-10/phase3/",
     "PHASE3_SUMMARY.md": "docs/archive/2025-10/phase3/",
-
     # Prompts & Next Session (12 fichiers)
     "PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md": "docs/archive/2025-10/prompts/",
     "PROMPT_NEXT_SESSION_P1_FIXES.md": "docs/archive/2025-10/prompts/",
@@ -36,7 +34,6 @@ MOVES = {
     "HANDOFF_AUDIT_20251010.txt": "docs/archive/2025-10/handoffs/",
     "HANDOFF_NEXT_SESSION.txt": "docs/archive/2025-10/handoffs/",
     "POUR_GPT_CODEX_CLOUD.md": "docs/archive/2025-10/handoffs/",
-
     # Correctifs Ponctuels (10 fichiers)
     "PROD_FIX_2025-10-11.md": "docs/archive/2025-10/fixes/",
     "SECURITY_FIX_2025-10-12.md": "docs/archive/2025-10/fixes/",
@@ -48,7 +45,6 @@ MOVES = {
     "WEBSOCKET_AUDIT_2025-10-11.md": "docs/archive/2025-10/fixes/",
     "CLEANUP_PLAN_20251010.md": "docs/archive/2025-10/fixes/",
     "AUTO_COMMIT_ACTIVATED.md": "docs/archive/2025-10/fixes/",
-
     # Déploiement Obsolète (8 fichiers)
     "DEPLOIEMENT.md": "docs/archive/2025-10/deployment/",
     "DEPLOYMENT_QUICKSTART.md": "docs/archive/2025-10/deployment/",
@@ -58,7 +54,6 @@ MOVES = {
     "CHANGELOG_UPGRADE.md": "docs/archive/2025-10/deployment/",
     "PROD_MONITORING_SETUP_COMPLETE.md": "docs/archive/2025-10/deployment/",
     "EMERGENCE_STATE_2025-10-11.md": "docs/archive/2025-10/deployment/",
-
     # Documentation Redondante/Obsolète (15 fichiers)
     "CODex_GUIDE.md": "docs/archive/2025-10/",
     "AGENT_SYNC_ADDENDUM.md": "docs/archive/2025-10/",
@@ -75,7 +70,6 @@ MOVES = {
     "START_HERE.md": "docs/archive/2025-10/",
     "SETUP_COMPLETE.md": "docs/archive/2025-10/",
     "RAPPORT_TEST_MEMOIRE_ARCHIVEE.md": "docs/archive/2025-10/",
-
     # Beta/Onboarding (6 fichiers)
     "BETA_QUICK_START.md": "docs/beta/",
     "BETA_INVITATIONS_SUMMARY.md": "docs/beta/",
@@ -83,10 +77,8 @@ MOVES = {
     "README_BETA_INVITATIONS.md": "docs/beta/",
     "PASSWORD_RESET_IMPLEMENTATION.md": "docs/auth/",
     "ONBOARDING_IMPLEMENTATION.md": "docs/onboarding/",
-
     # Changelogs Redondants
     "CHANGELOG_PASSWORD_RESET_2025-10-12.md": "docs/archive/2025-10/",
-
     # HTML (6 fichiers)
     "beta_invitations.html": "docs/archive/2025-10/html-tests/",
     "check_jwt_token.html": "docs/archive/2025-10/html-tests/",
@@ -94,7 +86,6 @@ MOVES = {
     "request-password-reset.html": "docs/archive/2025-10/html-tests/",
     "reset-password.html": "docs/archive/2025-10/html-tests/",
     "sync-dashboard.html": "docs/archive/2025-10/html-tests/",
-
     # Scripts test temporaires (15 fichiers)
     "test_anima_context.py": "docs/archive/2025-10/scripts-temp/",
     "test_archived_memory_fix.py": "docs/archive/2025-10/scripts-temp/",
@@ -112,7 +103,6 @@ MOVES = {
     "test_token.py": "docs/archive/2025-10/scripts-temp/",
     "test_token_final.py": "docs/archive/2025-10/scripts-temp/",
     "test_token_v2.py": "docs/archive/2025-10/scripts-temp/",
-
     # Scripts utilitaires temporaires (20+ fichiers)
     "add_password_must_reset_column.py": "docs/archive/2025-10/scripts-temp/",
     "check_db.py": "docs/archive/2025-10/scripts-temp/",
@@ -132,16 +122,13 @@ MOVES = {
     "deploy_auth_fixes.sh": "docs/archive/2025-10/scripts-temp/",
     "cleanup.sh": "docs/archive/2025-10/scripts-temp/",
     "revoke_all_sessions.sh": "docs/archive/2025-10/scripts-temp/",
-
     # Fichiers batch (3 fichiers)
     "envoyer_invitations_beta.bat": "docs/archive/2025-10/scripts-temp/",
     "ouvrir_interface_invitations.bat": "docs/archive/2025-10/scripts-temp/",
     "run_memory_validation.bat": "docs/archive/2025-10/scripts-temp/",
-
     # PowerShell à archiver
     "progressive-deploy.ps1": "docs/archive/2025-10/scripts-temp/",
     "test-canary.ps1": "docs/archive/2025-10/scripts-temp/",
-
     # Tests de validation à déplacer vers /tests/validation
     "test_phase1_validation.py": "tests/validation/",
     "test_phase3_validation.py": "tests/validation/",
@@ -160,6 +147,7 @@ DELETE = [
     "arborescence_synchronisee_20251008.txt",
     "revisions_to_delete.txt",
 ]
+
 
 def move_files():
     """Déplace les fichiers selon le mapping MOVES"""
@@ -189,6 +177,7 @@ def move_files():
 
     return moved, errors
 
+
 def delete_files():
     """Supprime les fichiers temporaires"""
     deleted = 0
@@ -211,6 +200,7 @@ def delete_files():
             errors.append(error_msg)
 
     return deleted, errors
+
 
 def main():
     print("=" * 80)
@@ -255,6 +245,7 @@ def main():
 
     print("[OK] Nettoyage termine!")
     print()
+
 
 if __name__ == "__main__":
     main()

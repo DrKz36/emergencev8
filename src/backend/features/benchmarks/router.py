@@ -27,9 +27,7 @@ class TemporalNDCGRequest(BaseModel):
     ranked_items: List[RankedItem] = Field(
         ..., description="Liste ordonnée d'items classés"
     )
-    k: int = Field(
-        default=10, ge=1, description="Nombre d'items considérés (top-k)"
-    )
+    k: int = Field(default=10, ge=1, description="Nombre d'items considérés (top-k)")
     now: Optional[datetime] = Field(
         default=None, description="Timestamp de référence (défaut: UTC now)"
     )

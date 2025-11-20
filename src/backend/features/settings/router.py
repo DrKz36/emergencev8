@@ -13,24 +13,28 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
 # Path to settings file (persistent storage)
-SETTINGS_FILE = os.path.join(
-    os.path.dirname(__file__),
-    "../../../data/settings.json"
-)
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "../../../data/settings.json")
 
 
 # ============================================================
 # Models
 # ============================================================
 
+
 class RAGSettings(BaseModel):
     """RAG system configuration"""
-    strict_mode: bool = Field(default=False, description="Enable strict RAG mode (filter by threshold)")
-    score_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum score threshold for results")
+
+    strict_mode: bool = Field(
+        default=False, description="Enable strict RAG mode (filter by threshold)"
+    )
+    score_threshold: float = Field(
+        default=0.7, ge=0.0, le=1.0, description="Minimum score threshold for results"
+    )
 
 
 class ModelSettings(BaseModel):
     """Model configuration for agents"""
+
     model: str = Field(default="gpt-4", description="Model ID")
     temperature: float = Field(default=0.7, ge=0.0, le=1.0)
     max_tokens: int = Field(default=2000, ge=100, le=32000)
@@ -43,12 +47,14 @@ class ModelSettings(BaseModel):
 # Storage Helpers
 # ============================================================
 
+
 def load_settings() -> Dict[str, Any]:
     """Load settings from file"""
     from typing import cast
+
     try:
         if os.path.exists(SETTINGS_FILE):
-            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                 return cast(Dict[str, Any], json.load(f))
     except Exception as e:
         logger.error(f"Failed to load settings: {e}")
@@ -59,7 +65,7 @@ def save_settings(settings: Dict[str, Any]) -> None:
     """Save settings to file"""
     try:
         os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
-        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
         logger.info(f"Settings saved to {SETTINGS_FILE}")
     except Exception as e:
@@ -70,6 +76,7 @@ def save_settings(settings: Dict[str, Any]) -> None:
 # ============================================================
 # RAG Settings Endpoints
 # ============================================================
+
 
 @router.get("/rag")
 async def get_rag_settings() -> RAGSettings:
@@ -82,11 +89,13 @@ async def get_rag_settings() -> RAGSettings:
 
         return RAGSettings(
             strict_mode=rag_settings.get("strict_mode", False),
-            score_threshold=rag_settings.get("score_threshold", 0.7)
+            score_threshold=rag_settings.get("score_threshold", 0.7),
         )
     except Exception as e:
         logger.error(f"Failed to get RAG settings: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get RAG settings: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get RAG settings: {str(e)}"
+        )
 
 
 @router.post("/rag")
@@ -101,18 +110,18 @@ async def update_rag_settings(settings: RAGSettings) -> Dict[str, str]:
 
         logger.info(f"RAG settings updated: {settings.dict()}")
 
-        return {
-            "status": "success",
-            "message": "RAG settings updated successfully"
-        }
+        return {"status": "success", "message": "RAG settings updated successfully"}
     except Exception as e:
         logger.error(f"Failed to update RAG settings: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to update RAG settings: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update RAG settings: {str(e)}"
+        )
 
 
 # ============================================================
 # Model Settings Endpoints
 # ============================================================
+
 
 @router.get("/models")
 async def get_model_settings() -> Dict[str, ModelSettings]:
@@ -131,7 +140,9 @@ async def get_model_settings() -> Dict[str, ModelSettings]:
         return result
     except Exception as e:
         logger.error(f"Failed to get model settings: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get model settings: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get model settings: {str(e)}"
+        )
 
 
 @router.post("/models")
@@ -154,19 +165,23 @@ async def update_model_settings(settings: Dict[str, ModelSettings]) -> Dict[str,
 
         return {
             "status": "success",
-            "message": f"Model settings updated for {len(settings)} agents"
+            "message": f"Model settings updated for {len(settings)} agents",
         }
     except Exception as e:
         logger.error(f"Failed to update model settings: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to update model settings: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update model settings: {str(e)}"
+        )
 
 
 # ============================================================
 # UI Settings Endpoints
 # ============================================================
 
+
 class UISettings(BaseModel):
     """UI/UX configuration"""
+
     theme: str = Field(default="dark", description="UI theme (dark/light)")
     language: str = Field(default="fr", description="Interface language")
     compact_mode: bool = Field(default=False, description="Enable compact UI mode")
@@ -186,11 +201,13 @@ async def get_ui_settings() -> UISettings:
             theme=ui_settings.get("theme", "dark"),
             language=ui_settings.get("language", "fr"),
             compact_mode=ui_settings.get("compact_mode", False),
-            animations_enabled=ui_settings.get("animations_enabled", True)
+            animations_enabled=ui_settings.get("animations_enabled", True),
         )
     except Exception as e:
         logger.error(f"Failed to get UI settings: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get UI settings: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get UI settings: {str(e)}"
+        )
 
 
 @router.post("/ui")
@@ -205,18 +222,18 @@ async def update_ui_settings(settings: UISettings) -> Dict[str, str]:
 
         logger.info(f"UI settings updated: {settings.dict()}")
 
-        return {
-            "status": "success",
-            "message": "UI settings updated successfully"
-        }
+        return {"status": "success", "message": "UI settings updated successfully"}
     except Exception as e:
         logger.error(f"Failed to update UI settings: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to update UI settings: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update UI settings: {str(e)}"
+        )
 
 
 # ============================================================
 # General Settings Endpoints
 # ============================================================
+
 
 @router.get("/all")
 async def get_all_settings() -> Dict[str, Any]:
@@ -240,10 +257,9 @@ async def reset_all_settings() -> Dict[str, str]:
             os.remove(SETTINGS_FILE)
             logger.info("All settings reset to defaults")
 
-        return {
-            "status": "success",
-            "message": "All settings reset to defaults"
-        }
+        return {"status": "success", "message": "All settings reset to defaults"}
     except Exception as e:
         logger.error(f"Failed to reset settings: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to reset settings: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to reset settings: {str(e)}"
+        )

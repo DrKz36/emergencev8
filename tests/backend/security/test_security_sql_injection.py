@@ -28,7 +28,9 @@ class TestSQLInjection:
                 json={"email": payload, "password": "anything"},
             )
             # Doit rejeter (401/422), jamais authentifier
-            assert response.status_code in [401, 422, 400], f"Payload dangereux accepté: {payload}"
+            assert response.status_code in [401, 422, 400], (
+                f"Payload dangereux accepté: {payload}"
+            )
 
     def test_thread_search_sql_injection(self, client, authenticated_user):
         """Tente injection SQL via paramètres de recherche"""
@@ -50,7 +52,6 @@ class TestSQLInjection:
 class TestXSSProtection:
     """Tests de protection contre XSS"""
 
-    
     def test_message_xss_script_tags(self, client, authenticated_user):
         """Vérifie que les scripts ne sont pas exécutés dans les messages"""
         xss_payloads = [
@@ -75,7 +76,6 @@ class TestXSSProtection:
 class TestCSRFProtection:
     """Tests de protection CSRF"""
 
-    
     def test_state_changing_requires_auth(self, auth_app_factory):
         """Vérifie que les opérations critiques nécessitent authentification"""
         app = auth_app_factory()
@@ -95,13 +95,14 @@ class TestCSRFProtection:
                 response = client.delete(endpoint)
 
             # 401 (non auth) ou 404 (endpoint mock manquant) sont acceptables
-            assert response.status_code in [401, 404], f"Endpoint {endpoint} accessible sans auth (got {response.status_code})"
+            assert response.status_code in [401, 404], (
+                f"Endpoint {endpoint} accessible sans auth (got {response.status_code})"
+            )
 
 
 class TestAuthenticationSecurity:
     """Tests de sécurité d'authentification"""
 
-    
     def test_password_not_in_response(self, auth_app_factory):
         """Vérifie que les mots de passe ne sont jamais retournés"""
         app = auth_app_factory()
@@ -119,12 +120,14 @@ class TestAuthenticationSecurity:
         # Vérifier que le mot de passe n'est JAMAIS dans la réponse
         response_text = response.text.lower()
         assert password.lower() not in response_text
-        assert "password" not in response.json() if response.status_code == 200 else True
+        assert (
+            "password" not in response.json() if response.status_code == 200 else True
+        )
 
-    
     def test_timing_attack_resistance(self, auth_app_factory):
         """Vérifie résistance aux attaques par timing"""
         import time
+
         app = auth_app_factory()
         client = TestClient(app)
 
@@ -141,13 +144,14 @@ class TestAuthenticationSecurity:
 
         # La variance ne doit pas révéler si l'email existe
         variance = max(timings) - min(timings)
-        assert variance < 0.1, "Différence de timing trop importante (timing attack possible)"
+        assert variance < 0.1, (
+            "Différence de timing trop importante (timing attack possible)"
+        )
 
 
 class TestInputValidation:
     """Tests de validation des entrées"""
 
-    
     def test_oversized_input_rejection(self, client, authenticated_user):
         """Rejette les entrées trop volumineuses"""
         huge_message = "A" * 1000000  # 1MB
@@ -159,7 +163,6 @@ class TestInputValidation:
 
         assert response.status_code in [400, 413, 422], "Message géant accepté"
 
-    
     def test_malformed_json_handling(self, client):
         """Gère correctement les JSON malformés"""
         response = client.post(

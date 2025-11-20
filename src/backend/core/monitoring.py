@@ -20,11 +20,8 @@ log_file = log_dir / "app.log"
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(str(log_file)),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler(str(log_file)), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
@@ -63,12 +60,10 @@ class MetricsCollector:
     def get_error_rate(self, endpoint: str) -> float:
         """Calcule le taux d'erreur"""
         total_requests = sum(
-            count for key, count in self.request_count.items()
-            if endpoint in key
+            count for key, count in self.request_count.items() if endpoint in key
         )
         total_errors = sum(
-            count for key, count in self.error_count.items()
-            if endpoint in key
+            count for key, count in self.error_count.items() if endpoint in key
         )
         if total_requests == 0:
             return 0.0
@@ -86,8 +81,7 @@ class MetricsCollector:
                     "error_rate": round(self.get_error_rate(endpoint), 2),
                 }
                 for endpoint in set(
-                    list(self.request_count.keys()) +
-                    list(self.latency_count.keys())
+                    list(self.request_count.keys()) + list(self.latency_count.keys())
                 )
             },
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -107,6 +101,7 @@ def monitor_endpoint(endpoint_name: Optional[str] = None) -> Any:
         async def chat_handler():
             ...
     """
+
     def decorator(func: Any) -> Any:
         name = endpoint_name or func.__name__
 
@@ -128,7 +123,7 @@ def monitor_endpoint(endpoint_name: Optional[str] = None) -> Any:
                             "endpoint": name,
                             "duration": duration,
                             "args": str(args)[:100],
-                        }
+                        },
                     )
 
                 return result
@@ -145,7 +140,7 @@ def monitor_endpoint(endpoint_name: Optional[str] = None) -> Any:
                         "error_message": str(e),
                         "args": str(args)[:100],
                     },
-                    exc_info=True
+                    exc_info=True,
                 )
                 raise
 
@@ -172,6 +167,7 @@ def monitor_endpoint(endpoint_name: Optional[str] = None) -> Any:
 
         # Retourner le wrapper approprié
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
@@ -189,14 +185,17 @@ class SecurityMonitor:
     def record_failed_login(self, email: str, ip: str) -> None:
         """Enregistre une tentative de login échouée"""
         now = datetime.now(timezone.utc)
-        self.failed_login_attempts[email].append({
-            "timestamp": now,
-            "ip": ip,
-        })
+        self.failed_login_attempts[email].append(
+            {
+                "timestamp": now,
+                "ip": ip,
+            }
+        )
 
         # Alerte si >5 échecs en 5 minutes
         recent_failures = [
-            attempt for attempt in self.failed_login_attempts[email]
+            attempt
+            for attempt in self.failed_login_attempts[email]
             if (now - attempt["timestamp"]).total_seconds() < 300
         ]
 
@@ -208,7 +207,7 @@ class SecurityMonitor:
                     "ip": ip,
                     "attempts": len(recent_failures),
                     "alert_type": "brute_force",
-                }
+                },
             )
 
     def detect_sql_injection(self, input_string: str) -> bool:
@@ -229,7 +228,7 @@ class SecurityMonitor:
                     extra={
                         "input": input_string[:100],
                         "pattern": pattern,
-                    }
+                    },
                 )
                 return True
 
@@ -253,7 +252,7 @@ class SecurityMonitor:
                     extra={
                         "input": input_string[:100],
                         "pattern": pattern,
-                    }
+                    },
                 )
                 return True
 
@@ -267,7 +266,7 @@ class SecurityMonitor:
                 extra={
                     "size": len(input_string),
                     "max_allowed": max_size,
-                }
+                },
             )
             return False
         return True
@@ -275,7 +274,9 @@ class SecurityMonitor:
     def get_security_summary(self) -> dict[str, Any]:
         """Retourne un résumé des événements de sécurité"""
         return {
-            "failed_logins": sum(len(attempts) for attempts in self.failed_login_attempts.values()),
+            "failed_logins": sum(
+                len(attempts) for attempts in self.failed_login_attempts.values()
+            ),
             "suspicious_patterns": dict(self.suspicious_patterns),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
@@ -294,27 +295,31 @@ class PerformanceMonitor:
 
     def record_slow_query(self, query: str, duration: float) -> None:
         """Enregistre une requête lente"""
-        self.slow_queries.append({
-            "query": query[:200],
-            "duration": duration,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        self.slow_queries.append(
+            {
+                "query": query[:200],
+                "duration": duration,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
         logger.warning(
             "PERFORMANCE: Slow database query detected",
             extra={
                 "query": query[:200],
                 "duration": duration,
-            }
+            },
         )
 
     def record_ai_response_time(self, duration: float, model: str) -> None:
         """Enregistre le temps de réponse de l'IA"""
-        self.ai_response_times.append({
-            "duration": duration,
-            "model": model,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        self.ai_response_times.append(
+            {
+                "duration": duration,
+                "model": model,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
         # Alerte si >10s
         if duration > 10.0:
@@ -323,23 +328,23 @@ class PerformanceMonitor:
                 extra={
                     "duration": duration,
                     "model": model,
-                }
+                },
             )
 
     def get_performance_summary(self) -> dict[str, Any]:
         """Retourne un résumé des performances"""
         avg_ai_time = (
-            sum(r["duration"] for r in self.ai_response_times) / len(self.ai_response_times)
-            if self.ai_response_times else 0
+            sum(r["duration"] for r in self.ai_response_times)
+            / len(self.ai_response_times)
+            if self.ai_response_times
+            else 0
         )
 
         return {
             "slow_queries_count": len(self.slow_queries),
             "avg_ai_response_time": round(avg_ai_time, 2),
             "slowest_queries": sorted(
-                self.slow_queries,
-                key=lambda x: x["duration"],
-                reverse=True
+                self.slow_queries, key=lambda x: x["duration"], reverse=True
             )[:5],
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
@@ -358,7 +363,7 @@ def export_metrics_json(filepath: str = "logs/metrics.json") -> dict[str, Any]:
         "exported_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    with open(filepath, 'w') as f:
+    with open(filepath, "w") as f:
         json.dump(all_metrics, f, indent=2)
 
     logger.info(f"Metrics exported to {filepath}")
@@ -377,7 +382,7 @@ def log_structured(level: str, message: str, **kwargs: Any) -> None:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "level": level.upper(),
         "message": message,
-        **kwargs
+        **kwargs,
     }
 
     getattr(logger, level.lower())(json.dumps(log_data))

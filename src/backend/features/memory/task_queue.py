@@ -68,7 +68,10 @@ class MemoryTaskQueue:
         logger.info("MemoryTaskQueue stopped")
 
     async def enqueue(
-        self, task_type: str, payload: dict[str, Any], callback: Callable[[Any], Any] | None = None
+        self,
+        task_type: str,
+        payload: dict[str, Any],
+        callback: Callable[[Any], Any] | None = None,
     ) -> None:
         """Ajoute une tâche à la file"""
         task = MemoryTask(task_type=task_type, payload=payload, callback=callback)
@@ -167,7 +170,9 @@ class MemoryTaskQueue:
         await gardener.garden_thread(thread_id, user_sub=user_sub)
         return {"status": "gardened", "thread_id": thread_id}
 
-    async def _run_thread_consolidation(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def _run_thread_consolidation(
+        self, payload: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         🆕 Phase P0: Consolide un thread archivé dans LTM.
 
@@ -201,7 +206,7 @@ class MemoryTaskQueue:
         gardener = MemoryGardener(
             db_manager=container.db_manager(),
             vector_service=container.vector_service(),
-            memory_analyzer=memory_analyzer
+            memory_analyzer=memory_analyzer,
         )
 
         # Consolider thread
@@ -211,9 +216,7 @@ class MemoryTaskQueue:
         )
 
         result = await gardener._tend_single_thread(
-            thread_id=thread_id,
-            session_id=session_id,
-            user_id=user_id
+            thread_id=thread_id, session_id=session_id, user_id=user_id
         )
 
         new_concepts = result.get("new_concepts", 0)
@@ -226,7 +229,7 @@ class MemoryTaskQueue:
             "status": "consolidated",
             "thread_id": thread_id,
             "new_concepts": new_concepts,
-            "result": result
+            "result": result,
         }
 
 

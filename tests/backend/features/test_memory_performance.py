@@ -9,6 +9,7 @@ Tests:
 Run:
     python -m pytest tests/backend/features/test_memory_performance.py -v
 """
+
 import pytest
 import time
 from unittest.mock import MagicMock
@@ -26,10 +27,7 @@ def mock_vector_service():
     # Simulate collection with HNSW optimized metadata
     collection = MagicMock()
     collection.name = "emergence_knowledge"
-    collection.metadata = {
-        "hnsw:space": "cosine",
-        "hnsw:M": 16
-    }
+    collection.metadata = {"hnsw:space": "cosine", "hnsw:M": 16}
 
     # Mock query with realistic latency (30-40ms optimized)
     def mock_query(*args, **kwargs):
@@ -38,8 +36,12 @@ def mock_vector_service():
             {
                 "id": f"pref_{i}",
                 "text": f"Preference {i}",
-                "metadata": {"user_id": "user_123", "type": "preference", "confidence": 0.8},
-                "distance": 0.1 + (i * 0.05)
+                "metadata": {
+                    "user_id": "user_123",
+                    "type": "preference",
+                    "confidence": 0.8,
+                },
+                "distance": 0.1 + (i * 0.05),
             }
             for i in range(5)
         ]
@@ -75,7 +77,7 @@ class TestChromaDBPerformance:
             collection=collection,
             query_text="Tell me about Python",
             n_results=5,
-            where_filter={"user_id": "user_123", "type": "preference"}
+            where_filter={"user_id": "user_123", "type": "preference"},
         )
         duration_ms = (time.perf_counter() - start) * 1000
 
@@ -85,7 +87,9 @@ class TestChromaDBPerformance:
             f"Query latency {duration_ms:.1f}ms exceeds target {TARGET_QUERY_LATENCY_MS}ms"
         )
 
-        print(f"[OK] Query latency: {duration_ms:.1f}ms (target <{TARGET_QUERY_LATENCY_MS}ms)")
+        print(
+            f"[OK] Query latency: {duration_ms:.1f}ms (target <{TARGET_QUERY_LATENCY_MS}ms)"
+        )
 
     def test_metadata_filter_performance(self, mock_vector_service):
         """Test metadata filter performance (user_id, type, confidence)."""
@@ -96,7 +100,7 @@ class TestChromaDBPerformance:
             "$and": [
                 {"user_id": "user_123"},
                 {"type": "preference"},
-                {"confidence": {"$gte": 0.6}}
+                {"confidence": {"$gte": 0.6}},
             ]
         }
 
@@ -105,7 +109,7 @@ class TestChromaDBPerformance:
             collection=collection,
             query_text="Docker preferences",
             n_results=10,
-            where_filter=where_filter
+            where_filter=where_filter,
         )
         duration_ms = (time.perf_counter() - start) * 1000
 
@@ -136,10 +140,12 @@ class TestPreferenceCachePerformance:
         mock_collection.get.return_value = {
             "ids": [["pref_1", "pref_2"]],
             "documents": [["I prefer Python", "I like Docker"]],
-            "metadatas": [[
-                {"type": "preference", "confidence": 0.8},
-                {"type": "preference", "confidence": 0.75}
-            ]]
+            "metadatas": [
+                [
+                    {"type": "preference", "confidence": 0.8},
+                    {"type": "preference", "confidence": 0.75},
+                ]
+            ],
         }
 
         mock_vector_service = MagicMock()
@@ -147,8 +153,7 @@ class TestPreferenceCachePerformance:
 
         # Create builder with cache enabled
         builder = MemoryContextBuilder(
-            session_manager=mock_session_manager,
-            vector_service=mock_vector_service
+            session_manager=mock_session_manager, vector_service=mock_vector_service
         )
 
         # Simulate realistic traffic: 10 messages from same user (should hit cache 8-9 times)
@@ -170,7 +175,9 @@ class TestPreferenceCachePerformance:
             f"Cache hit rate {hit_rate:.1%} below target {TARGET_CACHE_HIT_RATE:.1%}"
         )
 
-        print(f"[OK] Cache hit rate: {hit_rate:.1%} (target >{TARGET_CACHE_HIT_RATE:.1%})")
+        print(
+            f"[OK] Cache hit rate: {hit_rate:.1%} (target >{TARGET_CACHE_HIT_RATE:.1%})"
+        )
         print(f"     Total calls: {total_calls}, Cache hits: {cache_hits}")
 
 
@@ -191,9 +198,7 @@ class TestBatchPrefetchPerformance:
         incremental_results = []
         for i in range(10):
             results = mock_vector_service.query(
-                collection=collection,
-                query_text=f"Query {i}",
-                n_results=1
+                collection=collection, query_text=f"Query {i}", n_results=1
             )
             incremental_results.extend(results)
         duration_incremental = time.perf_counter() - start_incremental
@@ -203,7 +208,7 @@ class TestBatchPrefetchPerformance:
         batch_results = mock_vector_service.query(
             collection=collection,
             query_text="Combined query",
-            n_results=10  # Fetch all at once
+            n_results=10,  # Fetch all at once
         )
         duration_batch = time.perf_counter() - start_batch
 
@@ -215,8 +220,10 @@ class TestBatchPrefetchPerformance:
         )
 
         print(f"[OK] Batch prefetch speedup: {speedup:.1f}x")
-        print(f"     Incremental: {duration_incremental*1000:.1f}ms ({len(incremental_results)} items)")
-        print(f"     Batch: {duration_batch*1000:.1f}ms ({len(batch_results)} items)")
+        print(
+            f"     Incremental: {duration_incremental * 1000:.1f}ms ({len(incremental_results)} items)"
+        )
+        print(f"     Batch: {duration_batch * 1000:.1f}ms ({len(batch_results)} items)")
 
 
 class TestMemoryContextBuildPerformance:
@@ -224,9 +231,7 @@ class TestMemoryContextBuildPerformance:
 
     @pytest.mark.asyncio
     async def test_build_memory_context_latency(
-        self,
-        mock_vector_service,
-        mock_session_manager
+        self, mock_vector_service, mock_session_manager
     ):
         """
         Test build_memory_context() total latency.
@@ -240,16 +245,20 @@ class TestMemoryContextBuildPerformance:
         mock_collection.get.return_value = {
             "ids": [["pref_1"]],
             "documents": [["I prefer Python"]],
-            "metadatas": [[{"type": "preference", "confidence": 0.8}]]
+            "metadatas": [[{"type": "preference", "confidence": 0.8}]],
         }
         mock_vector_service.get_or_create_collection.return_value = mock_collection
         mock_vector_service.query.return_value = [
-            {"id": "concept_1", "text": "Docker containers", "metadata": {"type": "concept"}, "distance": 0.2}
+            {
+                "id": "concept_1",
+                "text": "Docker containers",
+                "metadata": {"type": "concept"},
+                "distance": 0.2,
+            }
         ]
 
         builder = MemoryContextBuilder(
-            session_manager=mock_session_manager,
-            vector_service=mock_vector_service
+            session_manager=mock_session_manager, vector_service=mock_vector_service
         )
 
         # Measure build time
@@ -257,7 +266,7 @@ class TestMemoryContextBuildPerformance:
         context = await builder.build_memory_context(
             session_id="session_123",
             last_user_message="How do I use Docker with Python?",
-            top_k=5
+            top_k=5,
         )
         duration_ms = (time.perf_counter() - start) * 1000
 
@@ -276,6 +285,7 @@ class TestMemoryContextBuildPerformance:
 def setup_test_env():
     """Setup test environment."""
     import os
+
     os.environ["EMERGENCE_KNOWLEDGE_COLLECTION"] = "emergence_knowledge"
     yield
 

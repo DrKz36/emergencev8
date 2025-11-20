@@ -12,17 +12,19 @@ import asyncio
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 # Fix encoding pour Windows
-if sys.platform == 'win32':
+if sys.platform == "win32":
     import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # Charger les variables d'environnement depuis .env
 try:
     from dotenv import load_dotenv
+
     repo_root = Path(__file__).parent.parent.parent.parent
     env_path = repo_root / ".env"
     if env_path.exists():
@@ -34,29 +36,31 @@ except ImportError:
     repo_root = Path(__file__).parent.parent.parent.parent
     env_path = repo_root / ".env"
     if env_path.exists():
-        with open(env_path, 'r', encoding='utf-8') as f:
+        with open(env_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
                     os.environ[key.strip()] = value.strip()
 
 # Ajouter le chemin du backend pour importer EmailService
 backend_path = Path(__file__).parent.parent.parent.parent / "src" / "backend"
 sys.path.insert(0, str(backend_path))
 
-from features.auth.email_service import EmailService, build_email_config_from_env
+from features.auth.email_service import EmailService
 
 # Configuration
 ADMIN_EMAIL = "emergence.app.ch@gmail.com"  # Email admin principal (redirige vers gonzalefernando@gmail.com)
-REPORTS_DIR = Path(__file__).parent / "reports"  # Les rapports sont dans scripts/reports/
+REPORTS_DIR = (
+    Path(__file__).parent / "reports"
+)  # Les rapports sont dans scripts/reports/
 
 
 def load_report(report_path: Path) -> Optional[Dict]:
     """Charge un rapport JSON s'il existe"""
     try:
         if report_path.exists():
-            with open(report_path, 'r', encoding='utf-8') as f:
+            with open(report_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         return None
     except Exception as e:
@@ -67,14 +71,14 @@ def load_report(report_path: Path) -> Optional[Dict]:
 def format_status_emoji(status: str) -> str:
     """Retourne un emoji selon le statut"""
     status_lower = status.lower()
-    if status_lower in ['ok', 'healthy', 'success']:
-        return '✅'
-    elif status_lower in ['warning', 'degraded']:
-        return '⚠️'
-    elif status_lower in ['error', 'critical', 'failed']:
-        return '🚨'
+    if status_lower in ["ok", "healthy", "success"]:
+        return "✅"
+    elif status_lower in ["warning", "degraded"]:
+        return "⚠️"
+    elif status_lower in ["error", "critical", "failed"]:
+        return "🚨"
     else:
-        return '📊'
+        return "📊"
 
 
 def format_report_summary(report_name: str, report_data: Optional[Dict]) -> str:
@@ -82,33 +86,35 @@ def format_report_summary(report_name: str, report_data: Optional[Dict]) -> str:
     if not report_data:
         return f"  • {report_name}: Non disponible\n"
 
-    status = report_data.get('status', 'unknown')
+    status = report_data.get("status", "unknown")
     emoji = format_status_emoji(status)
 
     summary = f"  • {report_name}: {emoji} {status.upper()}\n"
 
     # Ajouter des détails spécifiques selon le type de rapport
-    if 'summary' in report_data:
-        summary_data = report_data['summary']
+    if "summary" in report_data:
+        summary_data = report_data["summary"]
         if isinstance(summary_data, dict):
-            if 'errors' in summary_data:
+            if "errors" in summary_data:
                 summary += f"    - Erreurs: {summary_data['errors']}\n"
-            if 'warnings' in summary_data:
+            if "warnings" in summary_data:
                 summary += f"    - Warnings: {summary_data['warnings']}\n"
-            if 'critical_signals' in summary_data:
-                summary += f"    - Signaux critiques: {summary_data['critical_signals']}\n"
-            if 'total_issues' in summary_data:
+            if "critical_signals" in summary_data:
+                summary += (
+                    f"    - Signaux critiques: {summary_data['critical_signals']}\n"
+                )
+            if "total_issues" in summary_data:
                 summary += f"    - Problèmes totaux: {summary_data['total_issues']}\n"
 
-    if 'documentation_gaps' in report_data:
-        gaps = report_data['documentation_gaps']
+    if "documentation_gaps" in report_data:
+        gaps = report_data["documentation_gaps"]
         if isinstance(gaps, list):
-            high_severity = sum(1 for gap in gaps if gap.get('severity') == 'high')
+            high_severity = sum(1 for gap in gaps if gap.get("severity") == "high")
             if high_severity > 0:
                 summary += f"    - Gaps documentation (high): {high_severity}\n"
 
-    if 'integrity_issues' in report_data:
-        issues = report_data['integrity_issues']
+    if "integrity_issues" in report_data:
+        issues = report_data["integrity_issues"]
         if isinstance(issues, list) and len(issues) > 0:
             summary += f"    - Problèmes d'intégrité: {len(issues)}\n"
 
@@ -119,7 +125,13 @@ def escape_html(text):
     """Escape HTML special characters"""
     if not text:
         return ""
-    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
@@ -129,18 +141,16 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
     global_status = "OK"
     for report_data in reports.values():
         if report_data:
-            status = report_data.get('status', '').lower()
-            if status in ['critical', 'error', 'failed']:
+            status = report_data.get("status", "").lower()
+            if status in ["critical", "error", "failed"]:
                 global_status = "CRITICAL"
                 break
-            elif status in ['warning', 'degraded'] and global_status != "CRITICAL":
+            elif status in ["warning", "degraded"] and global_status != "CRITICAL":
                 global_status = "WARNING"
 
-    status_color = {
-        "OK": "#44ff44",
-        "WARNING": "#ffaa00",
-        "CRITICAL": "#ff4444"
-    }.get(global_status, "#4a9eff")
+    status_color = {"OK": "#44ff44", "WARNING": "#ffaa00", "CRITICAL": "#ff4444"}.get(
+        global_status, "#4a9eff"
+    )
 
     status_emoji = format_status_emoji(global_status)
     timestamp = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
@@ -358,12 +368,12 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
 
     # Ajouter chaque rapport avec détails enrichis
     report_names = {
-        'global_report.json': 'Rapport Global (Master)',
-        'prod_report.json': 'Production Guardian',
-        'integrity_report.json': 'Intégrité (Neo)',
-        'docs_report.json': 'Documentation (Anima)',
-        'unified_report.json': 'Rapport Unifié (Nexus)',
-        'orchestration_report.json': 'Orchestration'
+        "global_report.json": "Rapport Global (Master)",
+        "prod_report.json": "Production Guardian",
+        "integrity_report.json": "Intégrité (Neo)",
+        "docs_report.json": "Documentation (Anima)",
+        "unified_report.json": "Rapport Unifié (Nexus)",
+        "orchestration_report.json": "Orchestration",
     }
 
     for report_file, report_title in report_names.items():
@@ -371,7 +381,7 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
         if not report_data:
             continue
 
-        status = report_data.get('status', 'unknown')
+        status = report_data.get("status", "unknown")
         html += f"""
         <div class="report-section">
             <div class="report-title">{report_title}</div>
@@ -379,8 +389,8 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
 """
 
         # Summary avec grid
-        if 'summary' in report_data:
-            summary = report_data['summary']
+        if "summary" in report_data:
+            summary = report_data["summary"]
             if isinstance(summary, dict):
                 html += """
             <div class="summary-box">
@@ -388,8 +398,8 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
                 <div class="summary-grid">
 """
                 for key, value in summary.items():
-                    if key != 'status':
-                        display_key = key.replace('_', ' ').title()
+                    if key != "status":
+                        display_key = key.replace("_", " ").title()
                         html += f"""
                     <div class="summary-item">
                         <div class="number">{escape_html(str(value))}</div>
@@ -402,19 +412,19 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
 """
 
         # Error Patterns (NOUVEAU - enrichi)
-        if 'error_patterns' in report_data:
-            patterns = report_data['error_patterns']
+        if "error_patterns" in report_data:
+            patterns = report_data["error_patterns"]
             if isinstance(patterns, dict) and patterns:
                 html += """
             <h3>🔍 Error Patterns Analysis</h3>
             <div class="pattern-grid">
 """
-                if patterns.get('by_endpoint'):
+                if patterns.get("by_endpoint"):
                     html += """
                 <div class="pattern-box">
                     <h4>🌐 By Endpoint</h4>
 """
-                    for endpoint, count in list(patterns['by_endpoint'].items())[:5]:
+                    for endpoint, count in list(patterns["by_endpoint"].items())[:5]:
                         html += f"""
                     <div class="pattern-item">
                         <span class="endpoint-tag">{escape_html(endpoint)}</span>
@@ -425,12 +435,14 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
                 </div>
 """
 
-                if patterns.get('by_error_type'):
+                if patterns.get("by_error_type"):
                     html += """
                 <div class="pattern-box">
                     <h4>⚠️ By Error Type</h4>
 """
-                    for error_type, count in list(patterns['by_error_type'].items())[:5]:
+                    for error_type, count in list(patterns["by_error_type"].items())[
+                        :5
+                    ]:
                         html += f"""
                     <div class="pattern-item">
                         <span class="error-type-tag">{escape_html(error_type)}</span>
@@ -441,12 +453,12 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
                 </div>
 """
 
-                if patterns.get('by_file'):
+                if patterns.get("by_file"):
                     html += """
                 <div class="pattern-box">
                     <h4>📁 By File</h4>
 """
-                    for file_path, count in list(patterns['by_file'].items())[:5]:
+                    for file_path, count in list(patterns["by_file"].items())[:5]:
                         html += f"""
                     <div class="pattern-item">
                         <span class="file-tag">{escape_html(file_path)}</span>
@@ -461,8 +473,8 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
 """
 
         # Detailed Errors (NOUVEAU - enrichi avec stack traces)
-        if 'errors_detailed' in report_data:
-            errors = report_data['errors_detailed']
+        if "errors_detailed" in report_data:
+            errors = report_data["errors_detailed"]
             if isinstance(errors, list) and len(errors) > 0:
                 html += f"""
             <h3>❌ Detailed Errors (Top {len(errors)})</h3>
@@ -471,66 +483,66 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
                     html += """
             <div class="error-card">
 """
-                    if error.get('timestamp'):
+                    if error.get("timestamp"):
                         html += f"""
-                <p><strong>⏰ Time:</strong> <span class="timestamp">{escape_html(error['timestamp'])}</span></p>
+                <p><strong>⏰ Time:</strong> <span class="timestamp">{escape_html(error["timestamp"])}</span></p>
 """
-                    if error.get('severity'):
+                    if error.get("severity"):
                         html += f"""
-                <p><strong>🔴 Severity:</strong> {escape_html(error['severity'])}</p>
+                <p><strong>🔴 Severity:</strong> {escape_html(error["severity"])}</p>
 """
-                    if error.get('endpoint'):
-                        method = error.get('http_method', '')
+                    if error.get("endpoint"):
+                        method = error.get("http_method", "")
                         html += f"""
-                <p><strong>🌐 Endpoint:</strong> <span class="endpoint-tag">{escape_html(method)} {escape_html(error['endpoint'])}</span></p>
+                <p><strong>🌐 Endpoint:</strong> <span class="endpoint-tag">{escape_html(method)} {escape_html(error["endpoint"])}</span></p>
 """
-                    if error.get('error_type'):
+                    if error.get("error_type"):
                         html += f"""
-                <p><strong>⚠️ Type:</strong> <span class="error-type-tag">{escape_html(error['error_type'])}</span></p>
+                <p><strong>⚠️ Type:</strong> <span class="error-type-tag">{escape_html(error["error_type"])}</span></p>
 """
-                    if error.get('file_path'):
-                        line = error.get('line_number', '')
+                    if error.get("file_path"):
+                        line = error.get("line_number", "")
                         html += f"""
-                <p><strong>📁 File:</strong> <span class="file-tag">{escape_html(error['file_path'])}:{line}</span></p>
+                <p><strong>📁 File:</strong> <span class="file-tag">{escape_html(error["file_path"])}:{line}</span></p>
 """
-                    if error.get('message'):
+                    if error.get("message"):
                         html += f"""
                 <p><strong>💬 Message:</strong></p>
-                <div class="code-block"><pre>{escape_html(error['message'])}</pre></div>
+                <div class="code-block"><pre>{escape_html(error["message"])}</pre></div>
 """
-                    if error.get('stack_trace'):
+                    if error.get("stack_trace"):
                         html += f"""
                 <p><strong>📚 Stack Trace:</strong></p>
-                <div class="code-block"><pre>{escape_html(error['stack_trace'])}</pre></div>
+                <div class="code-block"><pre>{escape_html(error["stack_trace"])}</pre></div>
 """
-                    if error.get('request_id'):
+                    if error.get("request_id"):
                         html += f"""
-                <p><strong>🔍 Request ID:</strong> <code>{escape_html(error['request_id'])}</code></p>
+                <p><strong>🔍 Request ID:</strong> <code>{escape_html(error["request_id"])}</code></p>
 """
                     html += """
             </div>
 """
 
         # Code Snippets (NOUVEAU - enrichi)
-        if 'code_snippets' in report_data:
-            snippets = report_data['code_snippets']
+        if "code_snippets" in report_data:
+            snippets = report_data["code_snippets"]
             if isinstance(snippets, list) and len(snippets) > 0:
                 html += """
             <h3>💻 Suspect Code Snippets</h3>
 """
                 for snippet in snippets[:5]:  # Max 5 snippets
-                    error_count = snippet.get('error_count', 0)
+                    error_count = snippet.get("error_count", 0)
                     html += f"""
             <div class="pattern-box">
-                <h4>📁 {escape_html(snippet.get('file', ''))} <span style="color: #ff4444;">({error_count} errors)</span></h4>
-                <p style="font-size: 12px; color: #a0a0a0;">Line {snippet.get('line', '')} (showing lines {snippet.get('start_line', '')}-{snippet.get('end_line', '')})</p>
-                <div class="code-block"><pre>{escape_html(snippet.get('code_snippet', ''))}</pre></div>
+                <h4>📁 {escape_html(snippet.get("file", ""))} <span style="color: #ff4444;">({error_count} errors)</span></h4>
+                <p style="font-size: 12px; color: #a0a0a0;">Line {snippet.get("line", "")} (showing lines {snippet.get("start_line", "")}-{snippet.get("end_line", "")})</p>
+                <div class="code-block"><pre>{escape_html(snippet.get("code_snippet", ""))}</pre></div>
             </div>
 """
 
         # Recent Commits (NOUVEAU - enrichi)
-        if 'recent_commits' in report_data:
-            commits = report_data['recent_commits']
+        if "recent_commits" in report_data:
+            commits = report_data["recent_commits"]
             if isinstance(commits, list) and len(commits) > 0:
                 html += """
             <h3>🔀 Recent Commits (Potential Culprits)</h3>
@@ -538,67 +550,67 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
                 for commit in commits[:5]:  # Max 5 commits
                     html += f"""
             <div class="pattern-box" style="margin-bottom: 10px;">
-                <span style="color: #4a9eff; font-family: monospace;">{escape_html(commit.get('hash', ''))}</span>
-                by <span style="color: #ffaa00;">{escape_html(commit.get('author', ''))}</span>
-                <span class="timestamp">({escape_html(commit.get('time', ''))})</span>
-                <p style="margin: 5px 0 0 0;">{escape_html(commit.get('message', ''))}</p>
+                <span style="color: #4a9eff; font-family: monospace;">{escape_html(commit.get("hash", ""))}</span>
+                by <span style="color: #ffaa00;">{escape_html(commit.get("author", ""))}</span>
+                <span class="timestamp">({escape_html(commit.get("time", ""))})</span>
+                <p style="margin: 5px 0 0 0;">{escape_html(commit.get("message", ""))}</p>
             </div>
 """
 
         # Recommendations (ENRICHI avec commandes, fichiers affectés, etc.)
-        if 'recommendations' in report_data:
-            recommendations = report_data['recommendations']
+        if "recommendations" in report_data:
+            recommendations = report_data["recommendations"]
             if isinstance(recommendations, list) and len(recommendations) > 0:
                 html += """
             <h3>💡 Recommendations</h3>
 """
                 for rec in recommendations:
-                    priority = rec.get('priority', 'MEDIUM')
+                    priority = rec.get("priority", "MEDIUM")
                     priority_class = priority.lower()
-                    action = rec.get('action', '')
-                    details = rec.get('details', '')
+                    action = rec.get("action", "")
+                    details = rec.get("details", "")
 
                     html += f"""
             <div class="recommendation {priority_class}">
                 <p><strong>🚨 [{escape_html(priority)}] {escape_html(action)}</strong></p>
                 <p>{escape_html(details)}</p>
 """
-                    if rec.get('command'):
+                    if rec.get("command"):
                         html += f"""
                 <p><strong>Command:</strong></p>
-                <div class="code-block"><pre>{escape_html(rec['command'])}</pre></div>
+                <div class="code-block"><pre>{escape_html(rec["command"])}</pre></div>
 """
-                    if rec.get('rollback_command'):
+                    if rec.get("rollback_command"):
                         html += f"""
                 <p><strong>Rollback Command:</strong></p>
-                <div class="code-block"><pre>{escape_html(rec['rollback_command'])}</pre></div>
+                <div class="code-block"><pre>{escape_html(rec["rollback_command"])}</pre></div>
 """
-                    if rec.get('suggested_fix'):
+                    if rec.get("suggested_fix"):
                         html += f"""
-                <p><strong>Suggested Fix:</strong> {escape_html(rec['suggested_fix'])}</p>
+                <p><strong>Suggested Fix:</strong> {escape_html(rec["suggested_fix"])}</p>
 """
-                    if rec.get('affected_endpoints'):
+                    if rec.get("affected_endpoints"):
                         html += """
                 <p><strong>Affected Endpoints:</strong></p>
 """
-                        for endpoint in rec['affected_endpoints']:
+                        for endpoint in rec["affected_endpoints"]:
                             html += f"""
                 <span class="endpoint-tag">{escape_html(endpoint)}</span>
 """
-                    if rec.get('affected_files'):
+                    if rec.get("affected_files"):
                         html += """
                 <p><strong>Affected Files:</strong></p>
 """
-                        for file_path in rec['affected_files']:
+                        for file_path in rec["affected_files"]:
                             html += f"""
                 <span class="file-tag">{escape_html(file_path)}</span>
 """
-                    if rec.get('suggested_investigation'):
+                    if rec.get("suggested_investigation"):
                         html += """
                 <p><strong>Investigation Steps:</strong></p>
                 <ul>
 """
-                        for step in rec['suggested_investigation']:
+                        for step in rec["suggested_investigation"]:
                             html += f"""
                     <li>{escape_html(step)}</li>
 """
@@ -610,9 +622,9 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
 """
 
         # Timestamp du rapport
-        if 'timestamp' in report_data:
+        if "timestamp" in report_data:
             html += f"""
-            <p class="timestamp">Dernier scan: {escape_html(report_data['timestamp'])}</p>
+            <p class="timestamp">Dernier scan: {escape_html(report_data["timestamp"])}</p>
 """
 
         html += """
@@ -644,7 +656,7 @@ def generate_text_report(reports: Dict[str, Optional[Dict]]) -> str:
 
     text = f"""
 🛡️ RAPPORT GUARDIAN ÉMERGENCE V8
-{'='*60}
+{"=" * 60}
 
 Généré le: {timestamp}
 
@@ -652,12 +664,12 @@ Généré le: {timestamp}
 
     # Ajouter chaque rapport
     report_names = {
-        'global_report.json': 'RAPPORT GLOBAL (MASTER)',
-        'prod_report.json': 'PRODUCTION GUARDIAN',
-        'integrity_report.json': 'INTÉGRITÉ (NEO)',
-        'docs_report.json': 'DOCUMENTATION (ANIMA)',
-        'unified_report.json': 'RAPPORT UNIFIÉ (NEXUS)',
-        'orchestration_report.json': 'ORCHESTRATION'
+        "global_report.json": "RAPPORT GLOBAL (MASTER)",
+        "prod_report.json": "PRODUCTION GUARDIAN",
+        "integrity_report.json": "INTÉGRITÉ (NEO)",
+        "docs_report.json": "DOCUMENTATION (ANIMA)",
+        "unified_report.json": "RAPPORT UNIFIÉ (NEXUS)",
+        "orchestration_report.json": "ORCHESTRATION",
     }
 
     for report_file, report_title in report_names.items():
@@ -670,14 +682,14 @@ Généré le: {timestamp}
         text += format_report_summary(report_file, report_data)
 
         # Recommendations
-        if 'recommendations' in report_data:
-            recommendations = report_data['recommendations']
+        if "recommendations" in report_data:
+            recommendations = report_data["recommendations"]
             if isinstance(recommendations, list) and len(recommendations) > 0:
                 text += "\n  📋 Recommandations:\n"
                 for rec in recommendations[:3]:
                     if isinstance(rec, dict):
-                        priority = rec.get('priority', 'MEDIUM')
-                        action = rec.get('action', rec.get('recommendation', ''))
+                        priority = rec.get("priority", "MEDIUM")
+                        action = rec.get("action", rec.get("recommendation", ""))
                         text += f"    [{priority}] {action}\n"
 
         text += "\n"
@@ -702,12 +714,12 @@ async def send_guardian_reports():
 
     # Charger tous les rapports disponibles
     report_files = [
-        'global_report.json',
-        'prod_report.json',
-        'integrity_report.json',
-        'docs_report.json',
-        'unified_report.json',
-        'orchestration_report.json'
+        "global_report.json",
+        "prod_report.json",
+        "integrity_report.json",
+        "docs_report.json",
+        "unified_report.json",
+        "orchestration_report.json",
     ]
 
     reports = {}
@@ -741,20 +753,19 @@ async def send_guardian_reports():
     print(f"\n📤 Envoi du rapport à: {ADMIN_EMAIL}")
 
     # Envoyer l'email
-    subject = f"🛡️ Rapport Guardian ÉMERGENCE - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    subject = (
+        f"🛡️ Rapport Guardian ÉMERGENCE - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    )
 
     success = await email_service.send_custom_email(
-        to_email=ADMIN_EMAIL,
-        subject=subject,
-        html_body=html_body,
-        text_body=text_body
+        to_email=ADMIN_EMAIL, subject=subject, html_body=html_body, text_body=text_body
     )
 
     if success:
         print(f"✅ Rapport Guardian envoyé avec succès à {ADMIN_EMAIL}")
         return True
     else:
-        print(f"❌ Échec de l'envoi du rapport")
+        print("❌ Échec de l'envoi du rapport")
         return False
 
 
@@ -766,7 +777,7 @@ async def main():
         "--to",
         type=str,
         default=ADMIN_EMAIL,
-        help=f"Email recipient (default: {ADMIN_EMAIL})"
+        help=f"Email recipient (default: {ADMIN_EMAIL})",
     )
     args = parser.parse_args()
 
@@ -782,6 +793,7 @@ async def main():
     except Exception as e:
         print(f"❌ Erreur: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

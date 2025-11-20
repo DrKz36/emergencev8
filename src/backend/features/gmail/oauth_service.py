@@ -23,7 +23,7 @@ logger = logging.getLogger("emergence.gmail.oauth")
 class GmailOAuthService:
     """Service pour gérer OAuth2 Gmail."""
 
-    SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+    SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
     def __init__(self):
         self.client_config = self._load_client_config()
@@ -36,27 +36,30 @@ class GmailOAuthService:
             dict: Configuration OAuth client
         """
         # En production Cloud Run, lire depuis Secret Manager
-        if os.getenv('K_SERVICE'):  # Variable Cloud Run
+        if os.getenv("K_SERVICE"):  # Variable Cloud Run
             try:
                 from google.cloud import secretmanager
+
                 client = secretmanager.SecretManagerServiceClient()
                 project_id = os.getenv("GCP_PROJECT_ID", "emergence-469005")
                 secret_name = f"projects/{project_id}/secrets/gmail-oauth-client-secret/versions/latest"
                 response = client.access_secret_version(request={"name": secret_name})
-                return cast(dict[str, Any], json.loads(response.payload.data.decode('UTF-8')))
+                return cast(
+                    dict[str, Any], json.loads(response.payload.data.decode("UTF-8"))
+                )
             except Exception as e:
                 logger.error(f"Failed to load OAuth secret from Secret Manager: {e}")
                 raise
 
         # En local, lire depuis fichier
-        secret_path = os.path.join(os.getcwd(), 'gmail_client_secret.json')
+        secret_path = os.path.join(os.getcwd(), "gmail_client_secret.json")
         if not os.path.exists(secret_path):
             raise FileNotFoundError(
                 f"Gmail OAuth client secret not found at {secret_path}. "
                 "Download from GCP Console and place in project root."
             )
 
-        with open(secret_path, 'r') as f:
+        with open(secret_path, "r") as f:
             return cast(dict[str, Any], json.load(f))
 
     def initiate_oauth(self, redirect_uri: str) -> str:
@@ -70,24 +73,19 @@ class GmailOAuthService:
             str: URL de consentement Google
         """
         flow = Flow.from_client_config(
-            self.client_config,
-            scopes=self.SCOPES,
-            redirect_uri=redirect_uri
+            self.client_config, scopes=self.SCOPES, redirect_uri=redirect_uri
         )
 
         authorization_url, state = flow.authorization_url(
-            access_type='offline',  # Pour refresh token
-            prompt='consent'  # Force consent screen (pour avoir refresh_token)
+            access_type="offline",  # Pour refresh token
+            prompt="consent",  # Force consent screen (pour avoir refresh_token)
         )
 
         logger.info(f"OAuth flow initiated, state={state}")
         return cast(str, authorization_url)
 
     async def handle_callback(
-        self,
-        code: str,
-        redirect_uri: str,
-        user_email: str = "admin"
+        self, code: str, redirect_uri: str, user_email: str = "admin"
     ) -> dict[str, Any]:
         """
         Échange le code OAuth contre des tokens et les stocke.
@@ -102,9 +100,7 @@ class GmailOAuthService:
         """
         try:
             flow = Flow.from_client_config(
-                self.client_config,
-                scopes=self.SCOPES,
-                redirect_uri=redirect_uri
+                self.client_config, scopes=self.SCOPES, redirect_uri=redirect_uri
             )
 
             flow.fetch_token(code=code)
@@ -131,17 +127,17 @@ class GmailOAuthService:
         from google.cloud import firestore  # type: ignore[attr-defined]
 
         db = firestore.Client()
-        tokens_ref = db.collection('gmail_oauth_tokens').document(user_email)
+        tokens_ref = db.collection("gmail_oauth_tokens").document(user_email)
 
         token_data = {
-            'token': credentials.token,
-            'refresh_token': credentials.refresh_token,
-            'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
-            'scopes': credentials.scopes,
-            'expiry': credentials.expiry.isoformat() if credentials.expiry else None,
-            'updated_at': datetime.utcnow().isoformat()
+            "token": credentials.token,
+            "refresh_token": credentials.refresh_token,
+            "token_uri": credentials.token_uri,
+            "client_id": credentials.client_id,
+            "client_secret": credentials.client_secret,
+            "scopes": credentials.scopes,
+            "expiry": credentials.expiry.isoformat() if credentials.expiry else None,
+            "updated_at": datetime.utcnow().isoformat(),
         }
 
         tokens_ref.set(token_data)
@@ -160,7 +156,7 @@ class GmailOAuthService:
         from google.cloud import firestore  # type: ignore[attr-defined]
 
         db = firestore.Client()
-        tokens_ref = db.collection('gmail_oauth_tokens').document(user_email)
+        tokens_ref = db.collection("gmail_oauth_tokens").document(user_email)
         doc = tokens_ref.get()
 
         if not doc.exists:
@@ -170,12 +166,12 @@ class GmailOAuthService:
         token_data = doc.to_dict()
 
         credentials = Credentials(
-            token=token_data['token'],
-            refresh_token=token_data.get('refresh_token'),
-            token_uri=token_data['token_uri'],
-            client_id=token_data['client_id'],
-            client_secret=token_data['client_secret'],
-            scopes=token_data['scopes']
+            token=token_data["token"],
+            refresh_token=token_data.get("refresh_token"),
+            token_uri=token_data["token_uri"],
+            client_id=token_data["client_id"],
+            client_secret=token_data["client_secret"],
+            scopes=token_data["scopes"],
         )
 
         # Auto-refresh si expiré

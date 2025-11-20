@@ -50,16 +50,37 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
 
 if not PROMETHEUS_AVAILABLE:
-    logger.warning("Prometheus client non disponible - métriques préférences désactivées")
+    logger.warning(
+        "Prometheus client non disponible - métriques préférences désactivées"
+    )
 
 # Verbes cibles pour filtrage lexical (patterns souples)
 PREFERENCE_VERBS = {
-    "fr": ["préfèr", "préfér", "prefere", "aim", "aime", "déteste", "adore", "appréci", "favoris"],
+    "fr": [
+        "préfèr",
+        "préfér",
+        "prefere",
+        "aim",
+        "aime",
+        "déteste",
+        "adore",
+        "appréci",
+        "favoris",
+    ],
     "en": ["prefer", "like", "love", "hate", "enjoy", "favorite"],
 }
 
 INTENT_VERBS = {
-    "fr": ["vouloir", "veux", "vais", "souhaite", "planifie", "prévoi", "décide", "compte"],
+    "fr": [
+        "vouloir",
+        "veux",
+        "vais",
+        "souhaite",
+        "planifie",
+        "prévoi",
+        "décide",
+        "compte",
+    ],
     "en": ["want", "wish", "plan", "intend", "decide", "will", "going to"],
 }
 
@@ -111,7 +132,11 @@ class PreferenceExtractor:
         self.stats = {"extracted": 0, "filtered": 0, "classified": 0}
 
     async def extract(
-        self, messages: List[Dict[str, Any]], user_sub: Optional[str] = None, thread_id: Optional[str] = None, user_id: Optional[str] = None
+        self,
+        messages: List[Dict[str, Any]],
+        user_sub: Optional[str] = None,
+        thread_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> List[PreferenceRecord]:
         """
         Extrait préférences/intentions depuis messages.
@@ -316,7 +341,8 @@ Réponds UNIQUEMENT en JSON valide :
                 if attempt < max_retries - 1:
                     # Backoff exponentiel: 1s, 2s
                     import asyncio
-                    wait_time = 2 ** attempt
+
+                    wait_time = 2**attempt
                     logger.warning(
                         f"LLM classification attempt {attempt + 1}/{max_retries} failed: {e}. "
                         f"Retrying in {wait_time}s..."
@@ -324,7 +350,10 @@ Réponds UNIQUEMENT en JSON valide :
                     await asyncio.sleep(wait_time)
                 else:
                     # Dernière tentative échouée
-                    logger.error(f"LLM classification failed after {max_retries} attempts: {e}", exc_info=True)
+                    logger.error(
+                        f"LLM classification failed after {max_retries} attempts: {e}",
+                        exc_info=True,
+                    )
 
         # Fallback si boucle se termine sans succès (ne devrait jamais arriver)
         return {

@@ -8,16 +8,20 @@ from backend.shared.exceptions import TemporalSearchException
 
 logger = logging.getLogger(__name__)
 
+
 class TemporalSearch:
     """
     TEMPORAL SEARCH V9.2 - Moteur d'exploration de la Mémoire Vive.
     Fournit une interface async pour interroger les messages archivés.
     """
+
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
         logger.info("TemporalSearch V9.2 (Async) initialisé.")
 
-    async def search_messages(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    async def search_messages(
+        self, query: str, limit: int = 10
+    ) -> List[Dict[str, Any]]:
         if not query or not str(query).strip():
             logger.warning("Tentative de recherche avec une requête vide.")
             return []
@@ -28,4 +32,6 @@ class TemporalSearch:
             return results
         except Exception as e:
             logger.error(f"Erreur durant la recherche: {e}", exc_info=True)
-            raise TemporalSearchException("An error occurred in the database during search.") from e
+            raise TemporalSearchException(
+                "An error occurred in the database during search."
+            ) from e

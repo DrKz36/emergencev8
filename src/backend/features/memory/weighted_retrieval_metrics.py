@@ -27,7 +27,12 @@ try:
                 raise
             return cast(Counter, existing)
 
-    def _get_or_create_histogram(name: str, doc: str, labels: list[str], buckets: Optional[tuple[float, ...]] = None) -> Histogram:
+    def _get_or_create_histogram(
+        name: str,
+        doc: str,
+        labels: list[str],
+        buckets: Optional[tuple[float, ...]] = None,
+    ) -> Histogram:
         try:
             kwargs: dict[str, Any] = {"registry": REGISTRY}
             if buckets:
@@ -39,7 +44,9 @@ try:
                 raise
             return cast(Histogram, existing)
 
-    def _get_or_create_gauge(name: str, doc: str, labels: Optional[list[str]] = None) -> Gauge:
+    def _get_or_create_gauge(
+        name: str, doc: str, labels: Optional[list[str]] = None
+    ) -> Gauge:
         try:
             if labels:
                 return Gauge(name, doc, labels, registry=REGISTRY)
@@ -53,68 +60,68 @@ try:
 
     # Métriques latence scoring
     WEIGHTED_SCORING_DURATION = _get_or_create_histogram(
-        'weighted_scoring_duration_seconds',
-        'Durée calcul score pondéré par entrée',
-        ['collection'],
-        buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0)
+        "weighted_scoring_duration_seconds",
+        "Durée calcul score pondéré par entrée",
+        ["collection"],
+        buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0),
     )
 
     # Distribution des scores
     WEIGHTED_SCORE_DISTRIBUTION = _get_or_create_histogram(
-        'weighted_score_distribution',
-        'Distribution des scores pondérés',
-        ['collection'],
-        buckets=(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)
+        "weighted_score_distribution",
+        "Distribution des scores pondérés",
+        ["collection"],
+        buckets=(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
     )
 
     # Métriques requêtes
     WEIGHTED_QUERY_TOTAL = _get_or_create_counter(
-        'weighted_query_requests_total',
-        'Nombre requêtes query_weighted',
-        ['collection', 'status']  # status: success/error
+        "weighted_query_requests_total",
+        "Nombre requêtes query_weighted",
+        ["collection", "status"],  # status: success/error
     )
 
     WEIGHTED_QUERY_RESULTS = _get_or_create_histogram(
-        'weighted_query_results_count',
-        'Nombre résultats par requête',
-        ['collection'],
-        buckets=(0, 1, 5, 10, 20, 50, 100)
+        "weighted_query_results_count",
+        "Nombre résultats par requête",
+        ["collection"],
+        buckets=(0, 1, 5, 10, 20, 50, 100),
     )
 
     # Métriques métadonnées update
     METADATA_UPDATE_TOTAL = _get_or_create_counter(
-        'memory_metadata_updates_total',
-        'Nombre updates métadonnées (last_used_at, use_count)',
-        ['collection']
+        "memory_metadata_updates_total",
+        "Nombre updates métadonnées (last_used_at, use_count)",
+        ["collection"],
     )
 
     METADATA_UPDATE_DURATION = _get_or_create_histogram(
-        'memory_metadata_update_duration_seconds',
-        'Durée update métadonnées',
-        ['collection'],
-        buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 5.0)
+        "memory_metadata_update_duration_seconds",
+        "Durée update métadonnées",
+        ["collection"],
+        buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 5.0),
     )
 
     # Métriques temporelles
     MEMORY_AGE_DISTRIBUTION = _get_or_create_histogram(
-        'memory_entry_age_days',
-        'Distribution âge entrées (jours depuis last_used_at)',
-        ['collection'],
-        buckets=(1, 7, 14, 30, 60, 90, 180, 365)
+        "memory_entry_age_days",
+        "Distribution âge entrées (jours depuis last_used_at)",
+        ["collection"],
+        buckets=(1, 7, 14, 30, 60, 90, 180, 365),
     )
 
     USE_COUNT_DISTRIBUTION = _get_or_create_histogram(
-        'memory_use_count_distribution',
-        'Distribution use_count des entrées',
-        ['collection'],
-        buckets=(1, 2, 5, 10, 20, 50, 100, 500)
+        "memory_use_count_distribution",
+        "Distribution use_count des entrées",
+        ["collection"],
+        buckets=(1, 2, 5, 10, 20, 50, 100, 500),
     )
 
     # Gauge pour stats globales
     ACTIVE_MEMORIES_COUNT = _get_or_create_gauge(
-        'memory_active_entries_total',
-        'Nombre entrées actives par collection',
-        ['collection']
+        "memory_active_entries_total",
+        "Nombre entrées actives par collection",
+        ["collection"],
     )
 
     PROMETHEUS_AVAILABLE = True
@@ -132,10 +139,7 @@ class WeightedRetrievalMetrics:
 
     @staticmethod
     def record_query(
-        collection: str,
-        status: str,
-        results_count: int,
-        duration_seconds: float
+        collection: str, status: str, results_count: int, duration_seconds: float
     ) -> None:
         """
         Enregistre métrique requête query_weighted.
@@ -153,11 +157,7 @@ class WeightedRetrievalMetrics:
         WEIGHTED_QUERY_RESULTS.labels(collection=collection).observe(results_count)
 
     @staticmethod
-    def record_score(
-        collection: str,
-        score: float,
-        duration_seconds: float
-    ) -> None:
+    def record_score(collection: str, score: float, duration_seconds: float) -> None:
         """
         Enregistre métrique calcul score.
 
@@ -169,14 +169,13 @@ class WeightedRetrievalMetrics:
         if not PROMETHEUS_AVAILABLE:
             return
 
-        WEIGHTED_SCORING_DURATION.labels(collection=collection).observe(duration_seconds)
+        WEIGHTED_SCORING_DURATION.labels(collection=collection).observe(
+            duration_seconds
+        )
         WEIGHTED_SCORE_DISTRIBUTION.labels(collection=collection).observe(score)
 
     @staticmethod
-    def record_metadata_update(
-        collection: str,
-        duration_seconds: float
-    ) -> None:
+    def record_metadata_update(collection: str, duration_seconds: float) -> None:
         """
         Enregistre métrique update métadonnées.
 
@@ -191,10 +190,7 @@ class WeightedRetrievalMetrics:
         METADATA_UPDATE_DURATION.labels(collection=collection).observe(duration_seconds)
 
     @staticmethod
-    def record_entry_age(
-        collection: str,
-        age_days: float
-    ) -> None:
+    def record_entry_age(collection: str, age_days: float) -> None:
         """
         Enregistre métrique âge entrée.
 
@@ -208,10 +204,7 @@ class WeightedRetrievalMetrics:
         MEMORY_AGE_DISTRIBUTION.labels(collection=collection).observe(age_days)
 
     @staticmethod
-    def record_use_count(
-        collection: str,
-        use_count: int
-    ) -> None:
+    def record_use_count(collection: str, use_count: int) -> None:
         """
         Enregistre métrique use_count.
 
@@ -225,10 +218,7 @@ class WeightedRetrievalMetrics:
         USE_COUNT_DISTRIBUTION.labels(collection=collection).observe(use_count)
 
     @staticmethod
-    def set_active_count(
-        collection: str,
-        count: int
-    ) -> None:
+    def set_active_count(collection: str, count: int) -> None:
         """
         Met à jour gauge nombre entrées actives.
 

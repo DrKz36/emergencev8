@@ -3,6 +3,7 @@
 Admin Dashboard Service - Global statistics accessible only to admins
 V1.0 - Provides global aggregated data across all users and sessions
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,11 +35,17 @@ class AdminDashboardService:
         """
         try:
             # Get global costs (no user_id or session_id filter, admin mode)
-            costs_global = await db_queries.get_costs_summary(self.db, allow_global=True)
+            costs_global = await db_queries.get_costs_summary(
+                self.db, allow_global=True
+            )
 
             # Get all documents and sessions (admin mode)
-            documents_all = await db_queries.get_all_documents(self.db, allow_global=True)
-            sessions_all = await db_queries.get_all_sessions_overview(self.db, allow_global=True)
+            documents_all = await db_queries.get_all_documents(
+                self.db, allow_global=True
+            )
+            sessions_all = await db_queries.get_all_sessions_overview(
+                self.db, allow_global=True
+            )
 
             # Get per-user breakdown
             users_breakdown = await self._get_users_breakdown()
@@ -50,8 +57,12 @@ class AdminDashboardService:
                 "global_costs": {
                     "total_cost": float(costs_global.get("total", 0.0) or 0.0),
                     "today_cost": float(costs_global.get("today", 0.0) or 0.0),
-                    "current_week_cost": float(costs_global.get("this_week", 0.0) or 0.0),
-                    "current_month_cost": float(costs_global.get("this_month", 0.0) or 0.0),
+                    "current_week_cost": float(
+                        costs_global.get("this_week", 0.0) or 0.0
+                    ),
+                    "current_month_cost": float(
+                        costs_global.get("this_month", 0.0) or 0.0
+                    ),
                 },
                 "global_monitoring": {
                     "total_documents": len(documents_all) if documents_all else 0,
@@ -67,7 +78,9 @@ class AdminDashboardService:
                 },
             }
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error fetching global data: {e}", exc_info=True)
+            logger.error(
+                f"[admin_dashboard] Error fetching global data: {e}", exc_info=True
+            )
             return {
                 "global_costs": {
                     "total_cost": 0.0,
@@ -113,7 +126,9 @@ class AdminDashboardService:
 
         # Try to query with oauth_sub column first (new schema)
         try:
-            cursor = await conn.execute("SELECT email, role, oauth_sub FROM auth_allowlist")
+            cursor = await conn.execute(
+                "SELECT email, role, oauth_sub FROM auth_allowlist"
+            )
             allowlist_rows = await cursor.fetchall()
             has_oauth_sub = True
         except sqlite3.OperationalError as e:
@@ -136,7 +151,7 @@ class AdminDashboardService:
                 email, role = row
 
             # Support legacy format: SHA256 hash of email
-            email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()
+            email_hash = hashlib.sha256(email.encode("utf-8")).hexdigest()
             email_map[email_hash] = (email, role)
 
             # Support current format: plain email
@@ -169,7 +184,7 @@ class AdminDashboardService:
                     rows.append((user_id, email, role))
                 else:
                     # Fallback: use user_id as email if no match
-                    rows.append((user_id, user_id, 'member'))
+                    rows.append((user_id, user_id, "member"))
 
             if not rows:
                 logger.warning("[admin_dashboard] No users found in sessions table")
@@ -199,26 +214,30 @@ class AdminDashboardService:
                 costs_by_module = await self._get_user_costs_by_module(user_id)
                 first_session_time = await self._get_user_first_session(user_id)
 
-                users_data.append({
-                    "user_id": user_id,
-                    "email": user_email,
-                    "role": user_role,
-                    "total_cost": float(user_costs.get("total", 0.0) or 0.0),
-                    "session_count": len(user_sessions) if user_sessions else 0,
-                    "document_count": len(user_documents) if user_documents else 0,
-                    "last_activity": await self._get_user_last_activity(user_id),
-                    "first_session": first_session_time,
-                    "total_usage_time_minutes": usage_stats.get("total_minutes", 0),
-                    "modules_used": modules_used,
-                    "costs_by_module": costs_by_module,
-                })
+                users_data.append(
+                    {
+                        "user_id": user_id,
+                        "email": user_email,
+                        "role": user_role,
+                        "total_cost": float(user_costs.get("total", 0.0) or 0.0),
+                        "session_count": len(user_sessions) if user_sessions else 0,
+                        "document_count": len(user_documents) if user_documents else 0,
+                        "last_activity": await self._get_user_last_activity(user_id),
+                        "first_session": first_session_time,
+                        "total_usage_time_minutes": usage_stats.get("total_minutes", 0),
+                        "modules_used": modules_used,
+                        "costs_by_module": costs_by_module,
+                    }
+                )
 
             # Sort by total cost descending
             users_data.sort(key=lambda x: x["total_cost"], reverse=True)
             return users_data
 
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error getting users breakdown: {e}", exc_info=True)
+            logger.error(
+                f"[admin_dashboard] Error getting users breakdown: {e}", exc_info=True
+            )
             return []
 
     async def _get_user_last_activity(self, user_id: str) -> Optional[str]:
@@ -272,8 +291,8 @@ class AdminDashboardService:
             for row in rows:
                 if row[0] and row[1]:
                     try:
-                        created = datetime.fromisoformat(row[0].replace('Z', '+00:00'))
-                        updated = datetime.fromisoformat(row[1].replace('Z', '+00:00'))
+                        created = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+                        updated = datetime.fromisoformat(row[1].replace("Z", "+00:00"))
                         duration = (updated - created).total_seconds() / 60
                         total_minutes += max(0, duration)  # Only positive durations
                     except Exception:
@@ -353,33 +372,41 @@ class AdminDashboardService:
                 daily_total = float(row[0]) if row and row[0] else 0.0
                 request_count = int(row[1]) if row and row[1] else 0
 
-                daily_costs.append({
-                    "date": date_str,
-                    "cost": daily_total,
-                    "request_count": request_count,
-                })
+                daily_costs.append(
+                    {
+                        "date": date_str,
+                        "cost": daily_total,
+                        "request_count": request_count,
+                    }
+                )
 
             # Reverse to show oldest to newest
             daily_costs.reverse()
 
-            logger.info(f"[admin_dashboard] Date metrics calculated for last 7 days, total entries: {len(daily_costs)}")
+            logger.info(
+                f"[admin_dashboard] Date metrics calculated for last 7 days, total entries: {len(daily_costs)}"
+            )
 
             return {
                 "last_7_days": daily_costs,
             }
 
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error getting date metrics: {e}", exc_info=True)
+            logger.error(
+                f"[admin_dashboard] Error getting date metrics: {e}", exc_info=True
+            )
             # Return valid structure with 7 days of zero data as fallback
             now = datetime.now(timezone.utc)
             fallback_costs = []
             for i in range(7):
-                date = now - timedelta(days=6-i)
-                fallback_costs.append({
-                    "date": date.strftime("%Y-%m-%d"),
-                    "cost": 0.0,
-                    "request_count": 0,
-                })
+                date = now - timedelta(days=6 - i)
+                fallback_costs.append(
+                    {
+                        "date": date.strftime("%Y-%m-%d"),
+                        "cost": 0.0,
+                        "request_count": 0,
+                    }
+                )
             return {"last_7_days": fallback_costs}
 
     async def get_user_detailed_data(self, user_id: str) -> Dict[str, Any]:
@@ -392,7 +419,9 @@ class AdminDashboardService:
             costs = await db_queries.get_costs_summary(self.db, user_id=user_id)
 
             # Get user sessions with details
-            sessions = await db_queries.get_all_sessions_overview(self.db, user_id=user_id)
+            sessions = await db_queries.get_all_sessions_overview(
+                self.db, user_id=user_id
+            )
 
             # Get user documents
             documents = await db_queries.get_all_documents(self.db, user_id=user_id)
@@ -413,7 +442,10 @@ class AdminDashboardService:
                 "cost_history": cost_history,
             }
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error getting user {user_id} data: {e}", exc_info=True)
+            logger.error(
+                f"[admin_dashboard] Error getting user {user_id} data: {e}",
+                exc_info=True,
+            )
             return {
                 "user_id": user_id,
                 "costs": {
@@ -427,7 +459,9 @@ class AdminDashboardService:
                 "cost_history": [],
             }
 
-    async def _get_user_cost_history(self, user_id: str, days: int = 30) -> List[Dict[str, Any]]:
+    async def _get_user_cost_history(
+        self, user_id: str, days: int = 30
+    ) -> List[Dict[str, Any]]:
         """Get cost logs history for a user with NULL-safe timestamp handling."""
         try:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
@@ -452,19 +486,26 @@ class AdminDashboardService:
 
             history = []
             for row in rows:
-                history.append({
-                    "timestamp": row[0],
-                    "agent": row[1],
-                    "model": row[2],
-                    "cost": float(row[3]) if row[3] else 0.0,
-                    "feature": row[4],
-                    "session_id": row[5],
-                })
+                history.append(
+                    {
+                        "timestamp": row[0],
+                        "agent": row[1],
+                        "model": row[2],
+                        "cost": float(row[3]) if row[3] else 0.0,
+                        "feature": row[4],
+                        "session_id": row[5],
+                    }
+                )
 
-            logger.info(f"[admin_dashboard] Retrieved {len(history)} cost history entries for user {user_id}")
+            logger.info(
+                f"[admin_dashboard] Retrieved {len(history)} cost history entries for user {user_id}"
+            )
             return history
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error getting cost history for {user_id}: {e}", exc_info=True)
+            logger.error(
+                f"[admin_dashboard] Error getting cost history for {user_id}: {e}",
+                exc_info=True,
+            )
             return []
 
     async def get_active_threads(self) -> List[Dict[str, Any]]:
@@ -516,6 +557,7 @@ class AdminDashboardService:
                 if metadata_json:
                     try:
                         import json
+
                         metadata = json.loads(metadata_json)
                     except Exception:
                         pass
@@ -524,8 +566,12 @@ class AdminDashboardService:
                 duration_minutes: float = 0
                 if created_at and updated_at:
                     try:
-                        created = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                        updated = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                        created = datetime.fromisoformat(
+                            created_at.replace("Z", "+00:00")
+                        )
+                        updated = datetime.fromisoformat(
+                            updated_at.replace("Z", "+00:00")
+                        )
                         duration_minutes = (updated - created).total_seconds() / 60
                     except Exception:
                         pass
@@ -534,31 +580,37 @@ class AdminDashboardService:
                 is_active = False
                 if updated_at:
                     try:
-                        updated = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                        updated = datetime.fromisoformat(
+                            updated_at.replace("Z", "+00:00")
+                        )
                         now = datetime.now(timezone.utc)
                         minutes_since_activity = (now - updated).total_seconds() / 60
                         is_active = minutes_since_activity < 30
                     except Exception:
                         pass
 
-                sessions.append({
-                    "session_id": session_id,
-                    "user_id": user_id,
-                    "email": email,
-                    "role": role,
-                    "created_at": created_at,
-                    "last_activity": updated_at,
-                    "duration_minutes": round(duration_minutes, 2),
-                    "is_active": is_active,
-                    "device": metadata.get("device", "Unknown"),
-                    "ip_address": metadata.get("ip", "Unknown"),
-                    "user_agent": metadata.get("user_agent", "Unknown"),
-                })
+                sessions.append(
+                    {
+                        "session_id": session_id,
+                        "user_id": user_id,
+                        "email": email,
+                        "role": role,
+                        "created_at": created_at,
+                        "last_activity": updated_at,
+                        "duration_minutes": round(duration_minutes, 2),
+                        "is_active": is_active,
+                        "device": metadata.get("device", "Unknown"),
+                        "ip_address": metadata.get("ip", "Unknown"),
+                        "user_agent": metadata.get("user_agent", "Unknown"),
+                    }
+                )
 
             return sessions
 
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error getting active threads: {e}", exc_info=True)
+            logger.error(
+                f"[admin_dashboard] Error getting active threads: {e}", exc_info=True
+            )
             return []
 
     async def revoke_session(self, session_id: str) -> bool:
@@ -574,14 +626,19 @@ class AdminDashboardService:
 
             # Check if any rows were affected
             if cursor.rowcount > 0:
-                logger.info(f"[admin_dashboard] Session {session_id} revoked successfully")
+                logger.info(
+                    f"[admin_dashboard] Session {session_id} revoked successfully"
+                )
                 return True
             else:
                 logger.warning(f"[admin_dashboard] Session {session_id} not found")
                 return False
 
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error revoking session {session_id}: {e}", exc_info=True)
+            logger.error(
+                f"[admin_dashboard] Error revoking session {session_id}: {e}",
+                exc_info=True,
+            )
             return False
 
     async def get_system_metrics(self) -> Dict[str, Any]:
@@ -597,7 +654,9 @@ class AdminDashboardService:
             process = psutil.Process(os.getpid())
 
             # Calculate uptime
-            process_create_time = datetime.fromtimestamp(process.create_time(), tz=timezone.utc)
+            process_create_time = datetime.fromtimestamp(
+                process.create_time(), tz=timezone.utc
+            )
             now = datetime.now(timezone.utc)
             uptime_seconds = (now - process_create_time).total_seconds()
 
@@ -635,10 +694,16 @@ class AdminDashboardService:
             }
 
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error getting system metrics: {e}", exc_info=True)
+            logger.error(
+                f"[admin_dashboard] Error getting system metrics: {e}", exc_info=True
+            )
             return {
                 "uptime": {"seconds": 0, "formatted": "Unknown", "start_time": None},
-                "performance": {"cpu_percent": 0, "memory_mb": 0, "average_latency_ms": 0},
+                "performance": {
+                    "cpu_percent": 0,
+                    "memory_mb": 0,
+                    "average_latency_ms": 0,
+                },
                 "reliability": {"error_rate_percent": 0, "total_errors_last_hour": 0},
                 "database": {},
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -684,9 +749,10 @@ class AdminDashboardService:
     async def _get_error_rate(self) -> float:
         """Calculate error rate based on recent activity from MetricsCollector."""
         from backend.core.monitoring import metrics
+
         summary = metrics.get_metrics_summary()
-        total_requests = summary.get('total_requests', 0)
-        total_errors = summary.get('total_errors', 0)
+        total_requests = summary.get("total_requests", 0)
+        total_errors = summary.get("total_errors", 0)
         if total_requests == 0:
             return 0.0
         return cast(float, (total_errors / total_requests) * 100)
@@ -694,6 +760,7 @@ class AdminDashboardService:
     async def _get_average_latency(self) -> float:
         """Calculate average API latency from MetricsCollector."""
         from backend.core.monitoring import metrics
+
         # Calculate average latency across all endpoints
         if not metrics.latency_count:
             return 0.0
@@ -704,8 +771,9 @@ class AdminDashboardService:
     async def _count_recent_errors(self) -> int:
         """Count total errors from MetricsCollector."""
         from backend.core.monitoring import metrics
+
         summary = metrics.get_metrics_summary()
-        return cast(int, summary.get('total_errors', 0))
+        return cast(int, summary.get("total_errors", 0))
 
     async def get_audit_history(self, limit: int = 10) -> Dict[str, Any]:
         """
@@ -722,49 +790,57 @@ class AdminDashboardService:
                 return {
                     "audits": [],
                     "count": 0,
-                    "error": "Reports directory not found"
+                    "error": "Reports directory not found",
                 }
 
             # Chercher guardian_verification_report.json (rapport principal)
-            verification_reports = list(reports_dir.glob("guardian_verification_report*.json"))
+            verification_reports = list(
+                reports_dir.glob("guardian_verification_report*.json")
+            )
 
             audits = []
 
             for report_file in verification_reports:
                 try:
-                    with open(report_file, 'r', encoding='utf-8') as f:
+                    with open(report_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
 
                     # Extraire les infos clés
-                    audits.append({
-                        'timestamp': data.get('timestamp'),
-                        'revision': data.get('revision_checked'),
-                        'status': data.get('status'),
-                        'integrity_score': data.get('integrity_score'),
-                        'checks': data.get('checks'),
-                        'summary': data.get('summary'),
-                        'issues': data.get('issues', []),
-                        'file': report_file.name
-                    })
+                    audits.append(
+                        {
+                            "timestamp": data.get("timestamp"),
+                            "revision": data.get("revision_checked"),
+                            "status": data.get("status"),
+                            "integrity_score": data.get("integrity_score"),
+                            "checks": data.get("checks"),
+                            "summary": data.get("summary"),
+                            "issues": data.get("issues", []),
+                            "file": report_file.name,
+                        }
+                    )
 
                 except Exception as e:
                     logger.warning(f"Error reading audit report {report_file}: {e}")
                     continue
 
             # Trier par timestamp décroissant (plus récent en premier)
-            audits.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+            audits.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
             # Limiter au nombre demandé
             audits = audits[:limit]
 
             # Calculer des stats
             total_audits = len(audits)
-            ok_count = sum(1 for a in audits if a.get('status') == 'OK')
-            warning_count = sum(1 for a in audits if a.get('status') == 'WARNING')
-            critical_count = sum(1 for a in audits if a.get('status') == 'CRITICAL')
+            ok_count = sum(1 for a in audits if a.get("status") == "OK")
+            warning_count = sum(1 for a in audits if a.get("status") == "WARNING")
+            critical_count = sum(1 for a in audits if a.get("status") == "CRITICAL")
 
             # Calculer le score moyen
-            scores = [int(a.get('integrity_score', '0%').replace('%', '')) for a in audits if a.get('integrity_score')]
+            scores = [
+                int(a.get("integrity_score", "0%").replace("%", ""))
+                for a in audits
+                if a.get("integrity_score")
+            ]
             avg_score = sum(scores) / len(scores) if scores else 0
 
             return {
@@ -774,18 +850,16 @@ class AdminDashboardService:
                     "ok": ok_count,
                     "warning": warning_count,
                     "critical": critical_count,
-                    "average_score": f"{int(avg_score)}%"
+                    "average_score": f"{int(avg_score)}%",
                 },
-                "latest": audits[0] if audits else None
+                "latest": audits[0] if audits else None,
             }
 
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error fetching audit history: {e}", exc_info=True)
-            return {
-                "audits": [],
-                "count": 0,
-                "error": str(e)
-            }
+            logger.error(
+                f"[admin_dashboard] Error fetching audit history: {e}", exc_info=True
+            )
+            return {"audits": [], "count": 0, "error": str(e)}
 
     async def get_detailed_costs_breakdown(self) -> Dict[str, Any]:
         """
@@ -824,7 +898,7 @@ class AdminDashboardService:
                         "user_id": user_id,
                         "total_cost": 0.0,
                         "total_requests": 0,
-                        "modules": []
+                        "modules": [],
                     }
 
                 module_data = {
@@ -852,7 +926,9 @@ class AdminDashboardService:
             grand_total = sum(u["total_cost"] for u in users_list)
             total_requests = sum(u["total_requests"] for u in users_list)
 
-            logger.info(f"[admin_dashboard] Detailed costs breakdown: {len(users_list)} users, ${grand_total:.4f} total")
+            logger.info(
+                f"[admin_dashboard] Detailed costs breakdown: {len(users_list)} users, ${grand_total:.4f} total"
+            )
 
             return {
                 "users": users_list,
@@ -862,7 +938,9 @@ class AdminDashboardService:
             }
 
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error getting detailed costs: {e}", exc_info=True)
+            logger.error(
+                f"[admin_dashboard] Error getting detailed costs: {e}", exc_info=True
+            )
             return {
                 "users": [],
                 "total_users": 0,

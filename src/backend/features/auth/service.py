@@ -34,7 +34,13 @@ logger = logging.getLogger("emergence.auth")
 
 
 class AuthError(Exception):
-    def __init__(self, message: str, *, status_code: int = 400, payload: Optional[dict[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int = 400,
+        payload: Optional[dict[str, Any]] = None,
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.payload = payload or {}
@@ -51,19 +57,35 @@ class AuthService:
         resolved_config = self._resolve_config(config)
         self.config = resolved_config
         self.jwt_algorithm = resolved_config.algorithm or "HS256"
-        self.access_token_expire_minutes = max(1, resolved_config.token_ttl_seconds // 60)
-        self.rate_limiter = rate_limiter or SlidingWindowRateLimiter(RateLimiterConfig())
+        self.access_token_expire_minutes = max(
+            1, resolved_config.token_ttl_seconds // 60
+        )
+        self.rate_limiter = rate_limiter or SlidingWindowRateLimiter(
+            RateLimiterConfig()
+        )
         self._auth_sessions_has_user_id: Optional[bool] = None
-        snapshot_backend = (resolved_config.allowlist_snapshot_backend or "").strip().lower() if resolved_config.allowlist_snapshot_backend else None
+        snapshot_backend = (
+            (resolved_config.allowlist_snapshot_backend or "").strip().lower()
+            if resolved_config.allowlist_snapshot_backend
+            else None
+        )
         self._allowlist_snapshot_backend: Optional[str] = snapshot_backend or None
-        self._allowlist_snapshot_project: Optional[str] = resolved_config.allowlist_snapshot_project
-        self._allowlist_snapshot_collection: str = (resolved_config.allowlist_snapshot_collection or "auth_config").strip() or "auth_config"
-        self._allowlist_snapshot_document: str = (resolved_config.allowlist_snapshot_document or "allowlist").strip() or "allowlist"
+        self._allowlist_snapshot_project: Optional[str] = (
+            resolved_config.allowlist_snapshot_project
+        )
+        self._allowlist_snapshot_collection: str = (
+            resolved_config.allowlist_snapshot_collection or "auth_config"
+        ).strip() or "auth_config"
+        self._allowlist_snapshot_document: str = (
+            resolved_config.allowlist_snapshot_document or "allowlist"
+        ).strip() or "allowlist"
         self._allowlist_snapshot_client: Optional[Any] = None
         self._allowlist_snapshot_lock = asyncio.Lock()
         self._allowlist_snapshot_columns: Optional[set[str]] = None
 
-    def _resolve_config(self, config: Optional[AuthConfig | Mapping[str, Any]]) -> AuthConfig:
+    def _resolve_config(
+        self, config: Optional[AuthConfig | Mapping[str, Any]]
+    ) -> AuthConfig:
         payload: AuthConfig | Mapping[str, Any] | None = config
         if payload is None:
             payload = build_auth_config_from_env()
@@ -75,9 +97,16 @@ class AuthService:
 
     @staticmethod
     def _config_from_mapping(payload: Mapping[str, Any]) -> AuthConfig:
-        secret = payload.get("jwt_secret") or payload.get("secret") or payload.get("secret_key") or "change-me"
+        secret = (
+            payload.get("jwt_secret")
+            or payload.get("secret")
+            or payload.get("secret_key")
+            or "change-me"
+        )
         issuer = payload.get("jwt_issuer") or payload.get("issuer") or "emergence.local"
-        audience = payload.get("jwt_audience") or payload.get("audience") or "emergence-app"
+        audience = (
+            payload.get("jwt_audience") or payload.get("audience") or "emergence-app"
+        )
         algorithm = payload.get("jwt_algorithm") or payload.get("algorithm") or "HS256"
         ttl_minutes = payload.get("access_token_expire_minutes")
         if ttl_minutes is None:
@@ -89,18 +118,46 @@ class AuthService:
             admin_emails_iter = [email.strip() for email in admin_emails_raw.split(",")]
         else:
             admin_emails_iter = list(admin_emails_raw)
-        admin_emails = {str(email).strip().lower() for email in admin_emails_iter if str(email).strip()}
+        admin_emails = {
+            str(email).strip().lower()
+            for email in admin_emails_iter
+            if str(email).strip()
+        }
         dev_mode = bool(payload.get("dev_mode") or payload.get("enable_dev_mode"))
-        dev_default_email_raw = payload.get("dev_default_email") or payload.get("dev_email")
-        dev_default_email = str(dev_default_email_raw).strip().lower() or None if dev_default_email_raw else None
-        snapshot_backend_raw = payload.get("allowlist_snapshot_backend") or payload.get("allowlist_sync_backend")
-        snapshot_backend = str(snapshot_backend_raw).strip().lower() if snapshot_backend_raw else None
-        snapshot_project_raw = payload.get("allowlist_snapshot_project") or payload.get("allowlist_firestore_project")
-        snapshot_project = str(snapshot_project_raw).strip() if snapshot_project_raw else None
-        snapshot_collection_raw = payload.get("allowlist_snapshot_collection") or payload.get("allowlist_collection")
-        snapshot_document_raw = payload.get("allowlist_snapshot_document") or payload.get("allowlist_document")
-        snapshot_collection = (str(snapshot_collection_raw).strip() if snapshot_collection_raw else "auth_config") or "auth_config"
-        snapshot_document = (str(snapshot_document_raw).strip() if snapshot_document_raw else "allowlist") or "allowlist"
+        dev_default_email_raw = payload.get("dev_default_email") or payload.get(
+            "dev_email"
+        )
+        dev_default_email = (
+            str(dev_default_email_raw).strip().lower() or None
+            if dev_default_email_raw
+            else None
+        )
+        snapshot_backend_raw = payload.get("allowlist_snapshot_backend") or payload.get(
+            "allowlist_sync_backend"
+        )
+        snapshot_backend = (
+            str(snapshot_backend_raw).strip().lower() if snapshot_backend_raw else None
+        )
+        snapshot_project_raw = payload.get("allowlist_snapshot_project") or payload.get(
+            "allowlist_firestore_project"
+        )
+        snapshot_project = (
+            str(snapshot_project_raw).strip() if snapshot_project_raw else None
+        )
+        snapshot_collection_raw = payload.get(
+            "allowlist_snapshot_collection"
+        ) or payload.get("allowlist_collection")
+        snapshot_document_raw = payload.get(
+            "allowlist_snapshot_document"
+        ) or payload.get("allowlist_document")
+        snapshot_collection = (
+            str(snapshot_collection_raw).strip()
+            if snapshot_collection_raw
+            else "auth_config"
+        ) or "auth_config"
+        snapshot_document = (
+            str(snapshot_document_raw).strip() if snapshot_document_raw else "allowlist"
+        ) or "allowlist"
         return AuthConfig(
             secret=secret,
             issuer=issuer,
@@ -119,7 +176,9 @@ class AuthService:
     def _load_allowlist_seed_entries(self) -> list[dict[str, Any]]:
         """Load allowlist seed entries from environment configuration."""
         raw_payload: Optional[str] = os.getenv("AUTH_ALLOWLIST_SEED")
-        seed_path = os.getenv("AUTH_ALLOWLIST_SEED_PATH") or os.getenv("AUTH_ALLOWLIST_SEED_FILE")
+        seed_path = os.getenv("AUTH_ALLOWLIST_SEED_PATH") or os.getenv(
+            "AUTH_ALLOWLIST_SEED_FILE"
+        )
 
         if not raw_payload and seed_path:
             try:
@@ -128,7 +187,9 @@ class AuthService:
             except FileNotFoundError:
                 logger.warning("Allowlist seed file not found at %s", seed_path)
             except Exception as exc:
-                logger.warning("Unable to read allowlist seed file %s: %s", seed_path, exc)
+                logger.warning(
+                    "Unable to read allowlist seed file %s: %s", seed_path, exc
+                )
 
         if not raw_payload:
             return []
@@ -139,20 +200,28 @@ class AuthService:
             logger.warning("AUTH_ALLOWLIST_SEED contains invalid JSON: %s", exc)
             return []
         except Exception as exc:
-            logger.warning("Unexpected error while parsing AUTH_ALLOWLIST_SEED: %s", exc)
+            logger.warning(
+                "Unexpected error while parsing AUTH_ALLOWLIST_SEED: %s", exc
+            )
             return []
 
         if isinstance(parsed, dict):
             parsed = [parsed]
 
         if not isinstance(parsed, list):
-            logger.warning("AUTH_ALLOWLIST_SEED must be a list or object. Received: %s", type(parsed).__name__)
+            logger.warning(
+                "AUTH_ALLOWLIST_SEED must be a list or object. Received: %s",
+                type(parsed).__name__,
+            )
             return []
 
         entries: list[dict[str, Any]] = []
         for item in parsed:
             if not isinstance(item, dict):
-                logger.warning("Skipping allowlist seed entry because it is not an object: %r", item)
+                logger.warning(
+                    "Skipping allowlist seed entry because it is not an object: %r",
+                    item,
+                )
                 continue
             entries.append(item)
         return entries
@@ -166,7 +235,9 @@ class AuthService:
             email_raw = entry.get("email")
             email = self._normalize_email(email_raw)
             if not email:
-                logger.warning("Skipping allowlist seed entry with invalid email: %r", email_raw)
+                logger.warning(
+                    "Skipping allowlist seed entry with invalid email: %r", email_raw
+                )
                 continue
 
             password = entry.get("password")
@@ -186,16 +257,30 @@ class AuthService:
                     sync_snapshot=False,
                 )
                 if password:
-                    logger.info("Allowlist seed applied for %s (role=%s)", email, role or "member")
+                    logger.info(
+                        "Allowlist seed applied for %s (role=%s)",
+                        email,
+                        role or "member",
+                    )
                 else:
-                    logger.info("Allowlist seed ensured for %s (role=%s, password unchanged)", email, role or "member")
+                    logger.info(
+                        "Allowlist seed ensured for %s (role=%s, password unchanged)",
+                        email,
+                        role or "member",
+                    )
             except AuthError as exc:
                 logger.warning("Failed to seed allowlist entry for %s: %s", email, exc)
             except Exception as exc:
-                logger.error("Unexpected error while seeding allowlist entry for %s: %s", email, exc, exc_info=True)
+                logger.error(
+                    "Unexpected error while seeding allowlist entry for %s: %s",
+                    email,
+                    exc,
+                    exc_info=True,
+                )
 
         # NOTE: Sync removed here - will be done once at the end of bootstrap()
         # This prevents overwriting Firestore snapshot before restore is called
+
     def _allowlist_snapshot_enabled(self) -> bool:
         return self._allowlist_snapshot_backend == "firestore"
 
@@ -208,19 +293,29 @@ class AuthService:
         try:
             from google.cloud import firestore  # type: ignore[attr-defined]
         except Exception as exc:  # pragma: no cover - optional dependency missing
-            logger.warning("Allowlist snapshot disabled (firestore import failed): %s", exc)
+            logger.warning(
+                "Allowlist snapshot disabled (firestore import failed): %s", exc
+            )
             self._allowlist_snapshot_backend = None
             return None
 
-        project_id = self._allowlist_snapshot_project or os.getenv("AUTH_ALLOWLIST_SNAPSHOT_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT")
+        project_id = (
+            self._allowlist_snapshot_project
+            or os.getenv("AUTH_ALLOWLIST_SNAPSHOT_PROJECT")
+            or os.getenv("GOOGLE_CLOUD_PROJECT")
+        )
         try:
             client = firestore.AsyncClient(project=project_id)
         except AttributeError:
-            logger.warning("Allowlist snapshot disabled (AsyncClient not available in google-cloud-firestore).")
+            logger.warning(
+                "Allowlist snapshot disabled (AsyncClient not available in google-cloud-firestore)."
+            )
             self._allowlist_snapshot_backend = None
             return None
         except Exception as exc:  # pragma: no cover - Firestore init failure
-            logger.warning("Allowlist snapshot disabled (Firestore client init failed): %s", exc)
+            logger.warning(
+                "Allowlist snapshot disabled (Firestore client init failed): %s", exc
+            )
             self._allowlist_snapshot_backend = None
             return None
 
@@ -233,7 +328,9 @@ class AuthService:
         try:
             rows = await self.db.fetch_all("PRAGMA table_info(auth_allowlist)")
         except Exception as exc:
-            logger.warning("Allowlist snapshot: unable to inspect auth_allowlist schema: %s", exc)
+            logger.warning(
+                "Allowlist snapshot: unable to inspect auth_allowlist schema: %s", exc
+            )
             self._allowlist_snapshot_columns = set()
             return set()
 
@@ -272,7 +369,9 @@ class AuthService:
             "oauth_sub",
         ]
         selected = [col for col in base_columns if col in columns]
-        selected.extend(col for col in optional_columns if col in columns and col not in selected)
+        selected.extend(
+            col for col in optional_columns if col in columns and col not in selected
+        )
         if not selected:
             return []
 
@@ -418,7 +517,9 @@ class AuthService:
                 password_updated_at=password_updated_at,
             )
         except Exception as exc:
-            logger.warning("Allowlist snapshot: unable to upsert %s from snapshot: %s", email, exc)
+            logger.warning(
+                "Allowlist snapshot: unable to upsert %s from snapshot: %s", email, exc
+            )
             return False
 
         update_fields: list[str] = []
@@ -480,14 +581,18 @@ class AuthService:
         for entry in entries:
             if not isinstance(entry, dict):
                 continue
-            if await self._apply_allowlist_snapshot_entry(entry, columns, revoked=False):
+            if await self._apply_allowlist_snapshot_entry(
+                entry, columns, revoked=False
+            ):
                 restored += 1
         for entry in revoked_entries:
             if not isinstance(entry, dict):
                 continue
             await self._apply_allowlist_snapshot_entry(entry, columns, revoked=True)
         if restored:
-            logger.info("Allowlist snapshot restored %d entrie(s) from Firestore.", restored)
+            logger.info(
+                "Allowlist snapshot restored %d entrie(s) from Firestore.", restored
+            )
 
     async def _sync_allowlist_snapshot(self, *, reason: str) -> None:
         if not self._allowlist_snapshot_enabled():
@@ -562,7 +667,9 @@ class AuthService:
             normalized = self._normalize_email(email)
             if not normalized:
                 continue
-            await self._upsert_allowlist(normalized, role="admin", note="seed", actor="bootstrap")
+            await self._upsert_allowlist(
+                normalized, role="admin", note="seed", actor="bootstrap"
+            )
 
         # Ensure all existing admins have password_must_reset set to 0
         await self.db.execute(
@@ -578,7 +685,13 @@ class AuthService:
         self._auth_sessions_has_user_id = None
         await self._backfill_auth_session_user_ids()
 
-    async def login(self, email: str, password: str, ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
+    async def login(
+        self,
+        email: str,
+        password: str,
+        ip_address: Optional[str],
+        user_agent: Optional[str],
+    ) -> LoginResponse:
         normalized = self._normalize_email(email)
         if not normalized:
             raise AuthError("Email invalide ou vide.", status_code=400)
@@ -603,7 +716,9 @@ class AuthService:
             raise AuthError("Compte temporairement desactive.", status_code=423)
 
         password_hash = allow_row.get("password_hash")
-        if not password_hash or not self._verify_password(candidate_password, password_hash):
+        if not password_hash or not self._verify_password(
+            candidate_password, password_hash
+        ):
             raise AuthError("Identifiants invalides.", status_code=401)
 
         role = allow_row.get("role") or "member"
@@ -630,11 +745,17 @@ class AuthService:
     def verify_password(self, password: str, password_hash: str) -> bool:
         return self._verify_password(password, password_hash)
 
-    def create_access_token(self, user_id: str, role: UserRole | str, expires_minutes: Optional[int] = None) -> str:
+    def create_access_token(
+        self, user_id: str, role: UserRole | str, expires_minutes: Optional[int] = None
+    ) -> str:
         if not user_id:
             raise ValueError("user_id must not be empty.")
         role_value = self._coerce_role(role).value
-        minutes = self.access_token_expire_minutes if expires_minutes is None else max(1, int(expires_minutes))
+        minutes = (
+            self.access_token_expire_minutes
+            if expires_minutes is None
+            else max(1, int(expires_minutes))
+        )
         issued_at = self._now()
         expires_at = issued_at + timedelta(minutes=minutes)
         payload = {
@@ -654,13 +775,17 @@ class AuthService:
             return None
         try:
             from typing import cast
-            return cast(dict[str, Any], jwt.decode(
-                token,
-                self.config.secret,
-                algorithms=[self.jwt_algorithm],
-                audience=self.config.audience,
-                options={"verify_aud": bool(self.config.audience)},
-            ))
+
+            return cast(
+                dict[str, Any],
+                jwt.decode(
+                    token,
+                    self.config.secret,
+                    algorithms=[self.jwt_algorithm],
+                    audience=self.config.audience,
+                    options={"verify_aud": bool(self.config.audience)},
+                ),
+            )
         except jwt.PyJWTError:
             return None
 
@@ -712,7 +837,11 @@ class AuthService:
                 commit=True,
             )
         except Exception as exc:
-            logger.debug("auth_users insert skipped or failed (non blocking): %s", exc, exc_info=True)
+            logger.debug(
+                "auth_users insert skipped or failed (non blocking): %s",
+                exc,
+                exc_info=True,
+            )
 
         try:
             await self._upsert_allowlist(
@@ -735,7 +864,9 @@ class AuthService:
             created_at=now_dt,
         )
 
-    async def authenticate(self, username_or_email: str, password: str) -> Optional[User]:
+    async def authenticate(
+        self, username_or_email: str, password: str
+    ) -> Optional[User]:
         candidate = (username_or_email or "").strip()
         if not candidate or not password:
             return None
@@ -855,7 +986,9 @@ class AuthService:
             issued_at = self._now()
 
         try:
-            expires_at = datetime.fromtimestamp(int(expires_at_ts or 0), tz=timezone.utc)
+            expires_at = datetime.fromtimestamp(
+                int(expires_at_ts or 0), tz=timezone.utc
+            )
         except Exception:
             expires_at = issued_at + timedelta(seconds=self.config.token_ttl_seconds)
 
@@ -981,7 +1114,9 @@ class AuthService:
 
         session_meta: dict[str, Any] = {}
         if session_metadata:
-            session_meta.update({k: v for k, v in session_metadata.items() if v is not None})
+            session_meta.update(
+                {k: v for k, v in session_metadata.items() if v is not None}
+            )
         if user_agent:
             session_meta.setdefault("user_agent", user_agent)
 
@@ -1058,15 +1193,21 @@ class AuthService:
         if ip_address:
             audit_meta["ip"] = ip_address
         if audit_metadata:
-            audit_meta.update({k: v for k, v in audit_metadata.items() if v is not None})
+            audit_meta.update(
+                {k: v for k, v in audit_metadata.items() if v is not None}
+            )
 
         user_claim = str(claims.get("sub") or "")
         # Audit log asynchrone pour login (non-bloquant) - réduit latence login de ~50-100ms
-        await self._write_audit(event_type, email=email, metadata=audit_meta, _async=True)
+        await self._write_audit(
+            event_type, email=email, metadata=audit_meta, _async=True
+        )
 
         # Get password_must_reset status
         allow_row = await self._get_allowlist_row(email)
-        password_must_reset = bool(allow_row.get("password_must_reset", False)) if allow_row else False
+        password_must_reset = (
+            bool(allow_row.get("password_must_reset", False)) if allow_row else False
+        )
 
         return LoginResponse(
             token=token,
@@ -1078,7 +1219,9 @@ class AuthService:
             password_must_reset=password_must_reset,
         )
 
-    async def dev_login(self, email: Optional[str], ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
+    async def dev_login(
+        self, email: Optional[str], ip_address: Optional[str], user_agent: Optional[str]
+    ) -> LoginResponse:
         if not self.config.dev_mode:
             raise AuthError("Mode dev desactive.", status_code=403)
 
@@ -1177,7 +1320,9 @@ class AuthService:
         await self._write_audit("session:revoke_all", email=normalized, actor=actor)
         return len(rows)
 
-    async def verify_token(self, token: str, allow_expired: bool = False, allow_revoked: bool = False) -> dict[str, Any]:
+    async def verify_token(
+        self, token: str, allow_expired: bool = False, allow_revoked: bool = False
+    ) -> dict[str, Any]:
         try:
             claims = jwt.decode(
                 token,
@@ -1247,16 +1392,19 @@ class AuthService:
             raise AuthError("Session expir�e.", status_code=401)
 
         revoked_at = self._parse_dt(revoked_at_raw) if revoked_at_raw else None
-        claims.update({
-            "email": email,
-            "role": role,
-            "session_id": session_id,
-            "expires_at": expires_at,
-            "session_revoked": session_revoked,
-        })
+        claims.update(
+            {
+                "email": email,
+                "role": role,
+                "session_id": session_id,
+                "expires_at": expires_at,
+                "session_revoked": session_revoked,
+            }
+        )
         if revoked_at:
             claims["revoked_at"] = revoked_at
         from typing import cast
+
         return cast(dict[str, Any], claims)
 
     async def get_user_id_for_session(self, session_id: str) -> Optional[str]:
@@ -1271,7 +1419,7 @@ class AuthService:
         )
         if not row:
             return None
-        value = row.get('user_id')
+        value = row.get("user_id")
         if value is None:
             return None
         normalized_value = str(value).strip()
@@ -1321,7 +1469,7 @@ class AuthService:
             f"SELECT COUNT(*) AS count FROM auth_allowlist {where_clause}",
             tuple(params) if params else None,
         )
-        total = int(total_row.get('count', 0) if total_row else 0)
+        total = int(total_row.get("count", 0) if total_row else 0)
 
         query_params: list[Any] = list(params)
         query_params.extend([limit, offset])
@@ -1355,10 +1503,14 @@ class AuthService:
 
         existing = await self._get_allowlist_row(normalized)
 
-        effective_role_raw = role if role is not None else (existing.get("role") if existing else None)
+        effective_role_raw = (
+            role if role is not None else (existing.get("role") if existing else None)
+        )
         effective_role = (effective_role_raw or "member").strip().lower()
         if effective_role not in {"member", "admin"}:
-            raise AuthError("Role invalide. Utiliser 'member' ou 'admin'.", status_code=400)
+            raise AuthError(
+                "Role invalide. Utiliser 'member' ou 'admin'.", status_code=400
+            )
 
         effective_note: Optional[str] = None
         if note is not None:
@@ -1388,8 +1540,12 @@ class AuthService:
 
         was_existing = existing is not None
         was_revoked = bool(existing and existing.get("revoked_at"))
-        role_changed = bool(existing and (existing.get("role") or "member").lower() != effective_role)
-        note_changed = bool(existing and (existing.get("note") or "") != (effective_note or ""))
+        role_changed = bool(
+            existing and (existing.get("role") or "member").lower() != effective_role
+        )
+        note_changed = bool(
+            existing and (existing.get("note") or "") != (effective_note or "")
+        )
 
         metadata: dict[str, Any] = {
             "role": effective_role,
@@ -1407,7 +1563,9 @@ class AuthService:
             metadata["note_changed"] = True
 
         event_type = "allowlist:add" if not was_existing else "allowlist:update"
-        await self._write_audit(event_type, email=normalized, actor=actor, metadata=metadata)
+        await self._write_audit(
+            event_type, email=normalized, actor=actor, metadata=metadata
+        )
 
         if password_hash and password_generated:
             generated_meta: dict[str, Any] = {"password_length": password_length or 0}
@@ -1424,12 +1582,16 @@ class AuthService:
 
         row = await self._get_allowlist_row(normalized)
         if not row:
-            raise AuthError("Entree allowlist introuvable apres creation.", status_code=500)
+            raise AuthError(
+                "Entree allowlist introuvable apres creation.", status_code=500
+            )
         if sync_snapshot:
             await self._sync_allowlist_snapshot(reason="upsert")
         return self._row_to_allowlist(row)
 
-    async def set_allowlist_password(self, email: str, password: str, actor: Optional[str] = None) -> AllowlistEntry:
+    async def set_allowlist_password(
+        self, email: str, password: str, actor: Optional[str] = None
+    ) -> AllowlistEntry:
         normalized = self._normalize_email(email)
         if not normalized:
             raise AuthError("Email invalide.", status_code=400)
@@ -1466,7 +1628,9 @@ class AuthService:
         )
         updated_row = await self._get_allowlist_row(normalized)
         if not updated_row:
-            raise AuthError("Entree allowlist introuvable apres mise a jour.", status_code=500)
+            raise AuthError(
+                "Entree allowlist introuvable apres mise a jour.", status_code=500
+            )
         await self._sync_allowlist_snapshot(reason="set_password")
         return self._row_to_allowlist(updated_row)
 
@@ -1490,7 +1654,9 @@ class AuthService:
             raise AuthError("Compte temporairement desactive.", status_code=423)
 
         password_hash = allow_row.get("password_hash")
-        if not password_hash or not self._verify_password(current_password, password_hash):
+        if not password_hash or not self._verify_password(
+            current_password, password_hash
+        ):
             raise AuthError("Mot de passe actuel incorrect.", status_code=401)
 
         # Validate and set new password
@@ -1678,7 +1844,9 @@ class AuthService:
         return True
 
     async def list_sessions(self, active_only: bool = False) -> list[SessionInfo]:
-        columns = "id, email, role, ip_address, issued_at, expires_at, revoked_at, revoked_by"
+        columns = (
+            "id, email, role, ip_address, issued_at, expires_at, revoked_at, revoked_by"
+        )
         if await self._auth_sessions_supports_user_id():
             columns = columns + ", user_id"
         if active_only:
@@ -1735,7 +1903,16 @@ class AuthService:
                     ELSE auth_allowlist.password_must_reset
                 END
             """,
-            (email, role, note, now, actor, password_hash, password_updated_at, password_must_reset),
+            (
+                email,
+                role,
+                note,
+                now,
+                actor,
+                password_hash,
+                password_updated_at,
+                password_must_reset,
+            ),
             commit=True,
         )
 
@@ -1766,6 +1943,7 @@ class AuthService:
                 # Audit asynchrone non-bloquant (fire-and-forget)
                 # Utilisé pour login success, logout, etc.
                 import asyncio
+
                 asyncio.create_task(
                     self.db.execute(
                         "INSERT INTO auth_audit_log (event_type, email, actor, metadata, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -1808,7 +1986,9 @@ class AuthService:
         except TypeError:
             return (params,)
 
-    async def _db_fetchone(self, query: str, params: Sequence[Any] | None = None) -> Optional[Any]:
+    async def _db_fetchone(
+        self, query: str, params: Sequence[Any] | None = None
+    ) -> Optional[Any]:
         tuple_params = self._prepare_params(params)
         fetch_one = getattr(self.db, "fetch_one", None)
         if callable(fetch_one):
@@ -1821,7 +2001,9 @@ class AuthService:
             return result
         return None
 
-    async def _db_fetchall(self, query: str, params: Sequence[Any] | None = None) -> list[Any]:
+    async def _db_fetchall(
+        self, query: str, params: Sequence[Any] | None = None
+    ) -> list[Any]:
         tuple_params = self._prepare_params(params)
         fetch_all = getattr(self.db, "fetch_all", None)
         if callable(fetch_all):
@@ -1835,11 +2017,15 @@ class AuthService:
             return list(result or [])
         return []
 
-    async def _fetch_one_dict(self, query: str, params: Sequence[Any] | None = None) -> Optional[dict[str, Any]]:
+    async def _fetch_one_dict(
+        self, query: str, params: Sequence[Any] | None = None
+    ) -> Optional[dict[str, Any]]:
         row = await self._db_fetchone(query, params)
         return self._row_to_dict(row)
 
-    async def _fetch_all_dicts(self, query: str, params: Sequence[Any] | None = None) -> list[dict[str, Any]]:
+    async def _fetch_all_dicts(
+        self, query: str, params: Sequence[Any] | None = None
+    ) -> list[dict[str, Any]]:
         rows = await self._db_fetchall(query, params)
         return [d for d in (self._row_to_dict(r) for r in rows or []) if d]
 
@@ -1887,17 +2073,21 @@ class AuthService:
         )
 
     def _hash_password(self, password: str) -> str:
-        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     def _verify_password(self, password: str, password_hash: str) -> bool:
         try:
-            return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+            return bcrypt.checkpw(
+                password.encode("utf-8"), password_hash.encode("utf-8")
+            )
         except (ValueError, TypeError):
             return False
 
     def _validate_password_strength(self, password: str) -> None:
         if len(password) < 8:
-            raise AuthError('Mot de passe trop court (8 caracteres minimum).', status_code=400)
+            raise AuthError(
+                "Mot de passe trop court (8 caracteres minimum).", status_code=400
+            )
 
     def _hash_subject(self, email: str) -> str:
         return hashlib.sha256(email.encode("utf-8")).hexdigest()
@@ -1939,7 +2129,7 @@ class AuthService:
         # Get user from allowlist
         allow_row = await self._fetch_one_dict(
             "SELECT email, role FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
-            (normalized,)
+            (normalized,),
         )
 
         if not allow_row:
@@ -1955,8 +2145,7 @@ class AuthService:
         totp = pyotp.TOTP(secret)
         issuer_name = "Emergence V8"
         provisioning_uri = totp.provisioning_uri(
-            name=normalized,
-            issuer_name=issuer_name
+            name=normalized, issuer_name=issuer_name
         )
 
         # Generate QR code image
@@ -1966,8 +2155,8 @@ class AuthService:
 
         img = qr.make_image(fill_color="black", back_color="white")
         buffer = io.BytesIO()
-        img.save(buffer, format='PNG')
-        qr_code_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        img.save(buffer, format="PNG")
+        qr_code_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
         # Store in database (not enabled yet, will be enabled after verification)
         await self.db.execute(
@@ -1977,7 +2166,7 @@ class AuthService:
             WHERE email = ?
             """,
             (secret, json.dumps(backup_codes), normalized),
-            commit=True
+            commit=True,
         )
 
         # Audit log
@@ -1985,7 +2174,7 @@ class AuthService:
             "2fa:setup_initiated",
             email=normalized,
             actor=normalized,
-            metadata={"backup_codes_count": len(backup_codes)}
+            metadata={"backup_codes_count": len(backup_codes)},
         )
 
         await self._sync_allowlist_snapshot(reason="enable_2fa")
@@ -1993,7 +2182,7 @@ class AuthService:
             "secret": secret,
             "qr_code": qr_code_base64,
             "backup_codes": backup_codes,
-            "provisioning_uri": provisioning_uri
+            "provisioning_uri": provisioning_uri,
         }
 
     async def verify_and_enable_2fa(self, email: str, totp_code: str) -> bool:
@@ -2012,7 +2201,7 @@ class AuthService:
         # Get user with totp_secret
         allow_row = await self._fetch_one_dict(
             "SELECT email, totp_secret, totp_enabled_at FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
-            (normalized,)
+            (normalized,),
         )
 
         if not allow_row:
@@ -2020,16 +2209,20 @@ class AuthService:
 
         secret = allow_row.get("totp_secret")
         if not secret:
-            raise AuthError("2FA not initiated. Call enable_2fa first.", status_code=400)
+            raise AuthError(
+                "2FA not initiated. Call enable_2fa first.", status_code=400
+            )
 
         # Verify TOTP code
         totp = pyotp.TOTP(secret)
-        if not totp.verify(totp_code, valid_window=1):  # Allow 1 window tolerance (30s before/after)
+        if not totp.verify(
+            totp_code, valid_window=1
+        ):  # Allow 1 window tolerance (30s before/after)
             await self._write_audit(
                 "2fa:verification_failed",
                 email=normalized,
                 actor=normalized,
-                metadata={}
+                metadata={},
             )
             return False
 
@@ -2042,7 +2235,7 @@ class AuthService:
             WHERE email = ?
             """,
             (now.isoformat(), normalized),
-            commit=True
+            commit=True,
         )
 
         # Audit log
@@ -2050,7 +2243,7 @@ class AuthService:
             "2fa:enabled",
             email=normalized,
             actor=normalized,
-            metadata={"enabled_at": now.isoformat()}
+            metadata={"enabled_at": now.isoformat()},
         )
 
         await self._sync_allowlist_snapshot(reason="verify_enable_2fa")
@@ -2072,7 +2265,7 @@ class AuthService:
         # Get user
         allow_row = await self._fetch_one_dict(
             "SELECT email, totp_secret, totp_enabled_at, backup_codes FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
-            (normalized,)
+            (normalized,),
         )
 
         if not allow_row:
@@ -2095,7 +2288,7 @@ class AuthService:
                     "2fa:verified",
                     email=normalized,
                     actor=normalized,
-                    metadata={"method": "totp"}
+                    metadata={"method": "totp"},
                 )
                 return True
 
@@ -2110,14 +2303,14 @@ class AuthService:
                 await self.db.execute(
                     "UPDATE auth_allowlist SET backup_codes = ? WHERE email = ?",
                     (json.dumps(backup_codes), normalized),
-                    commit=True
+                    commit=True,
                 )
 
                 await self._write_audit(
                     "2fa:backup_code_used",
                     email=normalized,
                     actor=normalized,
-                    metadata={"remaining_codes": len(backup_codes)}
+                    metadata={"remaining_codes": len(backup_codes)},
                 )
 
                 await self._sync_allowlist_snapshot(reason="backup_code_used")
@@ -2128,7 +2321,7 @@ class AuthService:
             "2fa:verification_failed",
             email=normalized,
             actor=normalized,
-            metadata={"code_length": len(code)}
+            metadata={"code_length": len(code)},
         )
 
         return False
@@ -2149,7 +2342,7 @@ class AuthService:
         # Verify password first
         allow_row = await self._fetch_one_dict(
             "SELECT email, password_hash, totp_enabled_at FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
-            (normalized,)
+            (normalized,),
         )
 
         if not allow_row:
@@ -2171,15 +2364,12 @@ class AuthService:
             WHERE email = ?
             """,
             (normalized,),
-            commit=True
+            commit=True,
         )
 
         # Audit log
         await self._write_audit(
-            "2fa:disabled",
-            email=normalized,
-            actor=normalized,
-            metadata={}
+            "2fa:disabled", email=normalized, actor=normalized, metadata={}
         )
 
         await self._sync_allowlist_snapshot(reason="disable_2fa")
@@ -2199,7 +2389,7 @@ class AuthService:
 
         allow_row = await self._fetch_one_dict(
             "SELECT totp_enabled_at, backup_codes FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
-            (normalized,)
+            (normalized,),
         )
 
         if not allow_row:
@@ -2219,7 +2409,7 @@ class AuthService:
         return {
             "enabled": bool(totp_enabled_at),
             "enabled_at": totp_enabled_at,
-            "backup_codes_remaining": backup_codes_remaining
+            "backup_codes_remaining": backup_codes_remaining,
         }
 
 
@@ -2238,15 +2428,21 @@ def build_auth_config_from_env() -> AuthConfig:
     except Exception:
         ttl_days = 7
     admin_raw = os.getenv("AUTH_ADMIN_EMAILS", "")
-    admin_emails = {email.strip().lower() for email in admin_raw.split(',') if email.strip()}
+    admin_emails = {
+        email.strip().lower() for email in admin_raw.split(",") if email.strip()
+    }
     dev_mode = str(os.getenv("AUTH_DEV_MODE", "0")).strip().lower() in TRUTHY
     dev_default_email_raw = os.getenv("AUTH_DEV_DEFAULT_EMAIL", "") or ""
     dev_default_email = dev_default_email_raw.strip().lower() or None
     algorithm = os.getenv("AUTH_JWT_ALGORITHM", "HS256") or "HS256"
     snapshot_backend_raw = os.getenv("AUTH_ALLOWLIST_SNAPSHOT_BACKEND", "")
     snapshot_backend = snapshot_backend_raw.strip().lower() or None
-    snapshot_collection = os.getenv("AUTH_ALLOWLIST_SNAPSHOT_COLLECTION", "auth_config") or "auth_config"
-    snapshot_document = os.getenv("AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT", "allowlist") or "allowlist"
+    snapshot_collection = (
+        os.getenv("AUTH_ALLOWLIST_SNAPSHOT_COLLECTION", "auth_config") or "auth_config"
+    )
+    snapshot_document = (
+        os.getenv("AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT", "allowlist") or "allowlist"
+    )
     snapshot_project_raw = os.getenv("AUTH_ALLOWLIST_SNAPSHOT_PROJECT", "")
     snapshot_project = snapshot_project_raw.strip() or None
     return AuthConfig(

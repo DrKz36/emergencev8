@@ -40,13 +40,18 @@ def _normalize_google_model(value: Optional[str]) -> str:
 DEFAULT_AGENT_CONFIGS: Dict[str, Dict[str, str]] = {
     "default": {"provider": "google", "model": DEFAULT_GOOGLE_MODEL},
     "neo": {"provider": "google", "model": DEFAULT_GOOGLE_MODEL},
-    "neo_analysis": {"provider": "openai", "model": "gpt-4o-mini"},  # ⚡ Agent dédié analyses mémoire (3x plus rapide que Gemini)
+    "neo_analysis": {
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+    },  # ⚡ Agent dédié analyses mémoire (3x plus rapide que Gemini)
     "nexus": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
     "anima": {"provider": "openai", "model": "gpt-4o-mini"},
 }
 
+
 def _default_agent_configs() -> Dict[str, Any]:
     return {name: dict(cfg) for name, cfg in DEFAULT_AGENT_CONFIGS.items()}
+
 
 class RagSettings(BaseSettings):
     ENABLED: bool = True
@@ -56,6 +61,7 @@ class RagSettings(BaseSettings):
         "Contexte pertinent:\n---\n{context}\n---\nEn te basant UNIQUEMENT sur ce contexte, "
         "rÃ©ponds Ã  la question suivante: {question}"
     )
+
 
 class DbSettings(BaseSettings):
     filepath: str = str(DATA_DIR / "db/emergence_v7.db")
@@ -70,11 +76,13 @@ class VectorSettings(BaseSettings):
     qdrant_url: Optional[str] = None
     qdrant_api_key: Optional[str] = None
 
+
 class PathSettings(BaseSettings):
     documents: str = str(DATA_DIR / "uploads")
     sessions: str = str(DATA_DIR / "sessions")
     debates: str = str(DATA_DIR / "debates")
     prompts: str = str(PROMPTS_DIR)
+
 
 class Settings(BaseSettings):
     # ClÃ©s API et configurations diverses
@@ -105,7 +113,11 @@ class Settings(BaseSettings):
         if self.gemini_api_key is None:
             object.__setattr__(self, "gemini_api_key", google_key)
 
-        missing = [name for name in ("openai_api_key", "anthropic_api_key") if not getattr(self, name)]
+        missing = [
+            name
+            for name in ("openai_api_key", "anthropic_api_key")
+            if not getattr(self, name)
+        ]
         if missing:
             missing_env = ", ".join(name.upper() for name in missing)
             raise ValueError(f"Missing required API keys: {missing_env}")
@@ -117,7 +129,9 @@ class Settings(BaseSettings):
             normalized_cfg = dict(cfg)
             provider = str(normalized_cfg.get("provider", "")).strip().lower()
             model_value = normalized_cfg.get("model")
-            if provider in {"google", "gemini", "googleai", "vertex"} and isinstance(model_value, str):
+            if provider in {"google", "gemini", "googleai", "vertex"} and isinstance(
+                model_value, str
+            ):
                 normalized_cfg["model"] = _normalize_google_model(model_value)
             normalized_agents[name] = normalized_cfg
         object.__setattr__(self, "agents", normalized_agents)
@@ -130,4 +144,3 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
-

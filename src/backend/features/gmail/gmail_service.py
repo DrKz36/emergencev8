@@ -28,9 +28,7 @@ class GmailService:
         self.oauth_service = GmailOAuthService()
 
     async def read_guardian_reports(
-        self,
-        max_results: int = 10,
-        user_email: str = "admin"
+        self, max_results: int = 10, user_email: str = "admin"
     ) -> list[dict[str, Any]]:
         """
         Lit les derniers emails Guardian depuis Gmail.
@@ -50,17 +48,18 @@ class GmailService:
                 return []
 
             # Build Gmail API service
-            service = build('gmail', 'v1', credentials=credentials)
+            service = build("gmail", "v1", credentials=credentials)
 
             # Query emails (sujet contient emergence, guardian, ou audit)
-            query = 'subject:(emergence OR guardian OR audit)'
-            results = service.users().messages().list(
-                userId='me',
-                q=query,
-                maxResults=max_results
-            ).execute()
+            query = "subject:(emergence OR guardian OR audit)"
+            results = (
+                service.users()
+                .messages()
+                .list(userId="me", q=query, maxResults=max_results)
+                .execute()
+            )
 
-            messages = results.get('messages', [])
+            messages = results.get("messages", [])
             if not messages:
                 logger.info("No Guardian emails found")
                 return []
@@ -68,7 +67,7 @@ class GmailService:
             # Récupérer détails de chaque email
             emails = []
             for msg in messages:
-                email_data = await self._get_email_details(service, msg['id'])
+                email_data = await self._get_email_details(service, msg["id"])
                 if email_data:
                     emails.append(email_data)
 
@@ -82,7 +81,9 @@ class GmailService:
             logger.error(f"Error reading Guardian emails: {e}")
             return []
 
-    async def _get_email_details(self, service: Any, message_id: str) -> dict[str, Any] | None:
+    async def _get_email_details(
+        self, service: Any, message_id: str
+    ) -> dict[str, Any] | None:
         """
         Récupère les détails d'un email (subject, body, timestamp, from).
 
@@ -94,32 +95,33 @@ class GmailService:
             Dict: Détails email ou None si erreur
         """
         try:
-            msg = service.users().messages().get(
-                userId='me',
-                id=message_id,
-                format='full'
-            ).execute()
+            msg = (
+                service.users()
+                .messages()
+                .get(userId="me", id=message_id, format="full")
+                .execute()
+            )
 
             # Extract headers
-            headers = msg['payload']['headers']
-            subject = self._get_header(headers, 'Subject')
-            from_email = self._get_header(headers, 'From')
-            date_str = self._get_header(headers, 'Date')
+            headers = msg["payload"]["headers"]
+            subject = self._get_header(headers, "Subject")
+            from_email = self._get_header(headers, "From")
+            date_str = self._get_header(headers, "Date")
 
             # Extract body (HTML ou plaintext)
-            body = self._get_email_body(msg['payload'])
+            body = self._get_email_body(msg["payload"])
 
             # Parse timestamp
-            timestamp = self._parse_timestamp(msg['internalDate'])
+            timestamp = self._parse_timestamp(msg["internalDate"])
 
             return {
-                'id': message_id,
-                'subject': subject,
-                'from': from_email,
-                'date': date_str,
-                'timestamp': timestamp,
-                'body': body,
-                'snippet': msg.get('snippet', '')
+                "id": message_id,
+                "subject": subject,
+                "from": from_email,
+                "date": date_str,
+                "timestamp": timestamp,
+                "body": body,
+                "snippet": msg.get("snippet", ""),
             }
 
         except Exception as e:
@@ -129,9 +131,9 @@ class GmailService:
     def _get_header(self, headers: list[dict[str, Any]], name: str) -> str:
         """Récupère la valeur d'un header."""
         for header in headers:
-            if header['name'].lower() == name.lower():
-                return cast(str, header['value'])
-        return ''
+            if header["name"].lower() == name.lower():
+                return cast(str, header["value"])
+        return ""
 
     def _get_email_body(self, payload: dict[str, Any]) -> str:
         """
@@ -144,36 +146,36 @@ class GmailService:
             str: Body décodé
         """
         # Si le message a des parts (multipart)
-        if 'parts' in payload:
-            for part in payload['parts']:
+        if "parts" in payload:
+            for part in payload["parts"]:
                 # Préférer HTML si disponible
-                if part['mimeType'] == 'text/html':
-                    return self._decode_body(part['body'].get('data', ''))
-                elif part['mimeType'] == 'text/plain':
-                    return self._decode_body(part['body'].get('data', ''))
+                if part["mimeType"] == "text/html":
+                    return self._decode_body(part["body"].get("data", ""))
+                elif part["mimeType"] == "text/plain":
+                    return self._decode_body(part["body"].get("data", ""))
 
                 # Récursif pour nested parts
-                if 'parts' in part:
+                if "parts" in part:
                     body = self._get_email_body(part)
                     if body:
                         return body
 
         # Si le message est simple (pas multipart)
-        if 'body' in payload and 'data' in payload['body']:
-            return self._decode_body(payload['body']['data'])
+        if "body" in payload and "data" in payload["body"]:
+            return self._decode_body(payload["body"]["data"])
 
-        return ''
+        return ""
 
     def _decode_body(self, data: str) -> str:
         """Décode le body encodé en base64url."""
         if not data:
-            return ''
+            return ""
         try:
-            decoded = base64.urlsafe_b64decode(data).decode('utf-8')
+            decoded = base64.urlsafe_b64decode(data).decode("utf-8")
             return decoded
         except Exception as e:
             logger.error(f"Error decoding email body: {e}")
-            return ''
+            return ""
 
     def _parse_timestamp(self, internal_date: str) -> str:
         """
@@ -191,13 +193,10 @@ class GmailService:
             return dt.isoformat()
         except Exception as e:
             logger.error(f"Error parsing timestamp: {e}")
-            return ''
+            return ""
 
     async def search_emails_by_subject(
-        self,
-        subject_keywords: str,
-        max_results: int = 10,
-        user_email: str = "admin"
+        self, subject_keywords: str, max_results: int = 10, user_email: str = "admin"
     ) -> list[dict[str, Any]]:
         """
         Recherche emails par mots-clés dans le sujet.
@@ -215,19 +214,20 @@ class GmailService:
             if not credentials:
                 return []
 
-            service = build('gmail', 'v1', credentials=credentials)
+            service = build("gmail", "v1", credentials=credentials)
 
-            query = f'subject:{subject_keywords}'
-            results = service.users().messages().list(
-                userId='me',
-                q=query,
-                maxResults=max_results
-            ).execute()
+            query = f"subject:{subject_keywords}"
+            results = (
+                service.users()
+                .messages()
+                .list(userId="me", q=query, maxResults=max_results)
+                .execute()
+            )
 
-            messages = results.get('messages', [])
+            messages = results.get("messages", [])
             emails = []
             for msg in messages:
-                email_data = await self._get_email_details(service, msg['id'])
+                email_data = await self._get_email_details(service, msg["id"])
                 if email_data:
                     emails.append(email_data)
 

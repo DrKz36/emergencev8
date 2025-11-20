@@ -3,14 +3,16 @@
 """
 Script to disable password_must_reset for admin users
 """
+
 import sqlite3
 import sys
 import io
 from pathlib import Path
 
 # Fix Windows console encoding
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
 
 def disable_password_reset_for_admins(db_path: str = "./data/emergence.db"):
     """Disable password_must_reset for all admin users"""
@@ -18,7 +20,7 @@ def disable_password_reset_for_admins(db_path: str = "./data/emergence.db"):
     db_file = Path(db_path)
     if not db_file.exists():
         print(f"❌ Database not found at: {db_path}")
-        print(f"Looking for alternatives...")
+        print("Looking for alternatives...")
 
         # Try alternate locations
         alternatives = [
@@ -57,7 +59,7 @@ def disable_password_reset_for_admins(db_path: str = "./data/emergence.db"):
             print("❌ No admin users found in database")
             return False
 
-        print(f"\n📋 Admin users before update:")
+        print("\n📋 Admin users before update:")
         for email, role, must_reset in admins:
             status = "🔒 MUST RESET" if must_reset else "✅ NO RESET"
             print(f"  {status} - {email}")
@@ -85,13 +87,13 @@ def disable_password_reset_for_admins(db_path: str = "./data/emergence.db"):
         )
         updated_admins = cursor.fetchall()
 
-        print(f"\n📋 Admin users after update:")
+        print("\n📋 Admin users after update:")
         for email, role, must_reset in updated_admins:
             status = "🔒 MUST RESET" if must_reset else "✅ NO RESET"
             print(f"  {status} - {email}")
 
         print(f"\n✅ Success! Updated {updated_count} admin user(s)")
-        print(f"   Admin users will no longer be forced to reset their password.")
+        print("   Admin users will no longer be forced to reset their password.")
 
         return True
 

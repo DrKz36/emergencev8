@@ -51,13 +51,13 @@ def get_base_url(request: Request) -> str:
     Cloud Run: Force HTTPS (load balancer does SSL termination)
     Local dev: Use request.base_url as-is
     """
-    base_url = str(request.base_url).rstrip('/')
+    base_url = str(request.base_url).rstrip("/")
 
     # Si on est sur Cloud Run, forcer HTTPS
-    if os.getenv('K_SERVICE'):
+    if os.getenv("K_SERVICE"):
         # Cloud Run: remplacer http:// par https://
-        if base_url.startswith('http://'):
-            base_url = base_url.replace('http://', 'https://', 1)
+        if base_url.startswith("http://"):
+            base_url = base_url.replace("http://", "https://", 1)
 
     return base_url
 
@@ -90,9 +90,7 @@ async def gmail_auth_init(request: Request) -> RedirectResponse:
 
 @router.get("/auth/callback/gmail")
 async def gmail_auth_callback(
-    request: Request,
-    code: Optional[str] = None,
-    error: Optional[str] = None
+    request: Request, code: Optional[str] = None, error: Optional[str] = None
 ) -> JSONResponse:
     """
     Callback OAuth2 Gmail après consentement utilisateur.
@@ -108,14 +106,14 @@ async def gmail_auth_callback(
         logger.warning(f"OAuth callback error: {error}")
         return JSONResponse(
             status_code=400,
-            content={"success": False, "message": f"OAuth error: {error}"}
+            content={"success": False, "message": f"OAuth error: {error}"},
         )
 
     if not code:
         logger.error("No authorization code in callback")
         return JSONResponse(
             status_code=400,
-            content={"success": False, "message": "No authorization code provided"}
+            content={"success": False, "message": "No authorization code provided"},
         )
 
     try:
@@ -127,37 +125,33 @@ async def gmail_auth_callback(
         result = await get_oauth_service().handle_callback(
             code=code,
             redirect_uri=redirect_uri,
-            user_email="admin"  # Admin par défaut (pas d'auth multi-user)
+            user_email="admin",  # Admin par défaut (pas d'auth multi-user)
         )
 
-        if result['success']:
+        if result["success"]:
             logger.info("OAuth callback successful")
             return JSONResponse(
                 status_code=200,
                 content={
                     "success": True,
                     "message": "Gmail OAuth authentication successful! You can now use the Gmail API.",
-                    "next_step": "Codex can now call GET /api/gmail/read-reports with API key"
-                }
+                    "next_step": "Codex can now call GET /api/gmail/read-reports with API key",
+                },
             )
         else:
-            return JSONResponse(
-                status_code=400,
-                content=result
-            )
+            return JSONResponse(status_code=400, content=result)
 
     except Exception as e:
         logger.error(f"OAuth callback failed: {e}")
         return JSONResponse(
             status_code=500,
-            content={"success": False, "message": f"OAuth callback failed: {str(e)}"}
+            content={"success": False, "message": f"OAuth callback failed: {str(e)}"},
         )
 
 
 @router.get("/api/gmail/read-reports")
 async def read_gmail_reports(
-    x_codex_api_key: str = Header(..., alias="X-Codex-API-Key"),
-    max_results: int = 10
+    x_codex_api_key: str = Header(..., alias="X-Codex-API-Key"), max_results: int = 10
 ) -> JSONResponse:
     """
     API Codex - Lit les rapports Guardian par email.
@@ -173,36 +167,27 @@ async def read_gmail_reports(
     """
     try:
         # Vérifier API key Codex
-        expected_api_key = os.getenv('CODEX_API_KEY')
+        expected_api_key = os.getenv("CODEX_API_KEY")
         if not expected_api_key:
             logger.error("CODEX_API_KEY not configured in environment")
             raise HTTPException(
-                status_code=500,
-                detail="Codex API key not configured on server"
+                status_code=500, detail="Codex API key not configured on server"
             )
 
         if x_codex_api_key != expected_api_key:
             logger.warning(f"Invalid Codex API key: {x_codex_api_key[:10]}...")
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid Codex API key"
-            )
+            raise HTTPException(status_code=401, detail="Invalid Codex API key")
 
         # Lire emails Guardian
         emails = await get_gmail_service().read_guardian_reports(
-            max_results=max_results,
-            user_email="admin"
+            max_results=max_results, user_email="admin"
         )
 
         logger.info(f"Codex API: returned {len(emails)} Guardian emails")
 
         return JSONResponse(
             status_code=200,
-            content={
-                "success": True,
-                "count": len(emails),
-                "emails": emails
-            }
+            content={"success": True, "count": len(emails), "emails": emails},
         )
 
     except HTTPException:
@@ -210,8 +195,7 @@ async def read_gmail_reports(
     except Exception as e:
         logger.error(f"Error reading Gmail reports for Codex: {e}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to read Gmail reports: {str(e)}"
+            status_code=500, detail=f"Failed to read Gmail reports: {str(e)}"
         )
 
 
@@ -231,8 +215,8 @@ async def gmail_oauth_status():
                 status_code=200,
                 content={
                     "authenticated": False,
-                    "message": "No OAuth tokens found. Please authenticate via /auth/gmail"
-                }
+                    "message": "No OAuth tokens found. Please authenticate via /auth/gmail",
+                },
             )
 
         return JSONResponse(
@@ -240,13 +224,12 @@ async def gmail_oauth_status():
             content={
                 "authenticated": True,
                 "message": "Gmail OAuth is configured and tokens are valid",
-                "scopes": credentials.scopes
-            }
+                "scopes": credentials.scopes,
+            },
         )
 
     except Exception as e:
         logger.error(f"Error checking OAuth status: {e}")
         return JSONResponse(
-            status_code=500,
-            content={"authenticated": False, "error": str(e)}
+            status_code=500, content={"authenticated": False, "error": str(e)}
         )

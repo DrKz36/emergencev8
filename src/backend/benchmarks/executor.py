@@ -24,7 +24,9 @@ def _detect_edge_mode_flag() -> bool:
     return raw.strip().lower() in _EDGE_ENV_VALUES
 
 
-def _pick_context_snapshot(context: Optional[Mapping[str, Any]], *, limit: int = 6) -> Dict[str, Any]:
+def _pick_context_snapshot(
+    context: Optional[Mapping[str, Any]], *, limit: int = 6
+) -> Dict[str, Any]:
     if not context:
         return {}
     out: Dict[str, Any] = {}
@@ -53,7 +55,9 @@ class AgentArchScenarioExecutor(AgentArchExecutor):
         edge_mode: Optional[bool] = None,
     ) -> None:
         self._scenarios = dict(scenarios or SCENARIO_DEFINITIONS)
-        self._edge_mode = _detect_edge_mode_flag() if edge_mode is None else bool(edge_mode)
+        self._edge_mode = (
+            _detect_edge_mode_flag() if edge_mode is None else bool(edge_mode)
+        )
 
     async def execute(
         self,
@@ -71,7 +75,9 @@ class AgentArchScenarioExecutor(AgentArchExecutor):
         success = score >= threshold
 
         cost, cost_multiplier = self._estimate_cost(config, scenario, solved)
-        latency_ms, latency_multiplier = self._estimate_latency(config, scenario, solved)
+        latency_ms, latency_multiplier = self._estimate_latency(
+            config, scenario, solved
+        )
 
         details = {
             "score": round(score, 4),
@@ -88,9 +94,7 @@ class AgentArchScenarioExecutor(AgentArchExecutor):
 
         error_message = None
         if not success:
-            error_message = (
-                f"score {score:.2f} below threshold {threshold:.2f} for scenario {scenario.id}"
-            )
+            error_message = f"score {score:.2f} below threshold {threshold:.2f} for scenario {scenario.id}"
 
         return AgentExecutionOutcome(
             success=success,

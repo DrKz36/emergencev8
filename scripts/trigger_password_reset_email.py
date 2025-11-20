@@ -2,6 +2,7 @@
 Script to trigger a password reset email via the API
 This creates a real password reset token and sends the email
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -30,8 +31,7 @@ async def trigger_reset_for_email(email: str):
 
     # Check if email exists in allowlist
     user = await db.fetch_one(
-        "SELECT email, role FROM auth_allowlist WHERE email = ?",
-        (email,)
+        "SELECT email, role FROM auth_allowlist WHERE email = ?", (email,)
     )
 
     if not user:
@@ -56,7 +56,7 @@ async def trigger_reset_for_email(email: str):
     # Check email service configuration
     if not email_service.is_enabled():
         print("⚠️  Email service is not configured")
-        print(f"   Reset link (copy this to browser):")
+        print("   Reset link (copy this to browser):")
         print(f"   https://emergence-app.ch/reset-password?token={token}")
         print()
         print("To enable emails, configure these environment variables:")
@@ -77,7 +77,7 @@ async def trigger_reset_for_email(email: str):
             print(f"   Check inbox at: {email}")
         else:
             print("❌ Failed to send email")
-            print(f"   Manual reset link:")
+            print("   Manual reset link:")
             print(f"   https://emergence-app.ch/reset-password?token={token}")
 
     await db.close()
@@ -86,7 +86,9 @@ async def trigger_reset_for_email(email: str):
 async def main():
     if len(sys.argv) < 2:
         print("Usage: python scripts/trigger_password_reset_email.py <email>")
-        print("Example: python scripts/trigger_password_reset_email.py gonzalefernando@gmail.com")
+        print(
+            "Example: python scripts/trigger_password_reset_email.py gonzalefernando@gmail.com"
+        )
         sys.exit(1)
 
     email = sys.argv[1]

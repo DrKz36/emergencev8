@@ -25,72 +25,76 @@ logger = logging.getLogger(__name__)
 
 # Compteurs de requêtes par type
 rag_queries_hybrid_total = Counter(
-    'rag_queries_hybrid_total',
-    'Total number of hybrid RAG queries (BM25 + vector)',
-    ['collection', 'status']  # Labels: collection name, status (success/error)
+    "rag_queries_hybrid_total",
+    "Total number of hybrid RAG queries (BM25 + vector)",
+    ["collection", "status"],  # Labels: collection name, status (success/error)
 )
 
 rag_queries_vector_only_total = Counter(
-    'rag_queries_vector_only_total',
-    'Total number of vector-only RAG queries',
-    ['collection', 'status']
+    "rag_queries_vector_only_total",
+    "Total number of vector-only RAG queries",
+    ["collection", "status"],
 )
 
 rag_queries_bm25_only_total = Counter(
-    'rag_queries_bm25_only_total',
-    'Total number of BM25-only queries',
-    ['collection', 'status']
+    "rag_queries_bm25_only_total",
+    "Total number of BM25-only queries",
+    ["collection", "status"],
 )
 
 # Score moyen de pertinence
 rag_avg_score = Gauge(
-    'rag_avg_score',
-    'Average relevance score of RAG results',
-    ['collection', 'query_type']  # Labels: collection, query_type (hybrid/vector/bm25)
+    "rag_avg_score",
+    "Average relevance score of RAG results",
+    ["collection", "query_type"],  # Labels: collection, query_type (hybrid/vector/bm25)
 )
 
 # Résultats filtrés par seuil
 rag_results_filtered_total = Counter(
-    'rag_results_filtered_total',
-    'Total number of results filtered by score threshold',
-    ['collection', 'reason']  # Labels: collection, reason (below_threshold/empty_result)
+    "rag_results_filtered_total",
+    "Total number of results filtered by score threshold",
+    [
+        "collection",
+        "reason",
+    ],  # Labels: collection, reason (below_threshold/empty_result)
 )
 
 # Durée des requêtes
 rag_query_duration_seconds = Histogram(
-    'rag_query_duration_seconds',
-    'Duration of RAG query execution in seconds',
-    ['collection', 'query_type'],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5]
+    "rag_query_duration_seconds",
+    "Duration of RAG query execution in seconds",
+    ["collection", "query_type"],
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5],
 )
 
 # Nombre de résultats retournés
 rag_results_count = Histogram(
-    'rag_results_count',
-    'Number of results returned by RAG query',
-    ['collection', 'query_type'],
-    buckets=[0, 1, 2, 5, 10, 20, 50, 100]
+    "rag_results_count",
+    "Number of results returned by RAG query",
+    ["collection", "query_type"],
+    buckets=[0, 1, 2, 5, 10, 20, 50, 100],
 )
 
 # Score BM25 vs Vector
 rag_score_component = Gauge(
-    'rag_score_component',
-    'Component scores (BM25 and vector) for hybrid queries',
-    ['collection', 'component']  # component: bm25 or vector
+    "rag_score_component",
+    "Component scores (BM25 and vector) for hybrid queries",
+    ["collection", "component"],  # component: bm25 or vector
 )
 
 # P2.1 - Precision score (specificity + rerank)
 memory_rag_precision_score = Histogram(
-    'memory_rag_precision_score',
-    'RAG precision scores combining specificity and rerank',
-    ['collection', 'metric_type'],  # metric_type: specificity, jaccard, combined
-    buckets=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    "memory_rag_precision_score",
+    "RAG precision scores combining specificity and rerank",
+    ["collection", "metric_type"],  # metric_type: specificity, jaccard, combined
+    buckets=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
 )
 
 
 # ============================================================
 # Helpers pour tracking des métriques
 # ============================================================
+
 
 class RAGMetricsTracker:
     """
@@ -116,8 +120,7 @@ class RAGMetricsTracker:
     def __enter__(self):
         """Démarre le timer de durée"""
         self.timer = rag_query_duration_seconds.labels(
-            collection=self.collection,
-            query_type=self.query_type
+            collection=self.collection, query_type=self.query_type
         ).time()
         self.timer.__enter__()
         return self
@@ -130,25 +133,24 @@ class RAGMetricsTracker:
         # Incrémenter le compteur approprié
         if self.query_type == "hybrid":
             rag_queries_hybrid_total.labels(
-                collection=self.collection,
-                status=self.status
+                collection=self.collection, status=self.status
             ).inc()
         elif self.query_type == "vector":
             rag_queries_vector_only_total.labels(
-                collection=self.collection,
-                status=self.status
+                collection=self.collection, status=self.status
             ).inc()
         elif self.query_type == "bm25":
             rag_queries_bm25_only_total.labels(
-                collection=self.collection,
-                status=self.status
+                collection=self.collection, status=self.status
             ).inc()
 
         # Arrêter le timer
         if self.timer:
             self.timer.__exit__(exc_type, exc_val, exc_tb)
 
-    def record_results(self, results: list[dict[str, Any]], avg_score: Optional[float] = None) -> None:
+    def record_results(
+        self, results: list[dict[str, Any]], avg_score: Optional[float] = None
+    ) -> None:
         """
         Enregistre les résultats de la requête.
 
@@ -158,8 +160,7 @@ class RAGMetricsTracker:
         """
         # Nombre de résultats
         rag_results_count.labels(
-            collection=self.collection,
-            query_type=self.query_type
+            collection=self.collection, query_type=self.query_type
         ).observe(len(results))
 
         # Score moyen
@@ -169,27 +170,28 @@ class RAGMetricsTracker:
 
         if avg_score is not None:
             rag_avg_score.labels(
-                collection=self.collection,
-                query_type=self.query_type
+                collection=self.collection, query_type=self.query_type
             ).set(avg_score)
 
         # Scores composants pour requêtes hybrides
         if self.query_type == "hybrid" and results:
-            bm25_scores = [r.get("bm25_score", 0) for r in results if isinstance(r, dict)]
-            vector_scores = [r.get("vector_score", 0) for r in results if isinstance(r, dict)]
+            bm25_scores = [
+                r.get("bm25_score", 0) for r in results if isinstance(r, dict)
+            ]
+            vector_scores = [
+                r.get("vector_score", 0) for r in results if isinstance(r, dict)
+            ]
 
             if bm25_scores:
                 avg_bm25 = sum(bm25_scores) / len(bm25_scores)
                 rag_score_component.labels(
-                    collection=self.collection,
-                    component="bm25"
+                    collection=self.collection, component="bm25"
                 ).set(avg_bm25)
 
             if vector_scores:
                 avg_vector = sum(vector_scores) / len(vector_scores)
                 rag_score_component.labels(
-                    collection=self.collection,
-                    component="vector"
+                    collection=self.collection, component="vector"
                 ).set(avg_vector)
 
     def record_filtered(self, count: int, reason: str = "below_threshold") -> None:
@@ -201,8 +203,7 @@ class RAGMetricsTracker:
             reason: Raison du filtrage
         """
         rag_results_filtered_total.labels(
-            collection=self.collection,
-            reason=reason
+            collection=self.collection, reason=reason
         ).inc(count)
 
 
@@ -210,11 +211,12 @@ class RAGMetricsTracker:
 # Fonctions utilitaires
 # ============================================================
 
+
 def track_hybrid_query(
     collection: str,
     results: list[dict[str, Any]],
     avg_score: Optional[float] = None,
-    filtered_count: int = 0
+    filtered_count: int = 0,
 ) -> None:
     """
     Shortcut pour tracker une requête hybride sans context manager.
@@ -226,16 +228,12 @@ def track_hybrid_query(
         filtered_count: Nombre de résultats filtrés
     """
     # Compter la requête
-    rag_queries_hybrid_total.labels(
-        collection=collection,
-        status="success"
-    ).inc()
+    rag_queries_hybrid_total.labels(collection=collection, status="success").inc()
 
     # Résultats
-    rag_results_count.labels(
-        collection=collection,
-        query_type="hybrid"
-    ).observe(len(results))
+    rag_results_count.labels(collection=collection, query_type="hybrid").observe(
+        len(results)
+    )
 
     # Score moyen
     if avg_score is None and results:
@@ -243,16 +241,12 @@ def track_hybrid_query(
         avg_score = sum(scores) / len(scores) if scores else 0.0
 
     if avg_score is not None:
-        rag_avg_score.labels(
-            collection=collection,
-            query_type="hybrid"
-        ).set(avg_score)
+        rag_avg_score.labels(collection=collection, query_type="hybrid").set(avg_score)
 
     # Résultats filtrés
     if filtered_count > 0:
         rag_results_filtered_total.labels(
-            collection=collection,
-            reason="below_threshold"
+            collection=collection, reason="below_threshold"
         ).inc(filtered_count)
 
     logger.debug(

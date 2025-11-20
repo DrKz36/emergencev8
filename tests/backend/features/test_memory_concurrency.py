@@ -3,6 +3,7 @@
 Tests de concurrence pour la correction du Bug #3 : Race conditions sur dictionnaires partagés.
 Vérifie que les locks asyncio.Lock() fonctionnent correctement.
 """
+
 import pytest
 import asyncio
 from unittest.mock import Mock, AsyncMock, patch
@@ -25,11 +26,13 @@ def mock_db_manager():
 def mock_chat_service():
     """Mock ChatService"""
     chat = Mock()
-    chat.get_structured_llm_response = AsyncMock(return_value={
-        "summary": "Test summary",
-        "concepts": ["concept1", "concept2"],
-        "entities": ["entity1"]
-    })
+    chat.get_structured_llm_response = AsyncMock(
+        return_value={
+            "summary": "Test summary",
+            "concepts": ["concept1", "concept2"],
+            "entities": ["entity1"],
+        }
+    )
     chat.session_manager = Mock()
     chat.session_manager.get_session = Mock(return_value=None)
     chat.vector_service = None
@@ -54,7 +57,10 @@ class TestCacheConcurrency:
         analyzer.set_chat_service(mock_chat_service)
 
         # Patch queries.update_session_analysis_data
-        with patch('backend.features.memory.analyzer.queries.update_session_analysis_data', new=AsyncMock()):
+        with patch(
+            "backend.features.memory.analyzer.queries.update_session_analysis_data",
+            new=AsyncMock(),
+        ):
             # Fonction pour écrire dans le cache
             async def write_cache(i: int):
                 history = [{"role": "user", "content": f"Message {i}"}]
@@ -62,7 +68,7 @@ class TestCacheConcurrency:
                     session_id=f"session_{i}",
                     history=history,
                     force=False,
-                    user_id="test_user"
+                    user_id="test_user",
                 )
 
             # Lancer 100 écritures concurrentes
@@ -72,6 +78,7 @@ class TestCacheConcurrency:
             # Le cache devrait être présent et cohérent (pas de corruption)
             # Avec éviction agressive, on devrait avoir ~50 entrées max
             from backend.features.memory.analyzer import _ANALYSIS_CACHE
+
             cache_size = len(_ANALYSIS_CACHE)
 
             # Vérifier que le cache est dans les limites attendues
@@ -83,13 +90,15 @@ class TestConsolidatorConcurrency:
     """Tests de concurrence pour IncrementalConsolidator"""
 
     @pytest.mark.asyncio
-    async def test_counter_concurrent_increments(self, mock_db_manager, mock_vector_service):
+    async def test_counter_concurrent_increments(
+        self, mock_db_manager, mock_vector_service
+    ):
         """Test que les compteurs gèrent correctement les incréments concurrents"""
         consolidator = IncrementalConsolidator(
             memory_analyzer=Mock(),
             vector_service=mock_vector_service,
             db_manager=mock_db_manager,
-            consolidation_threshold=50
+            consolidation_threshold=50,
         )
         counter_key = "test_session:test_thread"
 
@@ -105,13 +114,15 @@ class TestConsolidatorConcurrency:
         assert count == 50, f"Le compteur devrait être 50, actuel: {count}"
 
     @pytest.mark.asyncio
-    async def test_counter_reset_thread_safe(self, mock_db_manager, mock_vector_service):
+    async def test_counter_reset_thread_safe(
+        self, mock_db_manager, mock_vector_service
+    ):
         """Test que le reset est thread-safe"""
         consolidator = IncrementalConsolidator(
             memory_analyzer=Mock(),
             vector_service=mock_vector_service,
             db_manager=mock_db_manager,
-            consolidation_threshold=10
+            consolidation_threshold=10,
         )
         counter_key = "test_session:test_thread"
 
@@ -210,7 +221,9 @@ class TestCrossComponentConcurrency:
     """Tests de concurrence entre plusieurs composants"""
 
     @pytest.mark.asyncio
-    async def test_multiple_components_concurrent(self, mock_db_manager, mock_chat_service, mock_vector_service):
+    async def test_multiple_components_concurrent(
+        self, mock_db_manager, mock_chat_service, mock_vector_service
+    ):
         """Test que plusieurs composants peuvent fonctionner concurremment sans deadlock"""
         # Créer tous les composants
         analyzer = MemoryAnalyzer(mock_db_manager)
@@ -220,14 +233,18 @@ class TestCrossComponentConcurrency:
             memory_analyzer=Mock(),
             vector_service=mock_vector_service,
             db_manager=mock_db_manager,
-            consolidation_threshold=50
+            consolidation_threshold=50,
         )
 
         tracker = ConceptTracker()
         intent_tracker = IntentTracker(vector_service=mock_vector_service)
 
         # Tâches concurrentes sur différents composants
-        with patch('backend.features.memory.analyzer.queries.update_session_analysis_data', new=AsyncMock()):
+        with patch(
+            "backend.features.memory.analyzer.queries.update_session_analysis_data",
+            new=AsyncMock(),
+        ):
+
             async def task1():
                 # Analyser session
                 history = [{"role": "user", "content": "Test concurrent"}]
@@ -235,7 +252,7 @@ class TestCrossComponentConcurrency:
                     session_id="concurrent_session",
                     history=history,
                     force=False,
-                    user_id="test_user"
+                    user_id="test_user",
                 )
 
             async def task2():
@@ -286,4 +303,6 @@ class TestLockPerformance:
 
         # Les deux devraient s'exécuter en parallèle (pas plus de 2x le temps séquentiel)
         # Avec un timeout généreux pour CI/CD lent
-        assert elapsed < 2.0, f"Les opérations indépendantes devraient être rapides, temps: {elapsed}s"
+        assert elapsed < 2.0, (
+            f"Les opérations indépendantes devraient être rapides, temps: {elapsed}s"
+        )

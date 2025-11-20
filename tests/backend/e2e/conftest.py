@@ -15,8 +15,10 @@ if str(SRC_DIR) not in sys.path:
 
 _httpx_init = httpx.Client.__init__
 if "app" not in _httpx_init.__code__.co_varnames:
+
     def _httpx_init_compat(self, *args, app=None, **kwargs):
         return _httpx_init(self, *args, **kwargs)
+
     httpx.Client.__init__ = _httpx_init_compat  # type: ignore[assignment]
 
 
@@ -67,6 +69,7 @@ def auth_app_factory():
         @app.post("/api/auth/login")
         async def login(body: dict):
             import uuid
+
             email = body.get("email")
             password = body.get("password")
             user = _mock_users.get(email)
@@ -85,7 +88,9 @@ def auth_app_factory():
             return {"status": "ok"}
 
         @app.post("/api/threads")
-        async def create_thread(body: dict, authorization: Optional[str] = Header(None)):
+        async def create_thread(
+            body: dict, authorization: Optional[str] = Header(None)
+        ):
             user = get_current_user(authorization)
             title = body.get("title", "Untitled")
             thread_id = f"thread_{len(_mock_threads) + 1}"
@@ -93,7 +98,7 @@ def auth_app_factory():
                 "id": thread_id,
                 "title": title,
                 "messages": [],
-                "user_id": user["id"]
+                "user_id": user["id"],
             }
             return {"id": thread_id, "title": title}
 
@@ -101,11 +106,15 @@ def auth_app_factory():
         async def list_threads(authorization: Optional[str] = Header(None)):
             user = get_current_user(authorization)
             # Filtrer threads par user_id
-            user_threads = [t for t in _mock_threads.values() if t.get("user_id") == user["id"]]
+            user_threads = [
+                t for t in _mock_threads.values() if t.get("user_id") == user["id"]
+            ]
             return user_threads
 
         @app.get("/api/threads/{thread_id}/messages")
-        async def get_messages(thread_id: str, authorization: Optional[str] = Header(None)):
+        async def get_messages(
+            thread_id: str, authorization: Optional[str] = Header(None)
+        ):
             user = get_current_user(authorization)
             thread = _mock_threads.get(thread_id, {})
             # Vérifier ownership
@@ -164,5 +173,7 @@ def client(auth_app_factory, authenticated_user):
     app = auth_app_factory()
     test_client = TestClient(app)
     # Injecter le header Authorization automatiquement
-    test_client.headers.update({"Authorization": f"Bearer {authenticated_user['token']}"})
+    test_client.headers.update(
+        {"Authorization": f"Bearer {authenticated_user['token']}"}
+    )
     return test_client

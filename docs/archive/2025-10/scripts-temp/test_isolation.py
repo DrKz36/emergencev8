@@ -2,6 +2,7 @@
 """
 Script de test pour vérifier l'isolation des données utilisateurs.
 """
+
 import asyncio
 import sys
 from pathlib import Path

@@ -2,6 +2,7 @@
 """
 Test rapide du système de timeout de session (sans attendre 3 minutes).
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -9,7 +10,11 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from backend.core.session_manager import SessionManager, INACTIVITY_TIMEOUT_MINUTES, CLEANUP_INTERVAL_SECONDS
+from backend.core.session_manager import (
+    SessionManager,
+    INACTIVITY_TIMEOUT_MINUTES,
+    CLEANUP_INTERVAL_SECONDS,
+)
 from backend.core.database.manager import DatabaseManager
 
 
@@ -19,7 +24,7 @@ async def quick_test():
     print("TEST RAPIDE DU SYSTEME DE TIMEOUT DE SESSION")
     print("=" * 80 + "\n")
 
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  - Timeout d'inactivite: {INACTIVITY_TIMEOUT_MINUTES} min")
     print(f"  - Intervalle de verification: {CLEANUP_INTERVAL_SECONDS}s\n")
 
@@ -42,21 +47,27 @@ async def quick_test():
     session_manager.start_cleanup_task()
 
     # Test: Modifier artificiellement last_activity pour forcer le timeout
-    print(f"\n[TEST] Modification artificielle de last_activity pour forcer le timeout")
-    old_time = datetime.now(timezone.utc) - timedelta(minutes=INACTIVITY_TIMEOUT_MINUTES + 0.5)
+    print("\n[TEST] Modification artificielle de last_activity pour forcer le timeout")
+    old_time = datetime.now(timezone.utc) - timedelta(
+        minutes=INACTIVITY_TIMEOUT_MINUTES + 0.5
+    )
 
     # Session 1 et 2: Inactives (timeout)
     for sid in session_ids[:2]:
         session = session_manager.get_session(sid)
         if session:
             session.last_activity = old_time
-            print(f"  - {sid}: last_activity = {old_time.strftime('%H:%M:%S')} (INACTIVE)")
+            print(
+                f"  - {sid}: last_activity = {old_time.strftime('%H:%M:%S')} (INACTIVE)"
+            )
 
     # Session 3: Active (pas de timeout)
     session_manager._update_session_activity(session_ids[2])
     session3 = session_manager.get_session(session_ids[2])
     if session3:
-        print(f"  - {session_ids[2]}: last_activity = {session3.last_activity.strftime('%H:%M:%S')} (ACTIVE)")
+        print(
+            f"  - {session_ids[2]}: last_activity = {session3.last_activity.strftime('%H:%M:%S')} (ACTIVE)"
+        )
 
     # Attendre un cycle de nettoyage
     wait_time = CLEANUP_INTERVAL_SECONDS + 5
@@ -70,7 +81,9 @@ async def quick_test():
         session = session_manager.get_session(sid)
         if session:
             remaining.append(sid)
-            print(f"  - {sid}: PRESENTE (last_activity: {session.last_activity.strftime('%H:%M:%S')})")
+            print(
+                f"  - {sid}: PRESENTE (last_activity: {session.last_activity.strftime('%H:%M:%S')})"
+            )
         else:
             print(f"  - {sid}: SUPPRIMEE (timeout)")
 
@@ -79,7 +92,9 @@ async def quick_test():
     await session_manager.stop_cleanup_task()
 
     # Résultat final
-    print(f"\n[RESULT] Sessions actives finales: {len(session_manager.active_sessions)}")
+    print(
+        f"\n[RESULT] Sessions actives finales: {len(session_manager.active_sessions)}"
+    )
 
     # Validation
     success = len(remaining) == 1 and session_ids[2] in remaining
@@ -108,5 +123,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n[ERROR] {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

@@ -2,6 +2,7 @@
 DatabaseManager PostgreSQL - Migration depuis SQLite
 Utilise asyncpg + pgvector pour embeddings
 """
+
 import asyncpg  # type: ignore[import-not-found]
 import logging
 from typing import Optional, List, Dict, Any, Tuple, AsyncIterator, cast
@@ -10,6 +11,7 @@ import os
 
 try:
     from pgvector.asyncpg import register_vector  # type: ignore[import-not-found]
+
     PGVECTOR_AVAILABLE = True
 except ImportError:
     PGVECTOR_AVAILABLE = False
@@ -76,9 +78,7 @@ class PostgreSQLManager:
                     min_size=self.min_size,
                     max_size=self.max_size,
                     command_timeout=self.command_timeout,
-                    server_settings={
-                        "application_name": "emergence-app"
-                    }
+                    server_settings={"application_name": "emergence-app"},
                 )
             else:
                 logger.info(f"Connecting via TCP: {self.host}:{self.port}")
@@ -91,9 +91,7 @@ class PostgreSQLManager:
                     min_size=self.min_size,
                     max_size=self.max_size,
                     command_timeout=self.command_timeout,
-                    server_settings={
-                        "application_name": "emergence-app"
-                    }
+                    server_settings={"application_name": "emergence-app"},
                 )
 
             # Register pgvector extension
@@ -101,7 +99,9 @@ class PostgreSQLManager:
                 await register_vector(self.pool)
                 logger.info("pgvector registered successfully")
 
-            logger.info(f"asyncpg pool created (min={self.min_size}, max={self.max_size})")
+            logger.info(
+                f"asyncpg pool created (min={self.min_size}, max={self.max_size})"
+            )
 
         except Exception as e:
             logger.error(f"Failed to create asyncpg pool: {e}", exc_info=True)
@@ -140,12 +140,7 @@ class PostgreSQLManager:
         async with self.pool.acquire() as connection:
             yield connection
 
-    async def execute(
-        self,
-        query: str,
-        *args: Any,
-        commit: bool = True
-    ) -> str:
+    async def execute(self, query: str, *args: Any, commit: bool = True) -> str:
         """
         Exécute une requête SQL (INSERT, UPDATE, DELETE).
 
@@ -162,14 +157,12 @@ class PostgreSQLManager:
                 result = await conn.execute(query, *args, timeout=self.command_timeout)
                 return cast(str, result)
             except Exception as e:
-                logger.error(f"Execute failed: {e}\nQuery: {query}\nArgs: {args}", exc_info=True)
+                logger.error(
+                    f"Execute failed: {e}\nQuery: {query}\nArgs: {args}", exc_info=True
+                )
                 raise
 
-    async def fetch_one(
-        self,
-        query: str,
-        *args: Any
-    ) -> Optional[Dict[str, Any]]:
+    async def fetch_one(self, query: str, *args: Any) -> Optional[Dict[str, Any]]:
         """
         Fetch une seule ligne (équivalent fetchone()).
 
@@ -184,11 +177,7 @@ class PostgreSQLManager:
                 logger.error(f"Fetch one failed: {e}\nQuery: {query}", exc_info=True)
                 raise
 
-    async def fetch_all(
-        self,
-        query: str,
-        *args: Any
-    ) -> List[Dict[str, Any]]:
+    async def fetch_all(self, query: str, *args: Any) -> List[Dict[str, Any]]:
         """
         Fetch toutes les lignes (équivalent fetchall()).
 
@@ -203,12 +192,7 @@ class PostgreSQLManager:
                 logger.error(f"Fetch all failed: {e}\nQuery: {query}", exc_info=True)
                 raise
 
-    async def fetch_val(
-        self,
-        query: str,
-        *args: Any,
-        column: int = 0
-    ) -> Any:
+    async def fetch_val(self, query: str, *args: Any, column: int = 0) -> Any:
         """
         Fetch une seule valeur (équivalent fetchval()).
 
@@ -220,16 +204,14 @@ class PostgreSQLManager:
         """
         async with self.acquire() as conn:
             try:
-                return await conn.fetchval(query, *args, column=column, timeout=self.command_timeout)
+                return await conn.fetchval(
+                    query, *args, column=column, timeout=self.command_timeout
+                )
             except Exception as e:
                 logger.error(f"Fetch val failed: {e}\nQuery: {query}", exc_info=True)
                 raise
 
-    async def execute_many(
-        self,
-        query: str,
-        args_list: List[Tuple[Any, ...]]
-    ) -> None:
+    async def execute_many(self, query: str, args_list: List[Tuple[Any, ...]]) -> None:
         """
         Execute batch insert/update (équivalent executemany()).
 
@@ -239,7 +221,9 @@ class PostgreSQLManager:
         """
         async with self.acquire() as conn:
             try:
-                await conn.executemany(query, args_list, timeout=self.command_timeout * len(args_list))
+                await conn.executemany(
+                    query, args_list, timeout=self.command_timeout * len(args_list)
+                )
                 logger.debug(f"Batch executed: {len(args_list)} rows")
             except Exception as e:
                 logger.error(f"Execute many failed: {e}\nQuery: {query}", exc_info=True)
@@ -257,7 +241,7 @@ class PostgreSQLManager:
         user_id: str,
         limit: int = 5,
         similarity_threshold: float = 0.7,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Recherche vectorielle avec pgvector (cosine similarity).
@@ -303,17 +287,16 @@ class PostgreSQLManager:
 
         try:
             rows = await self.fetch_all(query, *params)
-            logger.debug(f"Vector search returned {len(rows)} results (threshold={similarity_threshold})")
+            logger.debug(
+                f"Vector search returned {len(rows)} results (threshold={similarity_threshold})"
+            )
             return rows
         except Exception as e:
             logger.error(f"Vector search failed: {e}", exc_info=True)
             raise
 
     async def insert_vector(
-        self,
-        table: str,
-        data: Dict[str, Any],
-        embedding_column: str = "embedding"
+        self, table: str, data: Dict[str, Any], embedding_column: str = "embedding"
     ) -> str:
         """
         Insert row avec embedding vector.
@@ -330,16 +313,16 @@ class PostgreSQLManager:
             raise RuntimeError("pgvector extension not available")
 
         columns = list(data.keys())
-        placeholders = [f"${i+1}" for i in range(len(columns))]
+        placeholders = [f"${i + 1}" for i in range(len(columns))]
 
         # Cast embedding as vector
         for i, col in enumerate(columns):
             if col == embedding_column:
-                placeholders[i] = f"${i+1}::vector"
+                placeholders[i] = f"${i + 1}::vector"
 
         query = f"""
-        INSERT INTO {table} ({', '.join(columns)})
-        VALUES ({', '.join(placeholders)})
+        INSERT INTO {table} ({", ".join(columns)})
+        VALUES ({", ".join(placeholders)})
         RETURNING id
         """
 
