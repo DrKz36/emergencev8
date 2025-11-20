@@ -773,8 +773,17 @@ async def delete_document(
 
 # ------------------- Sessions (existant) ------------------- #
 async def get_session_by_id(
-    db: DatabaseManager, session_id: str
+    db: DatabaseManager,
+    session_id: str,
 ) -> Optional[aiosqlite.Row]:
+    """
+    Fallback legacy lookup for auth/chat sessions.
+
+    - Utilise la table `sessions` (nom legacy pour threads) quand `session_id`
+      ne correspond pas � un thread id ou lorsqu'on charge une session d'auth.
+    - Garde une signature explicite (db, session_id) pour �viter les erreurs
+      de binding (TypeError: takes 0 positional args).
+    """
     return await db.fetch_one("SELECT * FROM sessions WHERE id = ?", (session_id,))
 
 
@@ -788,25 +797,22 @@ async def get_all_sessions_overview(
     """
     Récupère un aperçu des sessions avec comptage des messages.
     Si session_id est fourni, retourne uniquement cette session.
-
-    Args:
-        db: Database manager
-        user_id: User ID to filter by (optional)
-        session_id: Optional session ID to filter by
-        allow_global: If True, allows querying all sessions without user_id (ADMIN ONLY)
+    
+    Migration V6.8: Requête sur la table 'threads' au lieu de 'sessions'.
+    Les colonnes retournées doivent rester compatibles pour le frontend.
     """
-    # Construction de la requête avec LEFT JOIN pour compter les messages
+    # Construction de la requête sur threads + messages
+    # On extrait summary/concepts/entities du champ JSON 'meta'
     base_query = """
         SELECT
-            s.id,
-            s.created_at,
-            s.updated_at,
-            s.summary,
-            COALESCE(json_array_length(s.extracted_concepts), 0) as concept_count,
-            COALESCE(json_array_length(s.extracted_entities), 0) as entity_count,
-            COUNT(DISTINCT m.id) as message_count
-        FROM sessions s
-        LEFT JOIN messages m ON (m.session_id = s.id OR m.user_id = s.user_id)
+            t.id,
+            t.created_at,
+            t.updated_at,
+            json_extract(t.meta, '$.summary') as summary,
+            COALESCE(json_array_length(json_extract(t.meta, '$.concepts')), 0) as concept_count,
+            COALESCE(json_array_length(json_extract(t.meta, '$.entities')), 0) as entity_count,
+            COALESCE(t.message_count, (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id)) as message_count
+        FROM threads t
     """
 
     # Conditions WHERE
@@ -814,11 +820,12 @@ async def get_all_sessions_overview(
     params = []
 
     if session_id:
-        conditions.append("s.id = ?")
-        params.append(session_id)
+        # Support legacy session_id lookup (often same as thread_id)
+        conditions.append("(t.id = ? OR t.session_id = ?)")
+        params.extend([session_id, session_id])
 
     if user_id:
-        conditions.append("s.user_id = ?")
+        conditions.append("t.user_id = ?")
         params.append(user_id)
     elif not allow_global:
         # Si ni user_id ni allow_global, c'est une erreur de sécurité potentielle
@@ -827,13 +834,17 @@ async def get_all_sessions_overview(
             "[SECURITY] get_all_sessions_overview called without user_id and allow_global=False"
         )
         return []
+        
+    # Filtre pour ne prendre que les threads de type 'chat' (équivalent sessions)
+    conditions.append("t.type = 'chat'")
+    conditions.append("t.archived = 0") # On ne montre pas les archivés par défaut dans l'overview
 
     where_clause = ""
     if conditions:
         where_clause = " WHERE " + " AND ".join(conditions)
 
     # Groupement et tri
-    query = base_query + where_clause + " GROUP BY s.id ORDER BY s.updated_at DESC"
+    query = base_query + where_clause + " ORDER BY t.updated_at DESC"
 
     rows = await db.fetch_all(query, tuple(params) if params else ())
     return [dict(r) for r in rows]

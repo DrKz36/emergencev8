@@ -1,0 +1,51 @@
+
+­ƒøí´©Å  Guardian v3.0 - Pre-Push Check
+============================================================
+
+Ôÿü´©Å  ProdGuardian - Checking production health...
+============================================================
+ProdGuardian - ╔MERGENCE Production Monitor
+============================================================
+\U0001f50d Fetching logs from Cloud Run service 'emergence-app'...
+   Region: europe-west1, Freshness: 1h, Limit: 80
+\u2705 Fetched 80 log entries
+\U0001f4c4 Report saved to: reports/prod_report.json
+
+­ƒƒó Production Status: OK
+
+­ƒôè Summary:
+   - Logs analyzed: 80
+   - Errors: 0
+   - Warnings: 0
+   - Critical signals: 0
+   - Latency issues: 0
+
+­ƒÆí Recommendations:
+   ­ƒƒó [LOW] No immediate action required
+      Production is healthy
+
+
+­ƒôØ Codex Summary - Updating summary...
+============================================================
+GENERATE CODEX SUMMARY - Enrichissement rapports Guardian
+============================================================
+
+­ƒôé Chargement des rapports...
+­ƒöì Extraction des insights...
+­ƒôØ G├®n├®ration du r├®sum├® markdown...
+Ô£à R├®sum├® g├®n├®r├®: C:\dev\emergenceV8\reports\codex_summary.md
+
+============================================================
+SUCC├êS - Codex GPT peut maintenant lire reports/codex_summary.md
+============================================================
+Ô£à Summary updated
+
+============================================================
+Ô£à Guardian: Pre-push checks PASSED
+============================================================
+remote: error: GH006: Protected branch update failed for refs/heads/main.        
+remote: 
+remote: - Changes must be made through a pull request.        
+To https://github.com/DrKz36/emergencev8.git
+ ! [remote rejected] main -> main (protected branch hook declined)
+error: failed to push some refs to 'https://github.com/DrKz36/emergencev8.git'

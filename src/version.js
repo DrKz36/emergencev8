@@ -59,8 +59,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.32',
-  name: 'ChatService Architecture - Phase 2+3 Decomposition',
+  version: 'beta-3.3.34',
+  name: 'Deep Aura UI Refresh & Desktop Fix',
   date: '2025-11-20',
 };
 
@@ -76,6 +76,26 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.34',
+    tagline: 'Deep Aura UI Refresh & Desktop Fix',
+    date: '2025-11-20',
+    changes: [
+      { type: 'fix', text: 'Restauration des imports CSS core dans index.html pour r�tablir la mise en page desktop et masquer correctement le verrou orientation.' },
+      { type: 'ui', text: 'Th�me Deep Aura appliqu� avec variables, glassmorphism V3 et animations globales charg�es depuis l\'entrypoint.' },
+      { type: 'quality', text: 'Alignement des versions frontend/backend sur la release Deep Aura.' }
+    ]
+  },
+  {
+    version: 'beta-3.3.33',
+    tagline: 'Documents Upload Stability & Auth Guard',
+    date: '2025-11-02',
+    changes: [
+      { type: 'fix', text: 'Fallback PyPDF2 si PyMuPDF est absent pour garder le module Documents disponible au lieu de 503.' },
+      { type: 'quality', text: 'Imports PDF/DOCX lazy pour ne pas bloquer DocumentService si une dependance native manque.' },
+      { type: 'quality', text: 'Module Documents emet auth:missing sur 401/403 et indique la reconnexion lors des uploads/listes.' }
+    ]
+  },
   {
     version: 'beta-3.3.32',
     tagline: 'ChatService Architecture - Décomposition Phase 2+3 (MemoryService + PromptService)',

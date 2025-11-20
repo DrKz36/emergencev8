@@ -62,6 +62,18 @@ export async function waitForBackendReady(options = {}) {
   } = options;
 
   const startTime = Date.now();
+  // D�duire une origine backend fiable (utile en dev Vite o� /ready n'existe pas sur 5173)
+  let backendOrigin = '';
+  try {
+    const { WS_CONFIG } = await import('./constants.js');
+    if (WS_CONFIG?.URL) {
+      const wsUrl = new URL(WS_CONFIG.URL);
+      const scheme = wsUrl.protocol === 'wss:' ? 'https:' : 'http:';
+      backendOrigin = `${scheme}//${wsUrl.host}`;
+    }
+  } catch (_) {
+    backendOrigin = '';
+  }
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     // Check timeout global
@@ -85,7 +97,21 @@ export async function waitForBackendReady(options = {}) {
 
       let response;
       try {
-        response = await fetch('/ready', fetchOptions);
+        const urlCandidates = backendOrigin
+          ? [`${backendOrigin}/ready`, `${backendOrigin}/api/monitoring/health`]
+          : ['/ready', '/api/monitoring/health'];
+
+        let lastError = null;
+        for (const url of urlCandidates) {
+          try {
+            response = await fetch(url, fetchOptions);
+            if (response?.ok) break;
+          } catch (err) {
+            lastError = err;
+            response = null;
+          }
+        }
+        if (!response && lastError) throw lastError;
       } finally {
         cleanup();
       }

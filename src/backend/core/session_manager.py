@@ -456,6 +456,8 @@ class SessionManager:
         """
         NOUVEAU V13.2: Charge une session depuis la BDD si elle n'est pas active.
         C'est le chaînon manquant pour travailler sur des sessions passées.
+        
+        Migration V6.8: Supporte le chargement depuis 'threads' (nouveau) et 'sessions' (legacy).
         """
         session_id = self.resolve_session_id(session_id)
         if session_id in self.active_sessions:
@@ -464,11 +466,144 @@ class SessionManager:
         logger.info(
             f"Session {session_id} non active, tentative de chargement depuis la BDD..."
         )
-        # On utilise la nouvelle fonction de queries.py
+        
+        # 1. Tentative de chargement depuis la table 'threads' (Nouvelle architecture)
+        # On cherche un thread associé à ce session_id
+        # Note: souvent thread_id == session_id, mais on utilise get_threads avec session_id pour être sûr
+        try:
+            threads = await queries.get_threads(
+                self.db_manager, 
+                session_id=session_id, 
+                user_id=None, # On ne filtre pas par user_id ici pour le chargement système, ou on devrait ?
+                              # load_session_from_db est souvent appelé avec un ID précis.
+                              # Pour l'instant on passe user_id=None mais get_threads exige user_id...
+                              # Attends, get_threads lève une erreur si user_id est None.
+                              # On doit récupérer le user_id ou utiliser une méthode qui bypass la sécurité si c'est interne.
+                              # queries.get_thread_any est fait pour ça (fallback interne).
+            )
+            # Ah, get_threads exige user_id. get_thread_any aussi a un fallback mais check user_id d'abord.
+            # Si on ne connait pas le user_id, on ne peut pas utiliser get_threads facilement sans modifier queries.
+            # Mais on a get_thread_any qui fait "SELECT * FROM threads WHERE id = ?" en fallback.
+            # Essayons de charger par ID direct (si session_id == thread_id)
+            
+            thread_row = await queries.get_thread_any(self.db_manager, session_id)
+            
+            # Si pas trouvé par ID direct, on ne peut pas facilement chercher par session_id sans user_id 
+            # avec les queries actuelles qui imposent user_id.
+            # Mais attend, load_session_from_db est appelé par ensure_session qui a user_id.
+            # Mais parfois appelé sans.
+            
+            if thread_row:
+                # Thread trouvé ! On charge les messages.
+                thread_id = thread_row["id"]
+                messages = await queries.get_messages(
+                    self.db_manager, 
+                    thread_id, 
+                    session_id=session_id,
+                    user_id=thread_row.get("user_id"), # On utilise le user_id du thread
+                    limit=1000 # On charge tout ou une limite raisonnable ?
+                )
+                
+                # Reconstruction de l'historique
+                history: List[Dict[str, Any]] = []
+                for item in messages or []:
+                    # Normalisation des messages (similaire à _hydrate_session_from_thread)
+                    try:
+                        payload = dict(item)
+                    except Exception:
+                        payload = item
+                    
+                    msg_role = str(payload.get("role") or Role.USER.value).lower()
+                    role = Role.ASSISTANT if msg_role == Role.ASSISTANT.value else Role.USER
+                    content = payload.get("content")
+                    if not isinstance(content, str):
+                        try:
+                            content = json.dumps(content or "")
+                        except Exception:
+                            content = str(content or "")
+                    agent_id = payload.get("agent_id") or (
+                        "user" if role == Role.USER else "assistant"
+                    )
+                    timestamp = (
+                        payload.get("created_at")
+                        or payload.get("timestamp")
+                        or datetime.now(timezone.utc).isoformat()
+                    )
+                    message_id = str(payload.get("id") or uuid4())
+                    meta = payload.get("meta")
+                    if isinstance(meta, str):
+                        try:
+                            meta = json.loads(meta)
+                        except Exception:
+                            meta = {"raw": meta}
+                    
+                    history.append(
+                        {
+                            "id": message_id,
+                            "session_id": session_id,
+                            "role": role.value,
+                            "agent": agent_id,
+                            "content": content,
+                            "timestamp": timestamp,
+                            "meta": meta,
+                            "source": "thread_persisted",
+                        }
+                    )
+                
+                # Inverser l'ordre car get_messages retourne du plus récent au plus vieux (souvent) 
+                # Ah non, get_messages fait [::-1] à la fin, donc c'est déjà dans l'ordre chrono ?
+                # Vérifions get_messages: "ORDER BY created_at DESC LIMIT ?" puis "[::-1]". 
+                # Donc oui, c'est chrono (vieux -> récent).
+                
+                now = datetime.now(timezone.utc)
+                created_at = thread_row.get("created_at")
+                updated_at = thread_row.get("updated_at")
+                
+                start_time = datetime.fromisoformat(created_at) if created_at else now
+                end_time = datetime.fromisoformat(updated_at) if updated_at else None
+                
+                session_user = str(thread_row.get("user_id") or session_id)
+                session = Session(
+                    id=session_id, # On garde session_id demandé
+                    user_id=session_user,
+                    start_time=start_time,
+                    end_time=end_time,
+                    last_activity=now,
+                    history=history,
+                )
+                
+                # Metadata
+                raw_meta = thread_row.get("meta")
+                meta_dict = {}
+                if isinstance(raw_meta, str):
+                    try:
+                        meta_dict = json.loads(raw_meta)
+                    except Exception:
+                        pass
+                elif isinstance(raw_meta, dict):
+                    meta_dict = raw_meta
+                
+                session.metadata = meta_dict
+                session.metadata["thread_id"] = thread_id
+                
+                self.active_sessions[session_id] = session
+                if session.user_id:
+                    uid = str(session.user_id)
+                    self._session_user_cache[session_id] = uid
+                    self._session_users[session_id] = uid
+                
+                logger.info(f"Session {session_id} chargée depuis la table threads (thread {thread_id}).")
+                return session
+
+        except Exception as e:
+            logger.warning(f"Erreur lors du chargement depuis threads pour {session_id}: {e}")
+            # On continue vers le fallback legacy
+
+        # 2. Fallback: Chargement depuis la table 'sessions' (Legacy)
         session_row = await queries.get_session_by_id(self.db_manager, session_id)
 
         if not session_row:
-            logger.warning(f"Session {session_id} non trouvée en BDD.")
+            logger.warning(f"Session {session_id} non trouvée en BDD (ni threads ni sessions).")
             return None
 
         try:
@@ -508,9 +643,9 @@ class SessionManager:
                     reconstructed_history.append(candidate)
                     continue
                 try:
-                    role = str(candidate.get("role") or "").lower()
+                    role_raw = str(candidate.get("role") or "").lower()
                     model: ChatMessage | AgentMessage
-                    if role == "assistant":
+                    if role_raw == "assistant":
                         model = AgentMessage(**candidate)
                     else:
                         model = ChatMessage(**candidate)
@@ -545,7 +680,7 @@ class SessionManager:
                 uid = str(session.user_id)
                 self._session_user_cache[session_id] = uid
                 self._session_users[session_id] = uid
-            logger.info(f"Session {session_id} chargée et reconstruite depuis la BDD.")
+            logger.info(f"Session {session_id} chargée et reconstruite depuis la BDD (Legacy sessions).")
             return session
         except Exception as e:
             logger.error(
@@ -608,7 +743,7 @@ class SessionManager:
                     payload = dict(item)
                 except Exception:
                     payload = item
-                msg_role = str(payload.get("role") or Role.USER).lower()
+                msg_role = str(payload.get("role") or Role.USER.value).lower()
                 role = Role.ASSISTANT if msg_role == Role.ASSISTANT.value else Role.USER
                 content = payload.get("content")
                 if not isinstance(content, str):

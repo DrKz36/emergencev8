@@ -918,31 +918,88 @@ class MemoryGardener:
     # ---------- Helpers SQL ----------
 
     async def _fetch_session_by_id(self, session_id: str) -> Optional[Dict[str, Any]]:
-        row = await self.db.fetch_one(
-            """
-            SELECT id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities
-            FROM sessions
-            WHERE id = ?
-            """,
-            (session_id,),
-        )
-        return dict(row) if row else None
+        # Migration V6.8: Fetch from threads + messages
+        # We try to find a thread with this id or session_id
+        thread = await queries.get_thread_any(self.db, session_id, session_id=session_id)
+        if not thread:
+            return None
+        
+        tid = thread["id"]
+        # Fetch messages
+        msgs = await queries.get_messages(self.db, tid, limit=1000)
+        
+        # Reconstruct session-like object
+        meta = json.loads(thread.get("meta") or "{}")
+        
+        # Convert messages to history format expected by gardener
+        history = []
+        for m in msgs:
+            history.append({
+                "role": m.get("role"),
+                "content": m.get("content"),
+                "agent_id": m.get("agent_id"),
+                # Add other fields if needed
+            })
+            
+        return {
+            "id": tid,
+            "user_id": thread.get("user_id"),
+            "created_at": thread.get("created_at"),
+            "updated_at": thread.get("updated_at"),
+            "session_data": history, # Pass as list directly
+            "summary": meta.get("summary"),
+            "extracted_concepts": meta.get("concepts"),
+            "extracted_entities": meta.get("entities"),
+            "themes": meta.get("themes", []),
+        }
 
     async def _fetch_recent_sessions(
         self, limit: int, user_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
+        # Migration V6.8: Fetch from threads
         base_query = """
-            SELECT id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities
-            FROM sessions
+            SELECT id, user_id, created_at, updated_at, meta
+            FROM threads
+            WHERE type = 'chat' AND archived = 0
         """
         params: List[Any] = []
         if user_id:
-            base_query += " WHERE user_id = ?"
+            base_query += " AND user_id = ?"
             params.append(user_id)
         base_query += " ORDER BY updated_at DESC LIMIT ?"
         params.append(int(limit))
+        
         rows = await self.db.fetch_all(base_query, tuple(params))
-        return [dict(r) for r in (rows or [])]
+        
+        results = []
+        for row in rows:
+            row_dict = dict(row)
+            tid = row_dict["id"]
+            meta = json.loads(row_dict.get("meta") or "{}")
+            
+            # Fetch messages for each thread (N+1 but limit is small)
+            msgs = await queries.get_messages(self.db, tid, limit=500)
+            history = []
+            for m in msgs:
+                history.append({
+                    "role": m.get("role"),
+                    "content": m.get("content"),
+                    "agent_id": m.get("agent_id"),
+                })
+                
+            results.append({
+                "id": tid,
+                "user_id": row_dict.get("user_id"),
+                "created_at": row_dict.get("created_at"),
+                "updated_at": row_dict.get("updated_at"),
+                "session_data": history,
+                "summary": meta.get("summary"),
+                "extracted_concepts": meta.get("concepts"),
+                "extracted_entities": meta.get("entities"),
+                "themes": meta.get("themes", []),
+            })
+            
+        return results
 
     def _parse_concepts(self, raw: Any) -> List[str]:
         try:

@@ -2,6 +2,7 @@
 > V4.0 — Aligné architecture multi-agents + mémoire progressive.
 
 ## 0) Principes
+- Note maintenance (2025-11-20) : les healthchecks peuvent etre joints via `/ready` ou `/api/monitoring/health` selon l'origine frontend (Vite dev) ; pas de changement de payload.
 - Tous les échanges utilisent `{ "type": string, "payload": object }`.
 - Les événements serveur sont préfixés `ws:` ; les erreurs critiques côté serveur déclenchent `ws:error` + log.
 - Auth : JWT local (allowlist email, HS256) obligatoire (header `Authorization: Bearer <JWT>`). Le mode dev (local uniquement) tolère un ID token Google ou l'entête `X-User-Id` quand `AUTH_DEV_MODE=1`; en production le flag vaut 0 et les bypass répondent 404.

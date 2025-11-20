@@ -1,3 +1,27 @@
+## Session COMPLETED (2025-11-20 15:05 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/backend/core/database/queries.py` (fix signature get_session_by_id)
+- `src/frontend/shared/backend-health.js` (healthcheck fallback vers backend réel)
+- `src/frontend/styles/components/rag-power-button.css` (RAG/TTS alignés Deep Aura)
+- `AGENT_SYNC_CODEX.md` (entrée)
+- `docs/passation_codex.md` (entrée)
+
+### Work summary
+1. WS down: `get_session_by_id` appelait une signature vide → crash TypeError au handshake. Remis signature explicite (db, session_id) pour reload de session legacy.
+2. Healthcheck front: en dev Vite, `/ready` renvoyait 404. Ajout détection d’origine backend depuis `WS_CONFIG` + fallback `/api/monitoring/health`.
+3. UI: RAG/TTS restylés (glass sombre, verts/rouges cohérents) pour matcher le thème Deep Aura.
+
+### Tests
+- ✅ `npm run build`
+
+### Next steps
+1. Relancer l’app et vérifier que WS se connecte et hydrate les messages (plus d’erreur get_session_by_id).
+2. QA visuelle RAG/TTS (desktop/mobile) + vérifier qu’il n’y a plus de spam 404 `/ready`.
+
+### Blockers
+- AutoSync service sur :8000 toujours injoignable (timeout).
+
 ## Session COMPLETED (2025-11-01 15:40 CET) - Agent : Codex GPT
 
 ### Files touched

@@ -10,6 +10,59 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.34] - 2025-11-20
+
+### 🎨 Graphical Redesign - Deep Aura Theme
+
+#### ✨ Nouvelles Fonctionnalités
+
+- **Thème "Deep Aura"** : Introduction d'une nouvelle identité visuelle immersive avec un fond sombre profond (`#020617`), des dégradés vibrants et des effets de lumière subtils.
+- **Glassmorphism V3** : Refonte des effets de transparence avec un flou accru (20px), des bordures fines et des ombres portées pour une meilleure hiérarchie visuelle.
+- **Typographie Moderne** : Adoption de la police **'Outfit'** pour les titres et **'Inter'** pour le corps de texte, améliorant la lisibilité et le caractère moderne de l'application.
+- **Animations Globales** : Intégration d'un système d'animations fluide (`fadeIn`, `slideUp`, `pulse`, `shimmer`) pour dynamiser les interactions.
+
+#### 🔧 Améliorations UI/UX
+
+- **Layout Responsive** : Refactorisation complète de la structure de page (`_layout.css`) avec une grille CSS robuste, assurant une expérience fluide du mobile au desktop.
+- **Navigation Mobile** : Nouveau menu mobile avec backdrop flouté, animations d'entrée/sortie fluides et meilleure accessibilité.
+- **Composants Revus** :
+    - **Boutons** : Styles "Glow" avec gradients et effets de survol interactifs.
+    - **Inputs** : Champs de saisie style "Glass" avec focus rings lumineux.
+    - **Sidebar** : Navigation latérale sticky avec états actifs et survol améliorés.
+
+### 🛠️ Correctifs
+
+- Réactivation des imports CSS core dans `index.html` pour restaurer l'UI desktop et masquer le verrou orientation sur les écrans larges.
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/styles/core/_variables.css`
+- `src/frontend/styles/themes/dark.css`
+- `src/frontend/styles/core/_layout.css`
+- `src/frontend/styles/components/header-nav.css`
+- `src/frontend/styles/components/buttons.css`
+- `src/frontend/styles/components/inputs.css`
+- `src/frontend/styles/components/glassmorphism.css`
+- `src/frontend/styles/core/_typography.css`
+- `src/frontend/styles/core/_animations.css`
+
+---
+
+## [beta-3.3.33] - 2025-11-02
+
+### 🔧 Documents upload stability
+
+#### 🐞 Correctifs
+
+- Fallback PyPDF2 si PyMuPDF est absent pour éviter les 503 Documents : imports PDF/DOCX lazy afin que le router ne casse pas quand une dépendance native manque.
+- Le module Documents déclenche désormais `auth:missing` sur les réponses 401/403 (liste et upload) et affiche un message de reconnexion pour éviter les erreurs silencieuses côté UI.
+
+#### 📦 Dépendances
+
+- Ajout PyPDF2 comme parseur PDF de secours (`requirements.txt`).
+
+---
+
 ## [beta-3.3.32] - 2025-11-20
 
 ### 🏗️ Refactoring Architectural - Décomposition ChatService Phase 2+3
