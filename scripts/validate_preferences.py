@@ -23,7 +23,9 @@ except ImportError:
     sys.exit(1)
 
 
-def validate_preferences(persist_directory: str = "./chroma_data", limit: int = 10, user_id: str = None):
+def validate_preferences(
+    persist_directory: str = "./chroma_data", limit: int = 10, user_id: str = None
+):
     """
     Valide que préférences sont bien dans ChromaDB.
 
@@ -38,10 +40,11 @@ def validate_preferences(persist_directory: str = "./chroma_data", limit: int = 
 
     # Connexion ChromaDB
     try:
-        client = chromadb.Client(Settings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=persist_directory
-        ))
+        client = chromadb.Client(
+            Settings(
+                chroma_db_impl="duckdb+parquet", persist_directory=persist_directory
+            )
+        )
         print("✅ Connexion ChromaDB établie")
     except Exception as e:
         print(f"❌ Erreur connexion ChromaDB: {e}")
@@ -53,7 +56,9 @@ def validate_preferences(persist_directory: str = "./chroma_data", limit: int = 
         print("✅ Collection 'memory_preferences' trouvée")
     except Exception as e:
         print(f"❌ Collection 'memory_preferences' non trouvée: {e}")
-        print("💡 Cela signifie probablement qu'aucune préférence n'a été extraite encore.")
+        print(
+            "💡 Cela signifie probablement qu'aucune préférence n'a été extraite encore."
+        )
         return False
 
     # Compter documents
@@ -79,16 +84,16 @@ def validate_preferences(persist_directory: str = "./chroma_data", limit: int = 
         where_filter = {"user_id": user_id} if user_id else None
 
         results = collection.get(
-            limit=limit,
-            include=["metadatas", "documents"],
-            where=where_filter
+            limit=limit, include=["metadatas", "documents"], where=where_filter
         )
 
         print(f"\n📋 Affichage de {min(len(results['documents']), limit)} préférences:")
         print("-" * 60)
 
-        for i, (doc, meta) in enumerate(zip(results["documents"], results["metadatas"])):
-            print(f"\n🔹 Préférence {i+1}/{min(count, limit)}")
+        for i, (doc, meta) in enumerate(
+            zip(results["documents"], results["metadatas"])
+        ):
+            print(f"\n🔹 Préférence {i + 1}/{min(count, limit)}")
             print(f"   User: {meta.get('user_sub') or meta.get('user_id', 'N/A')}")
             print(f"   Type: {meta.get('type', 'N/A')}")
             print(f"   Topic: {meta.get('topic', 'N/A')}")
@@ -107,6 +112,7 @@ def validate_preferences(persist_directory: str = "./chroma_data", limit: int = 
     except Exception as e:
         print(f"❌ Erreur récupération préférences: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -119,27 +125,22 @@ def main():
         "--persist-dir",
         type=str,
         default="./chroma_data",
-        help="Chemin vers données ChromaDB (défaut: ./chroma_data)"
+        help="Chemin vers données ChromaDB (défaut: ./chroma_data)",
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=10,
-        help="Nombre max de préférences à afficher (défaut: 10)"
+        help="Nombre max de préférences à afficher (défaut: 10)",
     )
     parser.add_argument(
-        "--user-id",
-        type=str,
-        default=None,
-        help="Filtrer par user_id (optionnel)"
+        "--user-id", type=str, default=None, help="Filtrer par user_id (optionnel)"
     )
 
     args = parser.parse_args()
 
     success = validate_preferences(
-        persist_directory=args.persist_dir,
-        limit=args.limit,
-        user_id=args.user_id
+        persist_directory=args.persist_dir, limit=args.limit, user_id=args.user_id
     )
 
     sys.exit(0 if success else 1)

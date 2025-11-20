@@ -30,17 +30,19 @@ class TestNDCGTimeAtK:
 
         # Cas 1 : item récent en premier (bon classement)
         recent_first = [
-            {"rel": 3.0, "ts": now - timedelta(days=1)},   # récent en 1er
+            {"rel": 3.0, "ts": now - timedelta(days=1)},  # récent en 1er
             {"rel": 3.0, "ts": now - timedelta(days=30)},  # ancien en 2e
         ]
 
         # Cas 2 : item ancien en premier (mauvais classement)
         old_first = [
             {"rel": 3.0, "ts": now - timedelta(days=30)},  # ancien en 1er
-            {"rel": 3.0, "ts": now - timedelta(days=1)},   # récent en 2e
+            {"rel": 3.0, "ts": now - timedelta(days=1)},  # récent en 2e
         ]
 
-        score_recent_first = ndcg_time_at_k(recent_first, k=2, now=now, T_days=7.0, lam=0.3)
+        score_recent_first = ndcg_time_at_k(
+            recent_first, k=2, now=now, T_days=7.0, lam=0.3
+        )
         score_old_first = ndcg_time_at_k(old_first, k=2, now=now, T_days=7.0, lam=0.3)
 
         # Le bon classement (récent en premier) doit avoir un meilleur score
@@ -56,12 +58,15 @@ class TestNDCGTimeAtK:
         # Item 2: moins pertinent mais récent
         items_case_a = [
             {"rel": 5.0, "ts": now - timedelta(days=30)},  # 1er : très pertinent, vieux
-            {"rel": 2.0, "ts": now - timedelta(days=1)},   # 2e : moins pertinent, récent
+            {"rel": 2.0, "ts": now - timedelta(days=1)},  # 2e : moins pertinent, récent
         ]
 
         # Même liste mais inversée
         items_case_b = [
-            {"rel": 2.0, "ts": now - timedelta(days=1)},   # 1er : moins pertinent, récent
+            {
+                "rel": 2.0,
+                "ts": now - timedelta(days=1),
+            },  # 1er : moins pertinent, récent
             {"rel": 5.0, "ts": now - timedelta(days=30)},  # 2e : très pertinent, vieux
         ]
 
@@ -78,8 +83,11 @@ class TestNDCGTimeAtK:
         """Classement idéal donne nDCG = 1.0."""
         now = datetime.now(timezone.utc)
         items = [
-            {"rel": 5.0, "ts": now - timedelta(days=1)},   # Meilleur : très pertinent, récent
-            {"rel": 3.0, "ts": now - timedelta(days=2)},   # Moyen
+            {
+                "rel": 5.0,
+                "ts": now - timedelta(days=1),
+            },  # Meilleur : très pertinent, récent
+            {"rel": 3.0, "ts": now - timedelta(days=2)},  # Moyen
             {"rel": 1.0, "ts": now - timedelta(days=10)},  # Pire : peu pertinent, vieux
         ]
         score = ndcg_time_at_k(items, k=3, now=now)
@@ -91,7 +99,7 @@ class TestNDCGTimeAtK:
         items = [
             {"rel": 1.0, "ts": now - timedelta(days=30)},  # Pire en 1er
             {"rel": 3.0, "ts": now - timedelta(days=10)},  # Moyen en 2e
-            {"rel": 5.0, "ts": now - timedelta(days=1)},   # Meilleur en dernier
+            {"rel": 5.0, "ts": now - timedelta(days=1)},  # Meilleur en dernier
         ]
         score = ndcg_time_at_k(items, k=3, now=now)
         assert 0.0 < score < 0.99  # Score dégradé
@@ -165,7 +173,7 @@ class TestNDCGTimeAtK:
         # Classement suboptimal : ancien en premier
         items = [
             {"rel": 5.0, "ts": now - timedelta(days=30)},  # ancien
-            {"rel": 5.0, "ts": now - timedelta(days=1)},   # récent
+            {"rel": 5.0, "ts": now - timedelta(days=1)},  # récent
         ]
 
         score_low_lam = ndcg_time_at_k(items, k=2, now=now, lam=0.1)
@@ -220,20 +228,41 @@ class TestNDCGTimeAtK:
         # Simule des résultats de recherche avec pertinence et timestamps variés
         # Bon classement : items récents ET pertinents en premier
         good_ranking = [
-            {"rel": 4.0, "ts": now - timedelta(days=2)},   # Top 1 : très pertinent, récent
-            {"rel": 3.0, "ts": now - timedelta(hours=6)},  # Top 2 : pertinent, très récent
-            {"rel": 2.0, "ts": now - timedelta(days=5)},   # Top 3 : peu pertinent, récent
-            {"rel": 5.0, "ts": now - timedelta(days=60)},  # Top 4 : le plus pertinent mais ancien
-            {"rel": 1.0, "ts": now - timedelta(days=90)},  # Top 5 : peu pertinent, très ancien
+            {
+                "rel": 4.0,
+                "ts": now - timedelta(days=2),
+            },  # Top 1 : très pertinent, récent
+            {
+                "rel": 3.0,
+                "ts": now - timedelta(hours=6),
+            },  # Top 2 : pertinent, très récent
+            {
+                "rel": 2.0,
+                "ts": now - timedelta(days=5),
+            },  # Top 3 : peu pertinent, récent
+            {
+                "rel": 5.0,
+                "ts": now - timedelta(days=60),
+            },  # Top 4 : le plus pertinent mais ancien
+            {
+                "rel": 1.0,
+                "ts": now - timedelta(days=90),
+            },  # Top 5 : peu pertinent, très ancien
         ]
 
         # Mauvais classement : items anciens en premier
         bad_ranking = [
             {"rel": 5.0, "ts": now - timedelta(days=60)},  # Top 1 : ancien (mauvais !)
-            {"rel": 1.0, "ts": now - timedelta(days=90)},  # Top 2 : très ancien (pire !)
-            {"rel": 4.0, "ts": now - timedelta(days=2)},   # Top 3 : bon item relégué
-            {"rel": 3.0, "ts": now - timedelta(hours=6)},  # Top 4 : excellent item relégué
-            {"rel": 2.0, "ts": now - timedelta(days=5)},   # Top 5
+            {
+                "rel": 1.0,
+                "ts": now - timedelta(days=90),
+            },  # Top 2 : très ancien (pire !)
+            {"rel": 4.0, "ts": now - timedelta(days=2)},  # Top 3 : bon item relégué
+            {
+                "rel": 3.0,
+                "ts": now - timedelta(hours=6),
+            },  # Top 4 : excellent item relégué
+            {"rel": 2.0, "ts": now - timedelta(days=5)},  # Top 5
         ]
 
         score_good = ndcg_time_at_k(good_ranking, k=5, now=now, T_days=7.0, lam=0.3)
@@ -242,7 +271,7 @@ class TestNDCGTimeAtK:
         # Le bon classement doit avoir un score nettement supérieur
         assert score_good > score_bad
         assert 0.9 < score_good <= 1.0  # Bon classement proche de parfait
-        assert 0.3 < score_bad < 0.8    # Mauvais classement pénalisé
+        assert 0.3 < score_bad < 0.8  # Mauvais classement pénalisé
 
         # Vérifier que les scores sont dans [0, 1]
         assert 0.0 <= score_good <= 1.0

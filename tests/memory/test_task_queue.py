@@ -31,9 +31,7 @@ async def test_enqueue_task():
         result.append(res)
 
     await queue.enqueue(
-        "analyze",
-        {"session_id": "test-123", "force": True},
-        callback=callback
+        "analyze", {"session_id": "test-123", "force": True}, callback=callback
     )
 
     # Attendre traitement (max 5s)
@@ -69,9 +67,7 @@ async def test_queue_stops_cleanly():
 async def test_memory_task_creation():
     """Test la création d'un MemoryTask"""
     task = MemoryTask(
-        task_type="analyze",
-        payload={"session_id": "test"},
-        callback=None
+        task_type="analyze", payload={"session_id": "test"}, callback=None
     )
 
     assert task.task_type == "analyze"
@@ -94,9 +90,7 @@ async def test_multiple_workers_process_tasks():
     tasks_count = 3
     for i in range(tasks_count):
         await queue.enqueue(
-            "analyze",
-            {"session_id": f"test-{i}", "force": True},
-            callback=callback
+            "analyze", {"session_id": f"test-{i}", "force": True}, callback=callback
         )
 
     # Attendre traitement (workers essayent de traiter, même si échec)

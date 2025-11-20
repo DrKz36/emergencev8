@@ -1,6 +1,7 @@
 """
 Script de test FINAL - Token dans Authorization Header (Bearer)
 """
+
 import requests
 import json
 from typing import Any
@@ -14,14 +15,16 @@ SESSION_ID = "a24eefc9-10f1-453f-9fff-6d1b75d94e8e"
 HEADERS = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {ID_TOKEN}",
-    "X-Session-Id": SESSION_ID
+    "X-Session-Id": SESSION_ID,
 }
+
 
 def print_section(title: str):
     """Affiche une section"""
     print("\n" + "=" * 80)
     print(f"{title}")
     print("=" * 80)
+
 
 def print_test(test_name: str, success: bool, details: Any = None):
     """Affiche le résultat d'un test"""
@@ -33,6 +36,7 @@ def print_test(test_name: str, success: bool, details: Any = None):
         else:
             print(details)
 
+
 def main():
     """Tests complets avec le bon format d'authentification"""
     print_section("TESTS COMPLETS - EmergenceV8 API avec Token Bearer")
@@ -41,13 +45,15 @@ def main():
     print("\n1. JWT DECODE")
     try:
         import base64
-        parts = ID_TOKEN.split('.')
-        payload = parts[1] + '=' * (-len(parts[1]) % 4)
+
+        parts = ID_TOKEN.split(".")
+        payload = parts[1] + "=" * (-len(parts[1]) % 4)
         decoded = base64.urlsafe_b64decode(payload)
         payload_data = json.loads(decoded)
 
         import time
-        exp = payload_data.get('exp', 0)
+
+        exp = payload_data.get("exp", 0)
         now = int(time.time())
         is_valid = now < exp
         time_left_hours = round((exp - now) / 3600, 2)
@@ -65,7 +71,9 @@ def main():
     try:
         response = requests.get(f"{BASE_URL}/api/health", timeout=5)
         data = response.json() if response.status_code == 200 else None
-        print_test(f"Health (status={response.status_code})", response.status_code == 200, data)
+        print_test(
+            f"Health (status={response.status_code})", response.status_code == 200, data
+        )
     except Exception as e:
         print_test("Health Check", False, str(e))
 
@@ -100,7 +108,9 @@ def main():
     # 5. Sync (avec auth)
     print("\n5. SYNC STATUS (avec authentification)")
     try:
-        response = requests.get(f"{BASE_URL}/api/sync/status", headers=HEADERS, timeout=5)
+        response = requests.get(
+            f"{BASE_URL}/api/sync/status", headers=HEADERS, timeout=5
+        )
         if response.status_code == 200:
             data = response.json()
             print_test(f"Sync Status (status={response.status_code})", True, data)
@@ -116,7 +126,9 @@ def main():
     # 6. Dashboard
     print("\n6. DASHBOARD")
     try:
-        response = requests.get(f"{BASE_URL}/api/dashboard/stats", headers=HEADERS, timeout=5)
+        response = requests.get(
+            f"{BASE_URL}/api/dashboard/stats", headers=HEADERS, timeout=5
+        )
         if response.status_code == 200:
             data = response.json()
             print_test(f"Dashboard Stats (status={response.status_code})", True, data)
@@ -146,7 +158,9 @@ def main():
     # 8. Memory
     print("\n8. MEMORY")
     try:
-        response = requests.get(f"{BASE_URL}/api/memory/stats", headers=HEADERS, timeout=5)
+        response = requests.get(
+            f"{BASE_URL}/api/memory/stats", headers=HEADERS, timeout=5
+        )
         if response.status_code == 200:
             data = response.json()
             print_test(f"Memory Stats (status={response.status_code})", True, data)
@@ -181,6 +195,7 @@ def main():
     print(f"   - Expire dans: {time_left_hours}h")
 
     print_section("FIN DES TESTS")
+
 
 if __name__ == "__main__":
     main()

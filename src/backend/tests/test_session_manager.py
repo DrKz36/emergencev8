@@ -1,6 +1,7 @@
 """
 Tests pour SessionManager - Composant critique de gestion des sessions
 """
+
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
@@ -151,7 +152,7 @@ class TestMessageManagement:
             cost=None,
             tokens=None,
             agents=None,
-            use_rag=False
+            use_rag=False,
         )
 
         # La méthode est async
@@ -160,10 +161,10 @@ class TestMessageManagement:
         assert len(session.history) == 1
         # Le message est stocké comme dict et peut avoir des métadonnées ajoutées
         stored_message = session.history[0]
-        assert stored_message['id'] == message.id
-        assert stored_message['content'] == message.content
-        assert stored_message['role'] == message.role.value
-        assert stored_message['agent'] == message.agent
+        assert stored_message["id"] == message.id
+        assert stored_message["content"] == message.content
+        assert stored_message["role"] == message.role.value
+        assert stored_message["agent"] == message.agent
 
     @pytest.mark.asyncio
     async def test_add_message_fails_if_session_not_exists(self, session_manager):
@@ -180,7 +181,7 @@ class TestMessageManagement:
             cost=None,
             tokens=None,
             agents=None,
-            use_rag=False
+            use_rag=False,
         )
 
         # L'implémentation actuelle log une erreur mais ne lève pas d'exception

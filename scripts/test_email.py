@@ -2,6 +2,7 @@
 Test script to send a password reset email
 Usage: python scripts/test_email.py <recipient_email>
 """
+
 import asyncio
 import os
 import sys
@@ -37,7 +38,7 @@ async def test_send_email(recipient_email: str):
     # Build email service from environment variables
     email_service = EmailService()
 
-    print(f"📧 Email Service Configuration:")
+    print("📧 Email Service Configuration:")
     print(f"   Enabled: {email_service.is_enabled()}")
     print(f"   SMTP Host: {email_service.config.smtp_host}")
     print(f"   SMTP Port: {email_service.config.smtp_port}")

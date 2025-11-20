@@ -1,6 +1,7 @@
 """
 Webhook delivery service - HTTP POST with HMAC signature and retry logic
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -56,16 +57,11 @@ class WebhookDeliveryService:
     def _generate_signature(self, payload: str, secret: str) -> str:
         """Generate HMAC SHA256 signature for webhook payload"""
         return hmac.new(
-            secret.encode('utf-8'),
-            payload.encode('utf-8'),
-            hashlib.sha256
+            secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
     async def deliver_event(
-        self,
-        event_type: str,
-        user_id: str,
-        payload: WebhookEventPayload
+        self, event_type: str, user_id: str, payload: WebhookEventPayload
     ) -> None:
         """
         Deliver event to all subscribed webhooks for this user
@@ -77,21 +73,27 @@ class WebhookDeliveryService:
             webhooks = await self._get_subscribed_webhooks(user_id, event_type)
 
             if not webhooks:
-                logger.debug(f"No active webhooks for event {event_type} (user {user_id})")
+                logger.debug(
+                    f"No active webhooks for event {event_type} (user {user_id})"
+                )
                 return
 
-            logger.info(f"Delivering {event_type} to {len(webhooks)} webhook(s) for user {user_id}")
+            logger.info(
+                f"Delivering {event_type} to {len(webhooks)} webhook(s) for user {user_id}"
+            )
 
             # Deliver to each webhook
             for webhook in webhooks:
-                asyncio.create_task(
-                    self._deliver_to_webhook(webhook, payload)
-                )
+                asyncio.create_task(self._deliver_to_webhook(webhook, payload))
 
         except Exception as e:
-            logger.error(f"Failed to deliver webhook event {event_type}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to deliver webhook event {event_type}: {e}", exc_info=True
+            )
 
-    async def _get_subscribed_webhooks(self, user_id: str, event_type: str) -> list[dict[str, Any]]:
+    async def _get_subscribed_webhooks(
+        self, user_id: str, event_type: str
+    ) -> list[dict[str, Any]]:
         """Get all active webhooks subscribed to this event type"""
         query = """
             SELECT id, url, secret, events, total_deliveries, successful_deliveries, failed_deliveries
@@ -109,9 +111,7 @@ class WebhookDeliveryService:
         return webhooks
 
     async def _deliver_to_webhook(
-        self,
-        webhook: dict[str, Any],
-        payload: WebhookEventPayload
+        self, webhook: dict[str, Any], payload: WebhookEventPayload
     ) -> None:
         """
         Deliver payload to a single webhook with retry logic
@@ -141,7 +141,9 @@ class WebhookDeliveryService:
                 # Wait before retry (except first attempt)
                 if attempt > 1:
                     delay = RETRY_DELAYS[attempt - 2]
-                    logger.info(f"Retrying webhook {webhook_id} in {delay}s (attempt {attempt}/{MAX_RETRIES})")
+                    logger.info(
+                        f"Retrying webhook {webhook_id} in {delay}s (attempt {attempt}/{MAX_RETRIES})"
+                    )
                     await asyncio.sleep(delay)
 
                 # Attempt delivery
@@ -154,8 +156,8 @@ class WebhookDeliveryService:
                         "X-Webhook-Signature": signature,
                         "X-Webhook-Event": payload.event,
                         "X-Webhook-ID": webhook_id,
-                        "User-Agent": "Emergence-Webhooks/1.0"
-                    }
+                        "User-Agent": "Emergence-Webhooks/1.0",
+                    },
                 )
 
                 # Log delivery
@@ -166,13 +168,15 @@ class WebhookDeliveryService:
                     status=response.status_code,
                     response_body=response.text[:1000],  # Truncate long responses
                     error=None,
-                    attempt=attempt
+                    attempt=attempt,
                 )
 
                 # Check if successful
                 if 200 <= response.status_code < 300:
                     await self._update_webhook_stats(webhook_id, success=True)
-                    logger.info(f"Webhook {webhook_id} delivered successfully (status {response.status_code})")
+                    logger.info(
+                        f"Webhook {webhook_id} delivered successfully (status {response.status_code})"
+                    )
                     return  # Success, stop retrying
 
                 # Server error (5xx) - retry
@@ -184,12 +188,16 @@ class WebhookDeliveryService:
                     continue  # Retry
 
                 # Client error (4xx) - don't retry
-                logger.error(f"Webhook {webhook_id} failed with client error {response.status_code} (no retry)")
+                logger.error(
+                    f"Webhook {webhook_id} failed with client error {response.status_code} (no retry)"
+                )
                 await self._update_webhook_stats(webhook_id, success=False)
                 return
 
             except httpx.TimeoutException:
-                logger.warning(f"Webhook {webhook_id} timed out (attempt {attempt}/{MAX_RETRIES})")
+                logger.warning(
+                    f"Webhook {webhook_id} timed out (attempt {attempt}/{MAX_RETRIES})"
+                )
                 await self._log_delivery(
                     webhook_id=webhook_id,
                     event_type=payload.event,
@@ -197,12 +205,14 @@ class WebhookDeliveryService:
                     status=0,
                     response_body=None,
                     error="Request timeout",
-                    attempt=attempt
+                    attempt=attempt,
                 )
                 continue  # Retry
 
             except Exception as e:
-                logger.error(f"Webhook {webhook_id} failed with exception: {e} (attempt {attempt}/{MAX_RETRIES})")
+                logger.error(
+                    f"Webhook {webhook_id} failed with exception: {e} (attempt {attempt}/{MAX_RETRIES})"
+                )
                 await self._log_delivery(
                     webhook_id=webhook_id,
                     event_type=payload.event,
@@ -210,7 +220,7 @@ class WebhookDeliveryService:
                     status=0,
                     response_body=None,
                     error=str(e),
-                    attempt=attempt
+                    attempt=attempt,
                 )
                 continue  # Retry
 
@@ -226,7 +236,7 @@ class WebhookDeliveryService:
         status: int,
         response_body: Optional[str],
         error: Optional[str],
-        attempt: int
+        attempt: int,
     ) -> None:
         """Log webhook delivery attempt"""
         try:
@@ -247,9 +257,9 @@ class WebhookDeliveryService:
                     response_body,
                     error,
                     attempt,
-                    datetime.utcnow()
+                    datetime.utcnow(),
                 ),
-                commit=True
+                commit=True,
             )
         except Exception as e:
             logger.error(f"Failed to log webhook delivery: {e}")

@@ -1,6 +1,7 @@
 """
 Tests pour DatabaseManager - Gestion de la base de données SQLite
 """
+
 import pytest
 import aiosqlite
 from pathlib import Path
@@ -102,7 +103,7 @@ class TestDatabaseOperations:
         result = await cursor.fetchone()
 
         assert result is not None
-        assert result[0] == 'test_table'
+        assert result[0] == "test_table"
 
     @pytest.mark.asyncio
     async def test_insert_data(self, db_manager):
@@ -115,8 +116,7 @@ class TestDatabaseOperations:
         """)
 
         await db_manager.execute(
-            "INSERT INTO test_insert (data) VALUES (?)",
-            ("test_value",)
+            "INSERT INTO test_insert (data) VALUES (?)", ("test_value",)
         )
         await db_manager.commit()
 
@@ -139,7 +139,9 @@ class TestDatabaseOperations:
         await db_manager.execute("INSERT INTO test_update (value) VALUES (?)", ("old",))
         await db_manager.commit()
 
-        await db_manager.execute("UPDATE test_update SET value = ? WHERE value = ?", ("new", "old"))
+        await db_manager.execute(
+            "UPDATE test_update SET value = ? WHERE value = ?", ("new", "old")
+        )
         await db_manager.commit()
 
         cursor = await db_manager.execute("SELECT value FROM test_update")
@@ -157,10 +159,14 @@ class TestDatabaseOperations:
             )
         """)
 
-        await db_manager.execute("INSERT INTO test_delete (name) VALUES (?)", ("to_delete",))
+        await db_manager.execute(
+            "INSERT INTO test_delete (name) VALUES (?)", ("to_delete",)
+        )
         await db_manager.commit()
 
-        await db_manager.execute("DELETE FROM test_delete WHERE name = ?", ("to_delete",))
+        await db_manager.execute(
+            "DELETE FROM test_delete WHERE name = ?", ("to_delete",)
+        )
         await db_manager.commit()
 
         cursor = await db_manager.execute("SELECT COUNT(*) FROM test_delete")
@@ -182,7 +188,9 @@ class TestTransactions:
             )
         """)
 
-        await db_manager.execute("INSERT INTO test_commit (data) VALUES (?)", ("committed",))
+        await db_manager.execute(
+            "INSERT INTO test_commit (data) VALUES (?)", ("committed",)
+        )
         await db_manager.commit()
 
         # Vérifier que les données sont bien persistées
@@ -203,7 +211,9 @@ class TestTransactions:
         await db_manager.commit()
 
         # Insérer sans commit
-        await db_manager.execute("INSERT INTO test_rollback (data) VALUES (?)", ("to_rollback",))
+        await db_manager.execute(
+            "INSERT INTO test_rollback (data) VALUES (?)", ("to_rollback",)
+        )
 
         # Rollback
         await db_manager.rollback()
@@ -258,6 +268,7 @@ class TestDatabasePath:
 
         # Cleanup
         import shutil
+
         shutil.rmtree(temp_dir)
 
     @pytest.mark.asyncio

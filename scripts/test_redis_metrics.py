@@ -12,13 +12,15 @@ import sys
 import os
 
 # Fix encoding pour Windows
-if sys.platform == 'win32':
+if sys.platform == "win32":
     import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, "strict")
+    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, "strict")
 
 # Ajouter le répertoire src au PYTHONPATH
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
 
 def test_redis_connection():
     """Test 1: Connexion Redis"""
@@ -28,10 +30,13 @@ def test_redis_connection():
 
     try:
         import redis
+
         print("✓ Module redis importé")
 
         # Tester connexion
-        r = redis.from_url("redis://localhost:6379/0", decode_responses=True, socket_connect_timeout=2)
+        r = redis.from_url(
+            "redis://localhost:6379/0", decode_responses=True, socket_connect_timeout=2
+        )
         r.ping()
         print("✓ Redis PING réussi")
 
@@ -67,10 +72,7 @@ def test_rag_cache_with_redis():
         from backend.features.chat.rag_cache import create_rag_cache
 
         # Créer cache avec Redis
-        cache = create_rag_cache(
-            redis_url="redis://localhost:6379/0",
-            ttl_seconds=60
-        )
+        cache = create_rag_cache(redis_url="redis://localhost:6379/0", ttl_seconds=60)
 
         print(f"✓ RAGCache créé: {cache.get_stats()}")
 
@@ -81,7 +83,7 @@ def test_rag_cache_with_redis():
             agent_id="test_agent",
             doc_hits=[{"content": "test_content"}],
             rag_sources=[],
-            selected_doc_ids=None
+            selected_doc_ids=None,
         )
         print("✓ Cache SET réussi")
 
@@ -89,11 +91,11 @@ def test_rag_cache_with_redis():
             query_text="test_query",
             where_filter={"user_id": "test_user"},
             agent_id="test_agent",
-            selected_doc_ids=None
+            selected_doc_ids=None,
         )
 
         assert result is not None, "Cache GET devrait retourner un résultat"
-        assert len(result.get('doc_hits', [])) == 1, "Devrait avoir 1 doc_hit"
+        assert len(result.get("doc_hits", [])) == 1, "Devrait avoir 1 doc_hit"
         print("✓ Cache GET réussi")
 
         print("\n✅ Test RAGCache: RÉUSSI\n")
@@ -102,6 +104,7 @@ def test_rag_cache_with_redis():
     except Exception as e:
         print(f"❌ Erreur RAGCache: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -117,15 +120,17 @@ def test_prometheus_metrics():
 
         # Vérifier que les métriques existent
         metrics_to_check = [
-            'memory_temporal_queries_total',
-            'memory_temporal_concepts_found_total',
-            'memory_temporal_search_duration_seconds',
-            'memory_temporal_context_size_bytes',
-            'memory_temporal_cache_hit_rate'
+            "memory_temporal_queries_total",
+            "memory_temporal_concepts_found_total",
+            "memory_temporal_search_duration_seconds",
+            "memory_temporal_context_size_bytes",
+            "memory_temporal_cache_hit_rate",
         ]
 
         for metric_name in metrics_to_check:
-            assert hasattr(rag_metrics, metric_name), f"Métrique {metric_name} manquante"
+            assert hasattr(rag_metrics, metric_name), (
+                f"Métrique {metric_name} manquante"
+            )
             print(f"✓ Métrique {metric_name} présente")
 
         # Tester fonctions helper
@@ -150,6 +155,7 @@ def test_prometheus_metrics():
     except Exception as e:
         print(f"❌ Erreur Métriques: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -191,7 +197,9 @@ def main():
         print("1. Redémarrer le backend avec: pwsh -File scripts/run-backend.ps1")
         print("2. Vérifier les logs: [RAG Cache] Connected to Redis")
         print("3. Tester une question temporelle")
-        print("4. Consulter /metrics: curl http://localhost:8000/metrics | grep memory_temporal")
+        print(
+            "4. Consulter /metrics: curl http://localhost:8000/metrics | grep memory_temporal"
+        )
         return 0
     else:
         print("\n❌ CERTAINS TESTS ONT ÉCHOUÉ\n")

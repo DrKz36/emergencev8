@@ -23,26 +23,23 @@ try:
     ANALYSIS_SUCCESS_TOTAL = Counter(
         "memory_analysis_success_total",
         "Nombre total d'analyses réussies",
-        ["provider"]  # neo_analysis, nexus, anima
+        ["provider"],  # neo_analysis, nexus, anima
     )
     ANALYSIS_FAILURE_TOTAL = Counter(
         "memory_analysis_failure_total",
         "Nombre total d'analyses échouées",
-        ["provider", "error_type"]
+        ["provider", "error_type"],
     )
 
     # Cache metrics
     CACHE_HITS_TOTAL = Counter(
-        "memory_analysis_cache_hits_total",
-        "Nombre total de cache hits"
+        "memory_analysis_cache_hits_total", "Nombre total de cache hits"
     )
     CACHE_MISSES_TOTAL = Counter(
-        "memory_analysis_cache_misses_total",
-        "Nombre total de cache misses"
+        "memory_analysis_cache_misses_total", "Nombre total de cache misses"
     )
     CACHE_SIZE = Gauge(
-        "memory_analysis_cache_size",
-        "Taille actuelle du cache in-memory"
+        "memory_analysis_cache_size", "Taille actuelle du cache in-memory"
     )
 
     # Latence analyses
@@ -50,14 +47,16 @@ try:
         "memory_analysis_duration_seconds",
         "Durée des analyses mémoire",
         ["provider"],
-        buckets=[0.5, 1.0, 2.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0]
+        buckets=[0.5, 1.0, 2.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0],
     )
 
     # 🆕 HOTFIX P1.3: Métriques échecs extraction préférences
     PREFERENCE_EXTRACTION_FAILURES = Counter(
         "memory_preference_extraction_failures_total",
         "Échecs extraction préférences",
-        ["reason"]  # "user_identifier_missing", "extraction_error", "persistence_error"
+        [
+            "reason"
+        ],  # "user_identifier_missing", "extraction_error", "persistence_error"
     )
 
     PROMETHEUS_AVAILABLE = True
@@ -154,12 +153,16 @@ class MemoryAnalyzer:
         else:
             self.is_ready = self.offline_mode
 
-    async def _get_from_cache(self, key: str) -> Optional[tuple[Dict[str, Any], datetime]]:
+    async def _get_from_cache(
+        self, key: str
+    ) -> Optional[tuple[Dict[str, Any], datetime]]:
         """Récupère entrée du cache de manière thread-safe"""
         async with self._cache_lock:
             return _ANALYSIS_CACHE.get(key)
 
-    async def _put_in_cache(self, key: str, value: Dict[str, Any], timestamp: datetime) -> None:
+    async def _put_in_cache(
+        self, key: str, value: Dict[str, Any], timestamp: datetime
+    ) -> None:
         """Ajoute entrée au cache de manière thread-safe avec éviction agressive"""
         async with self._cache_lock:
             _ANALYSIS_CACHE[key] = (value, timestamp)
@@ -170,7 +173,7 @@ class MemoryAnalyzer:
                 sorted_keys = sorted(
                     _ANALYSIS_CACHE.keys(),
                     key=lambda k: _ANALYSIS_CACHE[k][1],
-                    reverse=True
+                    reverse=True,
                 )
                 # Supprimer les anciennes entrées (garder top 50)
                 entries_to_remove = len(sorted_keys) - 50
@@ -229,14 +232,14 @@ class MemoryAnalyzer:
 
         # Pattern 1: Technical terms with special chars (CI/CD, APIs, URLs, etc.)
         technical_terms = re.findall(
-            r'\b[A-Za-z0-9]+[/-][A-Za-z0-9/-]+\b|'  # CI/CD, API/REST, etc.
-            r'\b(?:Docker|Kubernetes|PostgreSQL|Redis|ChromaDB|Git|API|REST|GraphQL|WebSocket|JWT|OAuth|'
-            r'Python|JavaScript|TypeScript|React|Vue|FastAPI|Flask|Django|'
-            r'AWS|GCP|Azure|Cloud|Serverless|Microservices|CI|CD|DevOps|'
-            r'Database|Cache|Queue|Pub/Sub|Event|Stream|Pipeline|Container|'
-            r'Machine Learning|ML|AI|LLM|GPT|Claude|RAG|Vector|Embedding)\b',
+            r"\b[A-Za-z0-9]+[/-][A-Za-z0-9/-]+\b|"  # CI/CD, API/REST, etc.
+            r"\b(?:Docker|Kubernetes|PostgreSQL|Redis|ChromaDB|Git|API|REST|GraphQL|WebSocket|JWT|OAuth|"
+            r"Python|JavaScript|TypeScript|React|Vue|FastAPI|Flask|Django|"
+            r"AWS|GCP|Azure|Cloud|Serverless|Microservices|CI|CD|DevOps|"
+            r"Database|Cache|Queue|Pub/Sub|Event|Stream|Pipeline|Container|"
+            r"Machine Learning|ML|AI|LLM|GPT|Claude|RAG|Vector|Embedding)\b",
             corpus,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         for term in technical_terms:
@@ -250,10 +253,7 @@ class MemoryAnalyzer:
 
         # Pattern 2: Noun phrases (2-4 words) - common technical patterns
         if len(concepts) < 5:
-            noun_phrases = re.findall(
-                r'\b([A-Z][a-z]+(?:\s+[A-Za-z]+){1,3})\b',
-                corpus
-            )
+            noun_phrases = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Za-z]+){1,3})\b", corpus)
             for phrase in noun_phrases:
                 normalized = " ".join(phrase.split())
                 lowered = normalized.lower()
@@ -501,11 +501,15 @@ class MemoryAnalyzer:
                     start_time = datetime.now()
                     try:
                         if not chat_service:
-                            raise RuntimeError("ChatService not available (offline mode)")
-                        analysis_result = await chat_service.get_structured_llm_response(
-                            agent_id="anima",
-                            prompt=prompt,
-                            json_schema=ANALYSIS_JSON_SCHEMA,
+                            raise RuntimeError(
+                                "ChatService not available (offline mode)"
+                            )
+                        analysis_result = (
+                            await chat_service.get_structured_llm_response(
+                                agent_id="anima",
+                                prompt=prompt,
+                                json_schema=ANALYSIS_JSON_SCHEMA,
+                            )
                         )
                         # 📊 Métriques succès Anima
                         if PROMETHEUS_AVAILABLE:
@@ -529,7 +533,9 @@ class MemoryAnalyzer:
                         )
                         retry_after = None
                         try:
-                            rd = getattr(primary_error or final_error, "retry_delay", None)
+                            rd = getattr(
+                                primary_error or final_error, "retry_delay", None
+                            )
                             retry_after = getattr(rd, "seconds", None)
                         except Exception:
                             pass
@@ -576,14 +582,18 @@ class MemoryAnalyzer:
         # ⚡ Save to cache (après analyse réussie) - thread-safe
         if analysis_result and cache_key and persist:
             await self._put_in_cache(cache_key, analysis_result, datetime.now())
-            logger.info(f"[MemoryAnalyzer] Cache SAVED pour session {session_id} (key={cache_key})")
+            logger.info(
+                f"[MemoryAnalyzer] Cache SAVED pour session {session_id} (key={cache_key})"
+            )
 
         # ⚡ Phase P1: Extraction préférences/intentions
         if persist and self.preference_extractor and analysis_result:
             try:
                 # ✅ FIX CRITIQUE P2 Sprint 3: Utiliser user_id passé en paramètre
                 # (plus de workaround via session_manager qui échoue en production)
-                user_sub = user_id  # user_id peut être user_sub ou user_id selon l'appelant
+                user_sub = (
+                    user_id  # user_id peut être user_sub ou user_id selon l'appelant
+                )
 
                 # Si user_id n'est pas fourni, essayer de le récupérer depuis session (fallback)
                 if not user_id:
@@ -598,7 +608,9 @@ class MemoryAnalyzer:
                                 if not user_sub:
                                     user_id = getattr(sess, "user_id", None)
                     except Exception as e:
-                        logger.debug(f"[PreferenceExtractor] Error getting user context from session: {e}")
+                        logger.debug(
+                            f"[PreferenceExtractor] Error getting user context from session: {e}"
+                        )
 
                 # Vérifier qu'on a au moins un identifiant utilisateur
                 if user_sub or user_id:
@@ -612,7 +624,7 @@ class MemoryAnalyzer:
                         messages=history,
                         user_sub=user_sub,
                         user_id=user_id,
-                        thread_id=session_id
+                        thread_id=session_id,
                     )
 
                     if preferences:
@@ -627,7 +639,7 @@ class MemoryAnalyzer:
                                 preferences=preferences,
                                 user_id=user_identifier,
                                 thread_id=session_id,
-                                session_id=session_id
+                                session_id=session_id,
                             )
                             logger.info(
                                 f"[PreferenceExtractor] Saved {saved_count}/{len(preferences)} "
@@ -636,7 +648,7 @@ class MemoryAnalyzer:
                         except Exception as save_error:
                             logger.error(
                                 f"[PreferenceExtractor] Failed to save preferences to ChromaDB: {save_error}",
-                                exc_info=True
+                                exc_info=True,
                             )
                             # 📊 Incrémenter métrique échec persistence
                             if PROMETHEUS_AVAILABLE:
@@ -652,7 +664,9 @@ class MemoryAnalyzer:
                                 f"(confidence={pref.confidence:.2f})"
                             )
                     else:
-                        logger.debug(f"[PreferenceExtractor] No preferences found in session {session_id}")
+                        logger.debug(
+                            f"[PreferenceExtractor] No preferences found in session {session_id}"
+                        )
                 else:
                     # 🆕 HOTFIX P1.3: Message d'erreur mis à jour + métrique
                     logger.warning(
@@ -668,7 +682,7 @@ class MemoryAnalyzer:
             except Exception as pref_error:
                 logger.error(
                     f"[PreferenceExtractor] Failed to extract preferences for session {session_id}: {pref_error}",
-                    exc_info=True
+                    exc_info=True,
                 )
                 # 📊 Incrémenter métrique échec extraction
                 if PROMETHEUS_AVAILABLE:
@@ -677,7 +691,12 @@ class MemoryAnalyzer:
                     ).inc()
 
         await self._notify(
-            session_id, {"session_id": session_id, "status": "completed", "provider": provider_used}
+            session_id,
+            {
+                "session_id": session_id,
+                "status": "completed",
+                "provider": provider_used,
+            },
         )
         logger.info(
             f"Analyse sémantique terminée (persist={persist}, provider={provider_used}) pour {session_id}."
@@ -685,21 +704,26 @@ class MemoryAnalyzer:
         return analysis_result
 
     async def analyze_session_for_concepts(
-        self, session_id: str, history: List[Dict[str, Any]], *, force: bool = False, user_id: Optional[str] = None
+        self,
+        session_id: str,
+        history: List[Dict[str, Any]],
+        *,
+        force: bool = False,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Mode historique (sessions) : persiste dans la table sessions."""
-        return await self._analyze(session_id, history, persist=True, force=force, user_id=user_id)
+        return await self._analyze(
+            session_id, history, persist=True, force=force, user_id=user_id
+        )
 
-    async def analyze_history(self, session_id: str, history: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def analyze_history(
+        self, session_id: str, history: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Mode «thread-only» : renvoie le résultat sans écrire dans la table sessions."""
         return await self._analyze(session_id, history, persist=False, force=False)
 
     async def _save_preferences_to_vector_db(
-        self,
-        preferences: List[Any],
-        user_id: str,
-        thread_id: str,
-        session_id: str
+        self, preferences: List[Any], user_id: str, thread_id: str, session_id: str
     ) -> int:
         """
         Sauvegarde les préférences extraites dans ChromaDB (collection emergence_knowledge).
@@ -722,13 +746,17 @@ class MemoryAnalyzer:
         # Récupérer VectorService depuis ChatService
         vector_service = getattr(self.chat_service, "vector_service", None)
         if not vector_service:
-            logger.warning("[PreferenceExtractor] VectorService non disponible, sauvegarde impossible")
+            logger.warning(
+                "[PreferenceExtractor] VectorService non disponible, sauvegarde impossible"
+            )
             return 0
 
         import os
         from datetime import datetime, timezone
 
-        knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
+        knowledge_name = os.getenv(
+            "EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge"
+        )
         collection = vector_service.get_or_create_collection(knowledge_name)
 
         saved_count = 0
@@ -765,7 +793,7 @@ class MemoryAnalyzer:
                     collection=collection,
                     documents=[doc_text],
                     metadatas=[metadata],
-                    ids=[doc_id]
+                    ids=[doc_id],
                 )
 
                 saved_count += 1
@@ -786,7 +814,7 @@ class MemoryAnalyzer:
         self,
         session_id: str,
         force: bool = False,
-        callback: Optional[Callable[..., Any]] = None
+        callback: Optional[Callable[..., Any]] = None,
     ) -> None:
         """
         Version asynchrone non-bloquante de analyze_session_for_concepts.
@@ -803,7 +831,7 @@ class MemoryAnalyzer:
         await queue.enqueue(
             task_type="analyze",
             payload={"session_id": session_id, "force": force},
-            callback=callback
+            callback=callback,
         )
 
         logger.info(f"Analyse session {session_id} enqueued (async)")

@@ -24,10 +24,14 @@ def test_admin_allowlist_and_sessions(auth_app_factory):
             "auth-admin",
             admin_emails={admin_email},
         )
-        await ctx.service.set_allowlist_password(admin_email, admin_password, actor="tests")
+        await ctx.service.set_allowlist_password(
+            admin_email, admin_password, actor="tests"
+        )
 
         transport = ASGITransport(app=ctx.app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             login_resp = await client.post(
                 "/api/auth/login",
                 json={"email": admin_email, "password": admin_password},
@@ -36,8 +40,12 @@ def test_admin_allowlist_and_sessions(auth_app_factory):
             admin_token = login_resp.json()["token"]
             headers = {"Authorization": f"Bearer {admin_token}"}
 
-            payload = AllowlistCreatePayload(email=member_email, role="member", note="pytest").model_dump()
-            create_resp = await client.post("/api/auth/admin/allowlist", json=payload, headers=headers)
+            payload = AllowlistCreatePayload(
+                email=member_email, role="member", note="pytest"
+            ).model_dump()
+            create_resp = await client.post(
+                "/api/auth/admin/allowlist", json=payload, headers=headers
+            )
             assert create_resp.status_code == 201
             create_body = create_resp.json()
             assert create_body["entry"]["email"] == member_email
@@ -46,7 +54,11 @@ def test_admin_allowlist_and_sessions(auth_app_factory):
 
             set_resp = await client.post(
                 "/api/auth/admin/allowlist",
-                json={"email": member_email, "role": "member", "password": member_password},
+                json={
+                    "email": member_email,
+                    "role": "member",
+                    "password": member_password,
+                },
                 headers=headers,
             )
             assert set_resp.status_code == 201
@@ -73,7 +85,9 @@ def test_admin_allowlist_and_sessions(auth_app_factory):
                 ("qa3@example.com", "auto QA 3"),
             ]
             for extra_email, note in extra_entries:
-                payload_extra = AllowlistCreatePayload(email=extra_email, role="member", note=note).model_dump()
+                payload_extra = AllowlistCreatePayload(
+                    email=extra_email, role="member", note=note
+                ).model_dump()
                 extra_resp = await client.post(
                     "/api/auth/admin/allowlist",
                     json=payload_extra,
@@ -114,7 +128,8 @@ def test_admin_allowlist_and_sessions(auth_app_factory):
             assert search_body["status"] == "active"
             assert search_body["query"] == "auto qa 1"
             assert all(
-                "auto qa 1" in (item.get("note") or "").lower() or "auto qa 1" in item["email"]
+                "auto qa 1" in (item.get("note") or "").lower()
+                or "auto qa 1" in item["email"]
                 for item in search_body["items"]
             )
 
@@ -135,7 +150,10 @@ def test_admin_allowlist_and_sessions(auth_app_factory):
                 "SELECT event_type, metadata FROM auth_audit_log WHERE email = ?",
                 (member_email,),
             )
-            assert any(row["event_type"] == "allowlist:password_generated" for row in audit_rows)
+            assert any(
+                row["event_type"] == "allowlist:password_generated"
+                for row in audit_rows
+            )
             for row in audit_rows:
                 if row["event_type"] == "allowlist:password_generated":
                     metadata = json.loads(row["metadata"] or "{}")
@@ -158,7 +176,9 @@ def test_admin_allowlist_and_sessions(auth_app_factory):
             sessions = sessions_resp.json()["items"]
             assert any(item["id"] == member_session for item in sessions)
 
-            revoke_payload = SessionRevokePayload(session_id=member_session).model_dump()
+            revoke_payload = SessionRevokePayload(
+                session_id=member_session
+            ).model_dump()
             revoke_resp = await client.post(
                 "/api/auth/admin/sessions/revoke",
                 json=revoke_payload,

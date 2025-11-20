@@ -48,7 +48,9 @@ async def run_analysis_and_notify(
             try:
                 sig = inspect.signature(analyzer.analyze_session_for_concepts)
                 if "user_id" in sig.parameters and "history" in sig.parameters:
-                    await analyzer.analyze_session_for_concepts(session_id, history, user_id=user_id)
+                    await analyzer.analyze_session_for_concepts(
+                        session_id, history, user_id=user_id
+                    )
                 elif "history" in sig.parameters:
                     await analyzer.analyze_session_for_concepts(session_id, history)
                 else:

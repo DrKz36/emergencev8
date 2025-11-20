@@ -6,6 +6,7 @@ Usage:
     python fetch_allowlist_emails.py
     python fetch_allowlist_emails.py --output my_emails.txt
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -21,9 +22,9 @@ from core.config import build_auth_config_from_env
 async def fetch_allowlist_emails(output_file: str = "beta_testers_emails.txt"):
     """Fetch all active emails from allowlist"""
 
-    print("="*60)
+    print("=" * 60)
     print("FETCH ALLOWLIST EMAILS")
-    print("="*60)
+    print("=" * 60)
     print()
 
     # Build auth service
@@ -70,15 +71,18 @@ async def fetch_allowlist_emails(output_file: str = "beta_testers_emails.txt"):
             print(f"  {i}. {email}")
 
         print()
-        print("="*60)
+        print("=" * 60)
         print("Next steps:")
         print(f"  1. Review the emails in '{output_file}'")
-        print(f"  2. Send invitations: python send_beta_invitations.py --from-file {output_file}")
-        print("="*60)
+        print(
+            f"  2. Send invitations: python send_beta_invitations.py --from-file {output_file}"
+        )
+        print("=" * 60)
 
     except Exception as e:
         print(f"❌ Error fetching allowlist: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -96,7 +100,7 @@ def main():
         "-o",
         type=str,
         default="beta_testers_emails.txt",
-        help="Output file path (default: beta_testers_emails.txt)"
+        help="Output file path (default: beta_testers_emails.txt)",
     )
 
     args = parser.parse_args()

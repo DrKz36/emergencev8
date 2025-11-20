@@ -1,4 +1,4 @@
-﻿# src/backend/features/voice/service.py
+# src/backend/features/voice/service.py
 # V1.1 - Correction du chemin d'importation
 import httpx
 import logging
@@ -45,6 +45,7 @@ class VoiceService:
             transcribed_text = result.get("text", "").strip()
             logger.info("Texte transcrit: '%s'", transcribed_text)
             from typing import cast
+
             return cast(str, transcribed_text)
         except httpx.HTTPStatusError as exc:
             error_body = await exc.response.aread()
@@ -55,7 +56,9 @@ class VoiceService:
             )
             raise Exception("Erreur de transcription.")
 
-    async def synthesize_speech(self, text: str, agent_id: str | None = None) -> AsyncGenerator[bytes, None]:
+    async def synthesize_speech(
+        self, text: str, agent_id: str | None = None
+    ) -> AsyncGenerator[bytes, None]:
         logger.info(
             "Debut de la synthese vocale avec ElevenLabs pour le texte: '%s'... (agent=%s)",
             text[:30],
@@ -70,11 +73,7 @@ class VoiceService:
         else:
             logger.info(f"Voix par défaut utilisée: {voice_id}")
 
-        if (
-            not voice_id
-            or not isinstance(voice_id, str)
-            or voice_id.startswith("sk_")
-        ):
+        if not voice_id or not isinstance(voice_id, str) or voice_id.startswith("sk_"):
             logger.error(
                 "ID de voix ElevenLabs invalide ou manquant. ID actuel : '%s'.",
                 voice_id,
@@ -176,9 +175,7 @@ class VoiceService:
                 exc,
                 exc_info=True,
             )
-            error_message = (
-                "Desole, une erreur technique est survenue lors de la generation de la reponse vocale."
-            )
+            error_message = "Desole, une erreur technique est survenue lors de la generation de la reponse vocale."
             try:
                 yield {"type": "text", "data": error_message}
                 async for chunk in self.synthesize_speech(error_message):

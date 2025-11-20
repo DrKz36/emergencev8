@@ -2,6 +2,7 @@
 Script de migration SQLite → PostgreSQL
 Migre toutes les données de l'app ÉMERGENCE vers Cloud SQL
 """
+
 import asyncio
 import aiosqlite
 import logging
@@ -16,7 +17,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from backend.core.database.manager_postgres import PostgreSQLManager
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Tables à migrer (ordre important pour FK)
@@ -28,7 +31,7 @@ TABLES_ORDER = [
     "messages",
     "documents",
     "document_chunks",  # NOUVEAU: chunks avec embeddings
-    "memory_facts",     # NOUVEAU: mémoire avec embeddings
+    "memory_facts",  # NOUVEAU: mémoire avec embeddings
     "costs",
     "debates",
     "api_usage",
@@ -43,7 +46,7 @@ class SQLiteToPostgresMigrator:
         self,
         sqlite_path: str,
         postgres_manager: PostgreSQLManager,
-        batch_size: int = 1000
+        batch_size: int = 1000,
     ):
         self.sqlite_path = sqlite_path
         self.pg = postgres_manager
@@ -125,7 +128,9 @@ class SQLiteToPostgresMigrator:
                 # Try parsing ISO datetime
                 if "T" in value or (":" in value and "-" in value):
                     try:
-                        converted[key] = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                        converted[key] = datetime.fromisoformat(
+                            value.replace("Z", "+00:00")
+                        )
                         continue
                     except ValueError:
                         pass
@@ -143,7 +148,9 @@ class SQLiteToPostgresMigrator:
 
         return converted
 
-    async def _insert_batch(self, table_name: str, rows: List[Dict], column_names: List[str]):
+    async def _insert_batch(
+        self, table_name: str, rows: List[Dict], column_names: List[str]
+    ):
         """Insert batch de rows dans PostgreSQL"""
         if not rows:
             return
@@ -152,18 +159,15 @@ class SQLiteToPostgresMigrator:
         insert_columns = [col for col in column_names if col != "id"]
 
         # Build INSERT query
-        placeholders = ", ".join([f"${i+1}" for i in range(len(insert_columns))])
+        placeholders = ", ".join([f"${i + 1}" for i in range(len(insert_columns))])
         query = f"""
-        INSERT INTO {table_name} ({', '.join(insert_columns)})
+        INSERT INTO {table_name} ({", ".join(insert_columns)})
         VALUES ({placeholders})
         ON CONFLICT DO NOTHING
         """
 
         # Prepare values
-        values_list = [
-            tuple(row.get(col) for col in insert_columns)
-            for row in rows
-        ]
+        values_list = [tuple(row.get(col) for col in insert_columns) for row in rows]
 
         # Execute batch
         try:
@@ -176,7 +180,9 @@ class SQLiteToPostgresMigrator:
                 try:
                     await self.pg.execute(query, *values)
                 except Exception as row_error:
-                    logger.error(f"Failed to insert row {i} in {table_name}: {row_error}")
+                    logger.error(
+                        f"Failed to insert row {i} in {table_name}: {row_error}"
+                    )
                     logger.error(f"Row data: {rows[i]}")
 
     async def migrate_all(self):
@@ -217,14 +223,18 @@ class SQLiteToPostgresMigrator:
 
             for table_name in TABLES_ORDER:
                 # Count SQLite
-                cursor = await self.sqlite_conn.execute(f"SELECT COUNT(*) FROM {table_name}")
+                cursor = await self.sqlite_conn.execute(
+                    f"SELECT COUNT(*) FROM {table_name}"
+                )
                 sqlite_count = (await cursor.fetchone())[0]
 
                 # Count PostgreSQL
                 pg_count = await self.pg.fetch_val(f"SELECT COUNT(*) FROM {table_name}")
 
                 match = "✓" if sqlite_count == pg_count else "✗"
-                logger.info(f"  {match} {table_name:30} SQLite: {sqlite_count:>6}  PostgreSQL: {pg_count:>6}")
+                logger.info(
+                    f"  {match} {table_name:30} SQLite: {sqlite_count:>6}  PostgreSQL: {pg_count:>6}"
+                )
 
                 if sqlite_count != pg_count:
                     discrepancies.append((table_name, sqlite_count, pg_count))
@@ -233,7 +243,9 @@ class SQLiteToPostgresMigrator:
                 logger.warning("=" * 60)
                 logger.warning("DISCREPANCIES FOUND:")
                 for table_name, sqlite_count, pg_count in discrepancies:
-                    logger.warning(f"  {table_name}: SQLite={sqlite_count} PostgreSQL={pg_count} (diff={sqlite_count - pg_count})")
+                    logger.warning(
+                        f"  {table_name}: SQLite={sqlite_count} PostgreSQL={pg_count} (diff={sqlite_count - pg_count})"
+                    )
             else:
                 logger.info("=" * 60)
                 logger.info("✓ All tables verified successfully!")
@@ -247,22 +259,24 @@ async def main():
     import os
     import argparse
 
-    parser = argparse.ArgumentParser(description="Migrate ÉMERGENCE SQLite → PostgreSQL")
+    parser = argparse.ArgumentParser(
+        description="Migrate ÉMERGENCE SQLite → PostgreSQL"
+    )
     parser.add_argument(
         "--sqlite-path",
         default="src/backend/data/db/emergence_v7.db",
-        help="Path to SQLite database"
+        help="Path to SQLite database",
     )
     parser.add_argument(
         "--verify-only",
         action="store_true",
-        help="Only verify migration (don't migrate)"
+        help="Only verify migration (don't migrate)",
     )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=1000,
-        help="Batch size for inserts (default: 1000)"
+        help="Batch size for inserts (default: 1000)",
     )
 
     args = parser.parse_args()
@@ -280,7 +294,7 @@ async def main():
     migrator = SQLiteToPostgresMigrator(
         sqlite_path=args.sqlite_path,
         postgres_manager=pg_manager,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
     )
 
     if args.verify_only:

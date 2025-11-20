@@ -48,13 +48,14 @@ def _generate_password(length: int = PASSWORD_DEFAULT_LENGTH) -> str:
     if length < 8:
         length = 8
     while True:
-        candidate = ''.join(secrets.choice(PASSWORD_ALPHABET) for _ in range(length))
-        if (any(c.islower() for c in candidate)
-                and any(c.isupper() for c in candidate)
-                and any(c.isdigit() for c in candidate)
-                and any(c in PASSWORD_SYMBOLS for c in candidate)):
+        candidate = "".join(secrets.choice(PASSWORD_ALPHABET) for _ in range(length))
+        if (
+            any(c.islower() for c in candidate)
+            and any(c.isupper() for c in candidate)
+            and any(c.isdigit() for c in candidate)
+            and any(c in PASSWORD_SYMBOLS for c in candidate)
+        ):
             return candidate
-
 
 
 def _map_auth_error(exc: AuthError) -> HTTPException:
@@ -68,7 +69,9 @@ def _map_auth_error(exc: AuthError) -> HTTPException:
         except (TypeError, ValueError):
             pass
     detail = str(exc) or "Erreur d'authentification."
-    return HTTPException(status_code=exc.status_code, detail=detail, headers=headers or None)
+    return HTTPException(
+        status_code=exc.status_code, detail=detail, headers=headers or None
+    )
 
 
 def _set_blank_cookie(response: Response, key: str, *, secure: bool) -> None:
@@ -84,7 +87,6 @@ def _set_blank_cookie(response: Response, key: str, *, secure: bool) -> None:
         httponly=False,
         samesite="lax",
     )
-
 
 
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
@@ -130,6 +132,7 @@ async def login(
     )
     return login_result
 
+
 @router.post("/dev/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
 async def dev_login(
     request: Request,
@@ -173,6 +176,7 @@ async def dev_login(
     )
     return login_result
 
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     payload: LogoutPayload,
@@ -199,15 +203,25 @@ async def logout(
 
 
 @router.get("/session", response_model=SessionStatusResponse)
-async def get_session(claims: Dict[str, Any] = Depends(get_auth_claims)) -> SessionStatusResponse:
+async def get_session(
+    claims: Dict[str, Any] = Depends(get_auth_claims),
+) -> SessionStatusResponse:
     email = str(claims.get("email") or "")
     role = str(claims.get("role") or "member")
     expires_at = claims.get("expires_at")
     if not isinstance(expires_at, datetime):
         exp_val = claims.get("exp")
-        expires_at = datetime.fromtimestamp(int(exp_val), tz=timezone.utc) if exp_val else datetime.fromtimestamp(0, tz=timezone.utc)
+        expires_at = (
+            datetime.fromtimestamp(int(exp_val), tz=timezone.utc)
+            if exp_val
+            else datetime.fromtimestamp(0, tz=timezone.utc)
+        )
     issued_raw = claims.get("iat")
-    issued_at = datetime.fromtimestamp(int(issued_raw), tz=timezone.utc) if issued_raw else datetime.fromtimestamp(0, tz=timezone.utc)
+    issued_at = (
+        datetime.fromtimestamp(int(issued_raw), tz=timezone.utc)
+        if issued_raw
+        else datetime.fromtimestamp(0, tz=timezone.utc)
+    )
     session_id = str(claims.get("session_id") or claims.get("sid") or "")
     source = str(claims.get("_auth_source") or "") or None
     return SessionStatusResponse(
@@ -232,16 +246,14 @@ async def list_my_sessions(
     email = claims.get("email")
     if not email:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email not found in token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not found in token"
         )
 
     # Get user ID from auth service
     user = await auth_service.get_user_by_email(email)  # type: ignore[attr-defined]
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     # Get sessions for this specific user only
@@ -268,23 +280,21 @@ async def revoke_my_session(
 
     if not email:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email not found in token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not found in token"
         )
 
     # Prevent revoking current session (user should logout instead)
     if session_id == current_session_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot revoke current session. Use /logout instead."
+            detail="Cannot revoke current session. Use /logout instead.",
         )
 
     # Get user ID
     user = await auth_service.get_user_by_email(email)  # type: ignore[attr-defined]
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
     # Verify session belongs to user before revoking
@@ -293,14 +303,13 @@ async def revoke_my_session(
 
     if not target_session:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
     if target_session.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only revoke your own sessions"
+            detail="You can only revoke your own sessions",
         )
 
     # Revoke session
@@ -321,6 +330,7 @@ async def revoke_my_session(
 # 2FA / TOTP ENDPOINTS (Phase P2 - Feature 9)
 # =========================================================================
 
+
 @router.post("/2fa/enable")
 async def enable_2fa_endpoint(
     claims: Dict[str, Any] = Depends(get_auth_claims),
@@ -334,8 +344,7 @@ async def enable_2fa_endpoint(
     email = claims.get("email")
     if not email:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email not found in token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not found in token"
         )
 
     try:
@@ -359,15 +368,13 @@ async def verify_and_enable_2fa_endpoint(
     email = claims.get("email")
     if not email:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email not found in token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not found in token"
         )
 
     totp_code = payload.get("code", "").strip()
     if not totp_code:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="TOTP code is required"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="TOTP code is required"
         )
 
     try:
@@ -393,15 +400,14 @@ async def disable_2fa_endpoint(
     email = claims.get("email")
     if not email:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email not found in token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not found in token"
         )
 
     password = payload.get("password", "").strip()
     if not password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password is required to disable 2FA"
+            detail="Password is required to disable 2FA",
         )
 
     try:
@@ -426,8 +432,7 @@ async def get_2fa_status_endpoint(
     email = claims.get("email")
     if not email:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email not found in token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Email not found in token"
         )
 
     try:
@@ -446,7 +451,10 @@ async def change_password(
     """Change password for the authenticated user."""
     email = claims.get("email")
     if not email:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email non trouve dans le token.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email non trouve dans le token.",
+        )
 
     try:
         await auth_service.change_own_password(
@@ -455,8 +463,7 @@ async def change_password(
             payload.new_password,
         )
         return ChangePasswordResponse(
-            success=True,
-            message="Mot de passe change avec succes."
+            success=True, message="Mot de passe change avec succes."
         )
     except AuthError as exc:
         raise _map_auth_error(exc)
@@ -477,7 +484,7 @@ async def request_password_reset(
         email_service = EmailService()
         if email_service.is_enabled():
             # Get base URL from request
-            base_url = str(request.base_url).rstrip('/')
+            base_url = str(request.base_url).rstrip("/")
 
             # Send email
             email_sent = await email_service.send_password_reset_email(
@@ -489,25 +496,30 @@ async def request_password_reset(
             if not email_sent:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Erreur lors de l'envoi de l'email. Veuillez contacter l'administrateur."
+                    detail="Erreur lors de l'envoi de l'email. Veuillez contacter l'administrateur.",
                 )
         else:
             # Email service not configured - for development, log the token
             import logging
+
             logger = logging.getLogger("emergence.auth")
-            logger.warning(f"Email service not configured. Reset token for {payload.email}: {token}")
-            logger.warning(f"Reset URL: {str(request.base_url).rstrip('/')}/reset-password?token={token}")
+            logger.warning(
+                f"Email service not configured. Reset token for {payload.email}: {token}"
+            )
+            logger.warning(
+                f"Reset URL: {str(request.base_url).rstrip('/')}/reset-password?token={token}"
+            )
 
         return RequestPasswordResetResponse(
             success=True,
-            message="Si votre email est enregistré, vous recevrez un lien de réinitialisation sous peu."
+            message="Si votre email est enregistré, vous recevrez un lien de réinitialisation sous peu.",
         )
     except AuthError:
         # For security, always return success message even if email not found
         # This prevents email enumeration
         return RequestPasswordResetResponse(
             success=True,
-            message="Si votre email est enregistré, vous recevrez un lien de réinitialisation sous peu."
+            message="Si votre email est enregistré, vous recevrez un lien de réinitialisation sous peu.",
         )
 
 
@@ -524,7 +536,7 @@ async def reset_password(
         )
         return ResetPasswordResponse(
             success=True,
-            message="Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter."
+            message="Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.",
         )
     except AuthError as exc:
         raise _map_auth_error(exc)
@@ -581,14 +593,21 @@ async def list_allowlist(
     )
 
 
-@router.post("/admin/allowlist", response_model=AllowlistMutationResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/admin/allowlist",
+    response_model=AllowlistMutationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def upsert_allowlist(
     payload: AllowlistCreatePayload,
     claims: Dict[str, Any] = Depends(require_admin_claims),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> AllowlistMutationResponse:
     if payload.generate_password and payload.password:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ne pas fournir 'password' lorsque 'generate_password' est actif.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ne pas fournir 'password' lorsque 'generate_password' est actif.",
+        )
 
     clear_password: Optional[str] = None
     password_value = payload.password
@@ -613,7 +632,9 @@ async def upsert_allowlist(
     if clear_password is not None:
         clear_password = clear_password.strip()
 
-    return AllowlistMutationResponse(entry=entry, clear_password=clear_password, generated=bool(clear_password))
+    return AllowlistMutationResponse(
+        entry=entry, clear_password=clear_password, generated=bool(clear_password)
+    )
 
 
 @router.delete("/admin/allowlist/{email}", status_code=status.HTTP_204_NO_CONTENT)
@@ -644,7 +665,9 @@ async def revoke_session(
     auth_service: AuthService = Depends(get_auth_service),
     session_manager: Optional[SessionManager] = Depends(get_session_manager_optional),
 ) -> SessionRevokeResult:
-    updated = await auth_service.revoke_session(payload.session_id, actor=claims.get("email"))
+    updated = await auth_service.revoke_session(
+        payload.session_id, actor=claims.get("email")
+    )
     if updated and session_manager:
         await session_manager.handle_session_revocation(
             payload.session_id,

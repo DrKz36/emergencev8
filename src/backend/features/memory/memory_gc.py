@@ -24,14 +24,14 @@ try:
     def _get_gc_counter() -> Counter:
         try:
             return Counter(
-                'memory_gc_entries_archived_total',
-                'Nombre entrées archivées par GC',
-                ['collection'],
-                registry=REGISTRY
+                "memory_gc_entries_archived_total",
+                "Nombre entrées archivées par GC",
+                ["collection"],
+                registry=REGISTRY,
             )
         except ValueError:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(
-                'memory_gc_entries_archived_total'
+                "memory_gc_entries_archived_total"
             )
             if existing is None:
                 raise
@@ -40,14 +40,14 @@ try:
     def _get_gc_gauge() -> Gauge:
         try:
             return Gauge(
-                'memory_gc_last_run_timestamp',
-                'Timestamp dernière exécution GC',
-                ['collection'],
-                registry=REGISTRY
+                "memory_gc_last_run_timestamp",
+                "Timestamp dernière exécution GC",
+                ["collection"],
+                registry=REGISTRY,
             )
         except ValueError:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(
-                'memory_gc_last_run_timestamp'
+                "memory_gc_last_run_timestamp"
             )
             if existing is None:
                 raise
@@ -83,14 +83,10 @@ class MemoryGarbageCollector:
         """
         self.vector_service = vector_service
         self.gc_inactive_days = gc_inactive_days
-        logger.info(
-            f"[MemoryGC] Initialisé avec gc_inactive_days={gc_inactive_days}"
-        )
+        logger.info(f"[MemoryGC] Initialisé avec gc_inactive_days={gc_inactive_days}")
 
     async def run_gc(
-        self,
-        collection_name: str = "emergence_knowledge",
-        dry_run: bool = False
+        self, collection_name: str = "emergence_knowledge", dry_run: bool = False
     ) -> Dict[str, Any]:
         """
         Exécute garbage collection sur la collection.
@@ -124,7 +120,7 @@ class MemoryGarbageCollector:
                 "candidates_found": 0,
                 "entries_archived": 0,
                 "errors": 1,
-                "dry_run": dry_run
+                "dry_run": dry_run,
             }
 
         # Calculer cutoff date
@@ -138,13 +134,15 @@ class MemoryGarbageCollector:
                 include=["documents", "metadatas", "embeddings"]
             )
         except Exception as e:
-            logger.error(f"[MemoryGC] Erreur récupération collection: {e}", exc_info=True)
+            logger.error(
+                f"[MemoryGC] Erreur récupération collection: {e}", exc_info=True
+            )
             return {
                 "collection": collection_name,
                 "candidates_found": 0,
                 "entries_archived": 0,
                 "errors": 1,
-                "dry_run": dry_run
+                "dry_run": dry_run,
             }
 
         if not all_entries or not all_entries.get("ids"):
@@ -155,13 +153,11 @@ class MemoryGarbageCollector:
                 "entries_archived": 0,
                 "errors": 0,
                 "cutoff_date": cutoff_iso,
-                "dry_run": dry_run
+                "dry_run": dry_run,
             }
 
         # Filtrer entrées inactives
-        candidates = self._find_inactive_entries(
-            all_entries, cutoff_date
-        )
+        candidates = self._find_inactive_entries(all_entries, cutoff_date)
 
         logger.info(
             f"[MemoryGC] {len(candidates)} candidats trouvés "
@@ -176,7 +172,7 @@ class MemoryGarbageCollector:
                 "entries_archived": 0,
                 "errors": 0,
                 "cutoff_date": cutoff_iso,
-                "dry_run": True
+                "dry_run": True,
             }
 
         # Archiver candidats
@@ -190,13 +186,11 @@ class MemoryGarbageCollector:
                     entry_id=candidate["id"],
                     document=candidate["document"],
                     metadata=candidate["metadata"],
-                    embedding=candidate["embedding"]
+                    embedding=candidate["embedding"],
                 )
                 archived_count += 1
             except Exception as e:
-                logger.warning(
-                    f"[MemoryGC] Erreur archivage {candidate['id']}: {e}"
-                )
+                logger.warning(f"[MemoryGC] Erreur archivage {candidate['id']}: {e}")
                 error_count += 1
 
         # Métriques Prometheus
@@ -219,13 +213,11 @@ class MemoryGarbageCollector:
             "errors": error_count,
             "cutoff_date": cutoff_iso,
             "dry_run": False,
-            "duration_seconds": duration
+            "duration_seconds": duration,
         }
 
     def _find_inactive_entries(
-        self,
-        all_entries: Dict[str, Any],
-        cutoff_date: datetime
+        self, all_entries: Dict[str, Any], cutoff_date: datetime
     ) -> List[Dict[str, Any]]:
         """
         Filtre entrées inactives depuis cutoff_date.
@@ -255,27 +247,35 @@ class MemoryGarbageCollector:
                 if not last_used_str:
                     # Pas de date → considéré comme ancien
                     logger.debug(f"[MemoryGC] {entry_id}: pas de date → candidat")
-                    candidates.append({
-                        "id": entry_id,
-                        "document": documents[i] if i < len(documents) else "",
-                        "metadata": meta,
-                        "embedding": embeddings[i] if i < len(embeddings) else None
-                    })
+                    candidates.append(
+                        {
+                            "id": entry_id,
+                            "document": documents[i] if i < len(documents) else "",
+                            "metadata": meta,
+                            "embedding": embeddings[i] if i < len(embeddings) else None,
+                        }
+                    )
                     continue
 
                 # Parser date
                 try:
-                    last_used = datetime.fromisoformat(last_used_str.replace("Z", "+00:00"))
+                    last_used = datetime.fromisoformat(
+                        last_used_str.replace("Z", "+00:00")
+                    )
                     if last_used.tzinfo is None:
                         last_used = last_used.replace(tzinfo=timezone.utc)
                 except Exception:
-                    logger.debug(f"[MemoryGC] {entry_id}: date invalide '{last_used_str}' → candidat")
-                    candidates.append({
-                        "id": entry_id,
-                        "document": documents[i] if i < len(documents) else "",
-                        "metadata": meta,
-                        "embedding": embeddings[i] if i < len(embeddings) else None
-                    })
+                    logger.debug(
+                        f"[MemoryGC] {entry_id}: date invalide '{last_used_str}' → candidat"
+                    )
+                    candidates.append(
+                        {
+                            "id": entry_id,
+                            "document": documents[i] if i < len(documents) else "",
+                            "metadata": meta,
+                            "embedding": embeddings[i] if i < len(embeddings) else None,
+                        }
+                    )
                     continue
 
                 # Vérifier inactivité
@@ -284,12 +284,14 @@ class MemoryGarbageCollector:
                     logger.debug(
                         f"[MemoryGC] {entry_id}: inactif depuis {delta_days}j → candidat"
                     )
-                    candidates.append({
-                        "id": entry_id,
-                        "document": documents[i] if i < len(documents) else "",
-                        "metadata": meta,
-                        "embedding": embeddings[i] if i < len(embeddings) else None
-                    })
+                    candidates.append(
+                        {
+                            "id": entry_id,
+                            "document": documents[i] if i < len(documents) else "",
+                            "metadata": meta,
+                            "embedding": embeddings[i] if i < len(embeddings) else None,
+                        }
+                    )
 
             except Exception as e:
                 logger.warning(f"[MemoryGC] Erreur parsing {entry_id}: {e}")
@@ -303,7 +305,7 @@ class MemoryGarbageCollector:
         entry_id: str,
         document: str,
         metadata: Dict[str, Any],
-        embedding: Optional[List[float]]
+        embedding: Optional[List[float]],
     ) -> None:
         """
         Archive une entrée dans collection "_archived".
@@ -331,11 +333,13 @@ class MemoryGarbageCollector:
             ids=[entry_id],
             documents=[document],
             metadatas=[archived_meta],
-            embeddings=[embedding] if embedding else None
+            embeddings=[embedding] if embedding else None,
         )
 
         # Supprimer de collection source
-        source_collection = self.vector_service.get_or_create_collection(collection_name)
+        source_collection = self.vector_service.get_or_create_collection(
+            collection_name
+        )
         source_collection.delete(ids=[entry_id])
 
         logger.debug(
@@ -346,7 +350,7 @@ class MemoryGarbageCollector:
     async def restore_entry(
         self,
         entry_id: str,
-        archived_collection_name: str = "emergence_knowledge_archived"
+        archived_collection_name: str = "emergence_knowledge_archived",
     ) -> bool:
         """
         Restaure une entrée archivée vers la collection originale.
@@ -365,12 +369,13 @@ class MemoryGarbageCollector:
 
             # Récupérer entrée
             result = archived_collection.get(
-                ids=[entry_id],
-                include=["documents", "metadatas", "embeddings"]
+                ids=[entry_id], include=["documents", "metadatas", "embeddings"]
             )
 
             if not result or not result.get("ids"):
-                logger.warning(f"[MemoryGC] Entrée {entry_id} introuvable dans archives")
+                logger.warning(
+                    f"[MemoryGC] Entrée {entry_id} introuvable dans archives"
+                )
                 return False
 
             document = result["documents"][0]
@@ -378,15 +383,19 @@ class MemoryGarbageCollector:
             embedding = result["embeddings"][0] if result.get("embeddings") else None
 
             # Récupérer collection originale
-            original_collection_name = metadata.get("original_collection", "emergence_knowledge")
+            original_collection_name = metadata.get(
+                "original_collection", "emergence_knowledge"
+            )
             original_collection = self.vector_service.get_or_create_collection(
                 original_collection_name
             )
 
             # Nettoyer métadonnées archivage
-            restored_meta = {k: v for k, v in metadata.items() if k not in [
-                "archived_at", "original_collection", "archived_by"
-            ]}
+            restored_meta = {
+                k: v
+                for k, v in metadata.items()
+                if k not in ["archived_at", "original_collection", "archived_by"]
+            }
             restored_meta["restored_at"] = datetime.now(timezone.utc).isoformat()
 
             # Ajouter à collection originale
@@ -394,7 +403,7 @@ class MemoryGarbageCollector:
                 ids=[entry_id],
                 documents=[document],
                 metadatas=[restored_meta],
-                embeddings=[embedding] if embedding else None
+                embeddings=[embedding] if embedding else None,
             )
 
             # Supprimer des archives
@@ -407,5 +416,7 @@ class MemoryGarbageCollector:
             return True
 
         except Exception as e:
-            logger.error(f"[MemoryGC] Erreur restauration {entry_id}: {e}", exc_info=True)
+            logger.error(
+                f"[MemoryGC] Erreur restauration {entry_id}: {e}", exc_info=True
+            )
             return False

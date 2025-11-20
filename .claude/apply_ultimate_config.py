@@ -18,13 +18,13 @@ import argparse
 
 def load_json(file_path: Path) -> dict:
     """Charge un fichier JSON."""
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_json(file_path: Path, data: dict):
     """Sauvegarde un fichier JSON avec indentation."""
-    with open(file_path, 'w', encoding='utf-8') as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
@@ -59,8 +59,8 @@ def merge_permissions(current: dict, ultimate: dict) -> dict:
         "permissions": {
             "allow": merged_allow,
             "deny": current.get("permissions", {}).get("deny", []),
-            "ask": current.get("permissions", {}).get("ask", [])
-        }
+            "ask": current.get("permissions", {}).get("ask", []),
+        },
     }
 
     # Ajouter flags expérimentaux si dans ultimate
@@ -72,9 +72,18 @@ def merge_permissions(current: dict, ultimate: dict) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Apply ultimate Claude Code config")
-    parser.add_argument("--dry-run", action="store_true", help="Show changes without applying")
-    parser.add_argument("--backup", action="store_true", default=True, help="Create backup before applying (default: True)")
-    parser.add_argument("--no-backup", action="store_false", dest="backup", help="Don't create backup")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show changes without applying"
+    )
+    parser.add_argument(
+        "--backup",
+        action="store_true",
+        default=True,
+        help="Create backup before applying (default: True)",
+    )
+    parser.add_argument(
+        "--no-backup", action="store_false", dest="backup", help="Don't create backup"
+    )
 
     args = parser.parse_args()
 
@@ -98,8 +107,20 @@ def main():
     ultimate = load_json(ultimate_file)
 
     # Stats avant
-    current_perms = len([p for p in current.get("permissions", {}).get("allow", []) if not p.startswith("_comment")])
-    ultimate_perms = len([p for p in ultimate.get("permissions", {}).get("allow", []) if not p.startswith("_comment")])
+    current_perms = len(
+        [
+            p
+            for p in current.get("permissions", {}).get("allow", [])
+            if not p.startswith("_comment")
+        ]
+    )
+    ultimate_perms = len(
+        [
+            p
+            for p in ultimate.get("permissions", {}).get("allow", [])
+            if not p.startswith("_comment")
+        ]
+    )
 
     print(f"    Permissions actuelles : {current_perms}")
     print(f"    Permissions ultimate  : {ultimate_perms}")
@@ -108,7 +129,13 @@ def main():
     print("\n[*] Merge des permissions...")
     merged = merge_permissions(current, ultimate)
 
-    merged_perms = len([p for p in merged.get("permissions", {}).get("allow", []) if not p.startswith("_comment")])
+    merged_perms = len(
+        [
+            p
+            for p in merged.get("permissions", {}).get("allow", [])
+            if not p.startswith("_comment")
+        ]
+    )
     new_perms = merged_perms - current_perms
 
     print(f"    Permissions merged    : {merged_perms}")
@@ -139,17 +166,17 @@ def main():
         shutil.copy2(current_file, backup_file)
 
     # Appliquer
-    print(f"\n[*] Application de la config merged...")
+    print("\n[*] Application de la config merged...")
     save_json(current_file, merged)
 
     print("\n[OK] Configuration ultimate appliquee avec succes !")
-    print(f"\n[*] Resultat:")
+    print("\n[*] Resultat:")
     print(f"    - {merged_perms} permissions totales")
     print(f"    - {new_perms} nouvelles permissions ajoutees")
-    print(f"    - Wildcard '*' conserve en premiere position")
+    print("    - Wildcard '*' conserve en premiere position")
 
     if "_experimental" in merged:
-        print(f"    - [!] Flags experimentaux actives (DANGEROUSLY SKIP ALL)")
+        print("    - [!] Flags experimentaux actives (DANGEROUSLY SKIP ALL)")
 
     print("\n[OK] Prochaine session Claude Code devrait etre en mode FULL AUTO !")
 

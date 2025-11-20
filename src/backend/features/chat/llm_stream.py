@@ -92,7 +92,9 @@ class LLMStreamer:
                 async for chunk in streamer:
                     yield chunk
         except asyncio.TimeoutError:
-            logger.error(f"Timeout AI request après {AI_REQUEST_TIMEOUT}s (provider={provider}, model={model})")
+            logger.error(
+                f"Timeout AI request après {AI_REQUEST_TIMEOUT}s (provider={provider}, model={model})"
+            )
             cost_info_container["__error__"] = "timeout"
             yield f"\n\n[Erreur: La requête a expiré après {AI_REQUEST_TIMEOUT}s]"
 
@@ -127,7 +129,9 @@ class LLMStreamer:
                     pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                     in_tok = getattr(usage, "prompt_tokens", 0)
                     out_tok = getattr(usage, "completion_tokens", 0)
-                    total_cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
+                    total_cost = (in_tok * pricing["input"]) + (
+                        out_tok * pricing["output"]
+                    )
                     cost_info_container.update(
                         {
                             "input_tokens": in_tok,
@@ -164,9 +168,9 @@ class LLMStreamer:
             # Convertir l'historique OpenAI/Anthropic vers format Gemini
             # OpenAI: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
             # Gemini: Simple string ou list of strings
-            gemini_prompt = "\n".join([
-                msg.get("content", "") for msg in history if msg.get("content")
-            ])
+            gemini_prompt = "\n".join(
+                [msg.get("content", "") for msg in history if msg.get("content")]
+            )
 
             # COUNT TOKENS INPUT (avant génération)
             input_tokens = 0
@@ -179,7 +183,9 @@ class LLMStreamer:
                 input_tokens = count_result.total_tokens
                 logger.debug(f"[Gemini] Input tokens: {input_tokens}")
             except Exception as e:
-                logger.warning(f"[Gemini] Failed to count input tokens: {e}", exc_info=True)
+                logger.warning(
+                    f"[Gemini] Failed to count input tokens: {e}", exc_info=True
+                )
 
             # Stream response et accumuler texte
             full_response_text = ""
@@ -214,17 +220,23 @@ class LLMStreamer:
                 output_tokens = count_result.total_tokens
                 logger.debug(f"[Gemini] Output tokens: {output_tokens}")
             except Exception as e:
-                logger.warning(f"[Gemini] Failed to count output tokens: {e}", exc_info=True)
+                logger.warning(
+                    f"[Gemini] Failed to count output tokens: {e}", exc_info=True
+                )
 
             # CALCUL COÛT
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-            total_cost = (input_tokens * pricing["input"]) + (output_tokens * pricing["output"])
+            total_cost = (input_tokens * pricing["input"]) + (
+                output_tokens * pricing["output"]
+            )
 
-            cost_info_container.update({
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_cost": total_cost,
-            })
+            cost_info_container.update(
+                {
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "total_cost": total_cost,
+                }
+            )
 
             # Log détaillé pour traçabilité des coûts
             logger.info(
@@ -269,7 +281,9 @@ class LLMStreamer:
                         pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                         in_tok = getattr(usage, "input_tokens", 0)
                         out_tok = getattr(usage, "output_tokens", 0)
-                        total_cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
+                        total_cost = (in_tok * pricing["input"]) + (
+                            out_tok * pricing["output"]
+                        )
                         cost_info_container.update(
                             {
                                 "input_tokens": in_tok,
@@ -285,9 +299,13 @@ class LLMStreamer:
                             f"pricing_input=${pricing['input']:.8f}/token, pricing_output=${pricing['output']:.8f}/token)"
                         )
                     else:
-                        logger.warning(f"[Anthropic] No usage data in final response for model {model}")
+                        logger.warning(
+                            f"[Anthropic] No usage data in final response for model {model}"
+                        )
                 except Exception as e:
-                    logger.warning(f"[Anthropic] Failed to get usage data: {e}", exc_info=True)
+                    logger.warning(
+                        f"[Anthropic] Failed to get usage data: {e}", exc_info=True
+                    )
         except Exception as e:
             try:
                 from anthropic import RateLimitError as _AnthropicRateLimit

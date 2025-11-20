@@ -87,9 +87,7 @@ class TestArchivedThreadsAccess:
         # Vérifications
         assert thread.get("message_count") == 5
         assert thread.get("last_message_at") is not None
-        assert datetime.fromisoformat(
-            thread["last_message_at"].replace("Z", "+00:00")
-        )
+        assert datetime.fromisoformat(thread["last_message_at"].replace("Z", "+00:00"))
 
 
 class TestTemporalSearch:
@@ -125,11 +123,15 @@ class TestTemporalSearch:
         # pour supporter start_date/end_date nativement
 
     @pytest.mark.asyncio
-    async def test_concept_recall_timestamps(self, db_manager, vector_service, test_user):
+    async def test_concept_recall_timestamps(
+        self, db_manager, vector_service, test_user
+    ):
         """Vérifie first_mentioned_at et last_mentioned_at dans LTM"""
         from backend.features.memory.concept_recall import ConceptRecallTracker
 
-        tracker = ConceptRecallTracker(db_manager, vector_service, connection_manager=None)
+        tracker = ConceptRecallTracker(
+            db_manager, vector_service, connection_manager=None
+        )
 
         # Recherche concept (nécessite données vectorielles existantes)
         results = await tracker.query_concept_history(
@@ -152,9 +154,7 @@ class TestTemporalSearch:
 class TestUnifiedSearch:
     """Tests recherche unifiée (P1.3)"""
 
-    def test_unified_search_all_sources(
-        self, client, test_auth_headers
-    ):
+    def test_unified_search_all_sources(self, client, test_auth_headers):
         """Vérifie recherche dans STM+LTM+threads+messages"""
         # Note: Ce test vérifie simplement que l'endpoint répond correctement
         # Les données réelles dépendent de l'état de la DB du client (TestClient)
@@ -289,6 +289,7 @@ def test_user_token():
     # Cela évite les problèmes d'AuthService non initialisé dans les tests
     return None
 
+
 @pytest.fixture
 def test_auth_headers(test_user):
     """Headers d'authentification pour mode dev (bypass JWT)"""
@@ -296,7 +297,7 @@ def test_auth_headers(test_user):
         "X-Dev-Bypass": "1",
         "X-User-ID": test_user,
         "X-User-Email": "test@example.com",
-        "X-User-Role": "admin"
+        "X-User-Role": "admin",
     }
 
 
@@ -319,8 +320,7 @@ async def vector_service(tmp_path):
     temp_dir.mkdir(exist_ok=True)
 
     vs = VectorService(
-        persist_directory=str(temp_dir),
-        embed_model_name="all-MiniLM-L6-v2"
+        persist_directory=str(temp_dir), embed_model_name="all-MiniLM-L6-v2"
     )
     return vs
 

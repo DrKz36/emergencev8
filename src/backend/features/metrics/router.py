@@ -26,7 +26,7 @@ async def prometheus_metrics():
         return Response(
             content="# Metrics disabled. Set CONCEPT_RECALL_METRICS_ENABLED=true to enable.\n",
             media_type=CONTENT_TYPE_LATEST,
-            status_code=200
+            status_code=200,
         )
 
     try:
@@ -34,16 +34,14 @@ async def prometheus_metrics():
         metrics_output = generate_latest(REGISTRY)
 
         return Response(
-            content=metrics_output,
-            media_type=CONTENT_TYPE_LATEST,
-            status_code=200
+            content=metrics_output, media_type=CONTENT_TYPE_LATEST, status_code=200
         )
     except Exception as e:
         logger.error(f"[Metrics] Failed to generate metrics: {e}", exc_info=True)
         return Response(
             content=f"# Error generating metrics: {str(e)}\n",
             media_type=CONTENT_TYPE_LATEST,
-            status_code=500
+            status_code=500,
         )
 
 
@@ -52,10 +50,7 @@ async def health_check():
     """
     Simple health check endpoint.
     """
-    return {
-        "status": "healthy",
-        "metrics_enabled": METRICS_ENABLED
-    }
+    return {"status": "healthy", "metrics_enabled": METRICS_ENABLED}
 
 
 @router.get("/rag")
@@ -112,7 +107,9 @@ async def get_rag_metrics() -> Dict[str, Any]:
             filtered = int(metrics_data.get("filtered_results", 0))
             successful = max(0, total_queries - filtered)
             metrics_data["successful_queries"] = successful
-            metrics_data["success_rate"] = successful / total_queries if total_queries else 1.0
+            metrics_data["success_rate"] = (
+                successful / total_queries if total_queries else 1.0
+            )
         else:
             metrics_data["successful_queries"] = 0
             metrics_data["success_rate"] = 1.0
@@ -135,5 +132,5 @@ async def get_rag_metrics() -> Dict[str, Any]:
             "successful_queries": 0,
             "success_rate": 1.0,
             "avg_results_per_query": 0.0,
-            "error": str(e)
+            "error": str(e),
         }

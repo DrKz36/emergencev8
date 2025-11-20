@@ -1,22 +1,23 @@
 """
 Send connection issues notification email to selected beta testers
 """
+
 import asyncio
 import sys
 import io
-import os
 from pathlib import Path
 
 # Force UTF-8 encoding for console output
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # Load .env file from project root
 from dotenv import load_dotenv
+
 # Go up two directories to reach project root
 project_root = Path(__file__).parent.parent.parent
-env_path = project_root / '.env'
+env_path = project_root / ".env"
 load_dotenv(env_path)
 
 from src.backend.features.auth.email_service import EmailService
@@ -27,7 +28,7 @@ RECIPIENTS = [
     "pepin1936@gmail.com",
     "stephane.cola@bluewin.ch",
     "degeo81@gmail.com",
-    "fernando36@bluewin.ch"
+    "fernando36@bluewin.ch",
 ]
 
 
@@ -58,14 +59,20 @@ async def send_connection_issues_notification():
     print()
 
     # CONFIRMATION (skip if --yes flag provided)
-    skip_confirmation = '--yes' in sys.argv or '-y' in sys.argv
+    skip_confirmation = "--yes" in sys.argv or "-y" in sys.argv
 
     if not skip_confirmation:
-        print("⚠️  ATTENTION : Vous êtes sur le point d'envoyer cet email à ces adresses.")
+        print(
+            "⚠️  ATTENTION : Vous êtes sur le point d'envoyer cet email à ces adresses."
+        )
         print()
-        confirmation = input("Confirmez-vous l'envoi à ces adresses uniquement ? (oui/non) : ").strip().lower()
+        confirmation = (
+            input("Confirmez-vous l'envoi à ces adresses uniquement ? (oui/non) : ")
+            .strip()
+            .lower()
+        )
 
-        if confirmation not in ['oui', 'yes', 'o', 'y']:
+        if confirmation not in ["oui", "yes", "o", "y"]:
             print()
             print("❌ Envoi annulé par l'utilisateur.")
             return False
@@ -92,7 +99,7 @@ async def send_connection_issues_notification():
         "sent": 0,
         "failed": 0,
         "sent_to": [],
-        "failed_emails": []
+        "failed_emails": [],
     }
 
     # Email content
@@ -103,84 +110,84 @@ async def send_connection_issues_notification():
             print(f"📤 Envoi à {email}...", end=" ")
 
             # HTML version
-            html_body = f"""
+            html_body = """
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <style>
-        body {{
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #333;
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
-        }}
-        .container {{
+        }
+        .container {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             border-radius: 16px;
             padding: 40px;
             color: #e2e8f0;
-        }}
-        .header {{
+        }
+        .header {
             text-align: center;
             margin-bottom: 30px;
-        }}
-        .header img {{
+        }
+        .header img {
             max-width: 120px;
             margin-bottom: 15px;
-        }}
-        .header h1 {{
+        }
+        .header h1 {
             color: #3b82f6;
             margin: 0;
             font-size: 28px;
-        }}
-        .content {{
+        }
+        .content {
             margin: 20px 0;
-        }}
-        .highlight {{
+        }
+        .highlight {
             background: rgba(59, 130, 246, 0.1);
             border-left: 4px solid #3b82f6;
             border-radius: 4px;
             padding: 15px;
             margin: 20px 0;
-        }}
-        .success {{
+        }
+        .success {
             background: rgba(16, 185, 129, 0.1);
             border-left: 4px solid #10b981;
             border-radius: 4px;
             padding: 15px;
             margin: 20px 0;
-        }}
-        .warning {{
+        }
+        .warning {
             background: rgba(251, 191, 36, 0.1);
             border-left: 4px solid #f59e0b;
             border-radius: 4px;
             padding: 15px;
             margin: 20px 0;
-        }}
-        .footer {{
+        }
+        .footer {
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             font-size: 14px;
             color: #94a3b8;
-        }}
-        .signature {{
+        }
+        .signature {
             margin-top: 20px;
             padding-top: 15px;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
             font-style: italic;
             color: #cbd5e1;
-        }}
-        ul {{
+        }
+        ul {
             margin: 10px 0;
             padding-left: 20px;
-        }}
-        li {{
+        }
+        li {
             margin: 8px 0;
-        }}
+        }
     </style>
 </head>
 <body>
@@ -257,7 +264,7 @@ async def send_connection_issues_notification():
             """
 
             # Plain text version
-            text_body = f"""
+            text_body = """
 MISE À JOUR IMPORTANTE - RÉSOLUTION DES PROBLÈMES DE CONNEXION
 
 Bonjour,
@@ -313,7 +320,7 @@ Merci de ne pas répondre à cet email.
                 to_email=email,
                 subject=subject,
                 html_body=html_body,
-                text_body=text_body
+                text_body=text_body,
             )
 
             if success:
@@ -340,21 +347,21 @@ Merci de ne pas répondre à cet email.
     print(f"❌ Échoués : {results['failed']}")
     print()
 
-    if results['sent'] > 0:
+    if results["sent"] > 0:
         print("✅ Emails envoyés avec succès à :")
-        for email in results['sent_to']:
+        for email in results["sent_to"]:
             print(f"   • {email}")
         print()
 
-    if results['failed'] > 0:
+    if results["failed"] > 0:
         print("❌ Emails échoués pour :")
-        for email in results['failed_emails']:
+        for email in results["failed_emails"]:
             print(f"   • {email}")
         print()
 
     print("=" * 80)
 
-    return results['failed'] == 0
+    return results["failed"] == 0
 
 
 async def main():

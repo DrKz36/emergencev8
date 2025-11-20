@@ -5,17 +5,11 @@ Tests pour LLM Cost Telemetry V13.2
 """
 
 import pytest
-import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.core.cost_tracker import (
     CostTracker,
     METRICS_ENABLED,
-    llm_requests_total,
-    llm_tokens_prompt_total,
-    llm_tokens_completion_total,
-    llm_cost_usd_total,
-    llm_latency_seconds,
 )
 
 
@@ -43,10 +37,14 @@ class TestCostTelemetryPrometheus:
     async def test_record_cost_increments_metrics(self, cost_tracker, db_manager_mock):
         """Test que record_cost incrémente les métriques Prometheus"""
         if not METRICS_ENABLED:
-            pytest.skip("Métriques Prometheus désactivées (CONCEPT_RECALL_METRICS_ENABLED=false)")
+            pytest.skip(
+                "Métriques Prometheus désactivées (CONCEPT_RECALL_METRICS_ENABLED=false)"
+            )
 
         # Mock db_queries.add_cost_log
-        with patch("backend.core.database.queries.add_cost_log", new_callable=AsyncMock):
+        with patch(
+            "backend.core.database.queries.add_cost_log", new_callable=AsyncMock
+        ):
             # Mock les métriques Prometheus pour capturer les appels
             mock_requests = MagicMock()
             mock_tokens_prompt = MagicMock()
@@ -71,13 +69,19 @@ class TestCostTelemetryPrometheus:
                 )
 
                 # Vérifier incrémentations
-                mock_requests.labels.assert_called_once_with(agent="anima", model="gpt-4")
+                mock_requests.labels.assert_called_once_with(
+                    agent="anima", model="gpt-4"
+                )
                 mock_requests.labels().inc.assert_called_once()
 
-                mock_tokens_prompt.labels.assert_called_once_with(agent="anima", model="gpt-4")
+                mock_tokens_prompt.labels.assert_called_once_with(
+                    agent="anima", model="gpt-4"
+                )
                 mock_tokens_prompt.labels().inc.assert_called_once_with(100)
 
-                mock_tokens_completion.labels.assert_called_once_with(agent="anima", model="gpt-4")
+                mock_tokens_completion.labels.assert_called_once_with(
+                    agent="anima", model="gpt-4"
+                )
                 mock_tokens_completion.labels().inc.assert_called_once_with(50)
 
                 mock_cost.labels.assert_called_once_with(agent="anima", model="gpt-4")
@@ -89,7 +93,9 @@ class TestCostTelemetryPrometheus:
         if not METRICS_ENABLED:
             pytest.skip("Métriques Prometheus désactivées")
 
-        with patch("backend.core.database.queries.add_cost_log", new_callable=AsyncMock):
+        with patch(
+            "backend.core.database.queries.add_cost_log", new_callable=AsyncMock
+        ):
             mock_latency = MagicMock()
 
             with patch("backend.core.cost_tracker.llm_latency_seconds", mock_latency):
@@ -105,7 +111,9 @@ class TestCostTelemetryPrometheus:
                 )
 
                 # Vérifier observe() appelé
-                mock_latency.labels.assert_called_once_with(agent="neo", model="claude-3-opus")
+                mock_latency.labels.assert_called_once_with(
+                    agent="neo", model="claude-3-opus"
+                )
                 mock_latency.labels().observe.assert_called_once_with(2.5)
 
     @pytest.mark.asyncio
@@ -114,7 +122,9 @@ class TestCostTelemetryPrometheus:
         if not METRICS_ENABLED:
             pytest.skip("Métriques Prometheus désactivées")
 
-        with patch("backend.core.database.queries.add_cost_log", new_callable=AsyncMock):
+        with patch(
+            "backend.core.database.queries.add_cost_log", new_callable=AsyncMock
+        ):
             mock_requests = MagicMock()
 
             with patch("backend.core.cost_tracker.llm_requests_total", mock_requests):
@@ -157,7 +167,9 @@ class TestCostTelemetryPrometheus:
         """Test que l'enregistrement fonctionne même si métriques désactivées"""
         # Mock METRICS_ENABLED = False
         with patch("backend.core.cost_tracker.METRICS_ENABLED", False):
-            with patch("backend.core.database.queries.add_cost_log", new_callable=AsyncMock):
+            with patch(
+                "backend.core.database.queries.add_cost_log", new_callable=AsyncMock
+            ):
                 # Reset singleton
                 CostTracker._instance = None
                 tracker = CostTracker(db_manager=db_manager_mock)
@@ -191,9 +203,13 @@ class TestCostTrackerBackwardCompat:
     """Tests de rétrocompatibilité V13.2"""
 
     @pytest.mark.asyncio
-    async def test_record_cost_without_latency_param(self, cost_tracker, db_manager_mock):
+    async def test_record_cost_without_latency_param(
+        self, cost_tracker, db_manager_mock
+    ):
         """Test que latency_seconds est optionnel (rétrocompat)"""
-        with patch("backend.core.database.queries.add_cost_log", new_callable=AsyncMock):
+        with patch(
+            "backend.core.database.queries.add_cost_log", new_callable=AsyncMock
+        ):
             # Appel sans latency_seconds (comme V13.1)
             await cost_tracker.record_cost(
                 agent="anima",
@@ -206,9 +222,13 @@ class TestCostTrackerBackwardCompat:
             # Ne doit pas raise
 
     @pytest.mark.asyncio
-    async def test_get_spending_summary_still_works(self, cost_tracker, db_manager_mock):
+    async def test_get_spending_summary_still_works(
+        self, cost_tracker, db_manager_mock
+    ):
         """Test que get_spending_summary fonctionne toujours (API stable)"""
-        with patch("backend.core.database.queries.get_costs_summary", new_callable=AsyncMock) as mock_summary:
+        with patch(
+            "backend.core.database.queries.get_costs_summary", new_callable=AsyncMock
+        ) as mock_summary:
             mock_summary.return_value = {
                 "total": 10.0,
                 "today": 2.0,
@@ -223,7 +243,9 @@ class TestCostTrackerBackwardCompat:
     @pytest.mark.asyncio
     async def test_check_alerts_still_works(self, cost_tracker, db_manager_mock):
         """Test que check_alerts fonctionne toujours (API stable)"""
-        with patch("backend.core.database.queries.get_costs_summary", new_callable=AsyncMock) as mock_summary:
+        with patch(
+            "backend.core.database.queries.get_costs_summary", new_callable=AsyncMock
+        ) as mock_summary:
             # Mock dépasser le seuil daily
             mock_summary.return_value = {
                 "today": 5.0,  # > DAILY_LIMIT (3.0)

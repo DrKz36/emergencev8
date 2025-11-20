@@ -1,6 +1,7 @@
 """
 Send test authentication issue email to admin
 """
+
 import asyncio
 import sys
 import io
@@ -8,13 +9,14 @@ import os
 from pathlib import Path
 
 # Force UTF-8 encoding for console output
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # Load .env file
 from dotenv import load_dotenv
-env_path = Path(__file__).parent / '.env'
+
+env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
 print(f"🔧 Loading environment from: {env_path}")
@@ -65,8 +67,7 @@ async def send_test_email():
     try:
         # Send the authentication issue notification email
         success = await email_service.send_auth_issue_notification_email(
-            to_email=admin_email,
-            base_url=base_url
+            to_email=admin_email, base_url=base_url
         )
 
         if success:
@@ -112,6 +113,7 @@ async def send_test_email():
         print(f"Erreur : {e}")
         print()
         import traceback
+
         traceback.print_exc()
         return False
 

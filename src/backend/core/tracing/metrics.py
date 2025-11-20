@@ -25,12 +25,12 @@ chat_trace_span_duration_seconds = Histogram(
     buckets=[
         0.01,  # 10ms (cache hit rapide)
         0.05,  # 50ms (RAG local)
-        0.1,   # 100ms
+        0.1,  # 100ms
         0.25,  # 250ms (retrieval typique)
-        0.5,   # 500ms
-        1.0,   # 1s (LLM génération début)
-        2.5,   # 2.5s
-        5.0,   # 5s (LLM génération moyenne)
+        0.5,  # 500ms
+        1.0,  # 1s (LLM génération début)
+        2.5,  # 2.5s
+        5.0,  # 5s (LLM génération moyenne)
         10.0,  # 10s (LLM génération lente)
         30.0,  # 30s (timeout boundary)
     ],

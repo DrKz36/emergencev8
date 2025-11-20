@@ -17,8 +17,10 @@ if str(SRC_DIR) not in sys.path:
 
 _httpx_init = httpx.Client.__init__
 if "app" not in _httpx_init.__code__.co_varnames:
+
     def _httpx_init_compat(self, *args, app=None, **kwargs):
         return _httpx_init(self, *args, **kwargs)
+
     httpx.Client.__init__ = _httpx_init_compat  # type: ignore[assignment]
 
 from backend.core.database import schema  # noqa: E402
@@ -26,6 +28,7 @@ from backend.core.database.manager import DatabaseManager  # noqa: E402
 from backend.features.auth.models import AuthConfig  # noqa: E402
 from backend.features.auth.router import router as auth_router  # noqa: E402
 from backend.features.auth.service import AuthService  # noqa: E402
+
 
 class _InMemoryVectorCollection:
     def __init__(self) -> None:

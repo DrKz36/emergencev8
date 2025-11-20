@@ -44,9 +44,7 @@ async def gardener(db_manager, vector_service):
     """MemoryGardener fixture."""
     analyzer = MemoryAnalyzer(db_manager)
     return MemoryGardener(
-        db_manager=db_manager,
-        vector_service=vector_service,
-        memory_analyzer=analyzer
+        db_manager=db_manager, vector_service=vector_service, memory_analyzer=analyzer
     )
 
 
@@ -75,10 +73,10 @@ async def test_vectorize_concepts_with_enriched_metadata(gardener, vector_servic
             "$and": [
                 {"type": "concept"},
                 {"user_id": user_id},
-                {"source_session_id": session_stub["id"]}
+                {"source_session_id": session_stub["id"]},
             ]
         },
-        include=["metadatas"]
+        include=["metadatas"],
     )
 
     assert result is not None
@@ -126,17 +124,21 @@ async def test_vectorize_concepts_without_thread_id(gardener, vector_service):
                 {"user_id": user_id},
             ]
         },
-        include=["metadatas"]
+        include=["metadatas"],
     )
 
     assert len(result["ids"]) == 1
     meta = result["metadatas"][0]
 
     # Verify graceful handling of missing thread_id
-    assert meta["thread_id"] == ""  # Empty string instead of None for ChromaDB compatibility
+    assert (
+        meta["thread_id"] == ""
+    )  # Empty string instead of None for ChromaDB compatibility
     thread_ids = json.loads(meta["thread_ids_json"])
     assert thread_ids == []
-    assert meta["message_id"] == ""  # Empty string instead of None for ChromaDB compatibility
+    assert (
+        meta["message_id"] == ""
+    )  # Empty string instead of None for ChromaDB compatibility
     assert meta["mention_count"] == 1
 
 
@@ -154,13 +156,15 @@ async def test_migration_script_compatibility(vector_service):
     collection.add(
         ids=[old_concept_id],
         documents=["Old Docker concept"],
-        metadatas=[{
-            "type": "concept",
-            "user_id": "old_user_999",
-            "concept_text": "Old Docker concept",
-            "created_at": now_iso,
-            "vitality": 0.9,
-        }]
+        metadatas=[
+            {
+                "type": "concept",
+                "user_id": "old_user_999",
+                "concept_text": "Old Docker concept",
+                "created_at": now_iso,
+                "vitality": 0.9,
+            }
+        ],
     )
 
     # Act: Simulate migration (enrich metadata)
@@ -174,10 +178,7 @@ async def test_migration_script_compatibility(vector_service):
     # Note: thread_ids et message_id ne sont pas mis à jour car ChromaDB
     # n'accepte pas les listes/None dans update. En production, on utilise upsert.
 
-    collection.update(
-        ids=[old_concept_id],
-        metadatas=[migrated_meta]
-    )
+    collection.update(ids=[old_concept_id], metadatas=[migrated_meta])
 
     # Assert
     result = collection.get(ids=[old_concept_id], include=["metadatas"])
@@ -209,10 +210,7 @@ async def test_enriched_metadata_timestamps_iso8601(gardener, vector_service):
 
     # Assert
     collection = vector_service.get_or_create_collection("emergence_knowledge")
-    result = collection.get(
-        where={"user_id": "user_ts"},
-        include=["metadatas"]
-    )
+    result = collection.get(where={"user_id": "user_ts"}, include=["metadatas"])
 
     meta = result["metadatas"][0]
     first_ts = meta["first_mentioned_at"]

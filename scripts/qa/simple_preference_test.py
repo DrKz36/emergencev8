@@ -19,6 +19,7 @@ BASE_URL = "https://emergence-app-47nct44nma-ew.a.run.app"
 EMAIL = os.environ.get("EMERGENCE_SMOKE_EMAIL", "")
 PASSWORD = os.environ.get("EMERGENCE_SMOKE_PASSWORD", "")
 
+
 async def main():
     print("[P1 Simple Test]")
     print(f"Base URL: {BASE_URL}")
@@ -27,7 +28,9 @@ async def main():
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=120.0) as client:
         # 1. Login
         print("[1/4] Logging in...")
-        response = await client.post("/api/auth/login", json={"email": EMAIL, "password": PASSWORD})
+        response = await client.post(
+            "/api/auth/login", json={"email": EMAIL, "password": PASSWORD}
+        )
         response.raise_for_status()
         data = response.json()
         token = data["token"]
@@ -40,7 +43,7 @@ async def main():
         response = await client.post(
             "/api/threads",
             json={"title": "P1 Simple Preference Test", "type": "chat"},
-            headers={"Authorization": f"Bearer {token}"}
+            headers={"Authorization": f"Bearer {token}"},
         )
         response.raise_for_status()
         thread_id = response.json()["id"]
@@ -60,8 +63,12 @@ async def main():
             print(f"  [{role}] {msg[:60]}...")
             response = await client.post(
                 f"/api/threads/{thread_id}/messages",
-                json={"content": msg, "role": role, "agent": "anima" if role == "assistant" else None},
-                headers={"Authorization": f"Bearer {token}"}
+                json={
+                    "content": msg,
+                    "role": role,
+                    "agent": "anima" if role == "assistant" else None,
+                },
+                headers={"Authorization": f"Bearer {token}"},
             )
             response.raise_for_status()
 
@@ -72,7 +79,7 @@ async def main():
         response = await client.post(
             "/api/memory/tend-garden",
             json={"thread_id": thread_id, "user_sub": user_id},
-            headers={"Authorization": f"Bearer {token}"}
+            headers={"Authorization": f"Bearer {token}"},
         )
         response.raise_for_status()
         result = response.json()
@@ -82,6 +89,7 @@ async def main():
         print(f"  curl {BASE_URL}/api/metrics | grep memory_preferences")
         print("\n[SUCCESS] Check logs:")
         print("  gcloud logging read 'textPayload:PreferenceExtractor' --limit 20")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

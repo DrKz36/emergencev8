@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 class UserSession(BaseModel):
     """Session utilisateur (login -> logout)"""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_email: str
     session_start: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -23,13 +24,12 @@ class UserSession(BaseModel):
     user_agent: Optional[str] = None
 
     class Config:
-        json_encoders = {
-            datetime: lambda dt: dt.isoformat() if dt else None
-        }
+        json_encoders = {datetime: lambda dt: dt.isoformat() if dt else None}
 
 
 class FeatureUsage(BaseModel):
     """Utilisation d'une feature (endpoint appelé)"""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_email: str | None
     feature_name: str  # Ex: "chat_message", "document_upload", "thread_create"
@@ -42,13 +42,12 @@ class FeatureUsage(BaseModel):
     status_code: int = 200
 
     class Config:
-        json_encoders = {
-            datetime: lambda dt: dt.isoformat() if dt else None
-        }
+        json_encoders = {datetime: lambda dt: dt.isoformat() if dt else None}
 
 
 class UserError(BaseModel):
     """Erreur rencontrée par un utilisateur"""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_email: str | None
     endpoint: str
@@ -60,13 +59,12 @@ class UserError(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Config:
-        json_encoders = {
-            datetime: lambda dt: dt.isoformat() if dt else None
-        }
+        json_encoders = {datetime: lambda dt: dt.isoformat() if dt else None}
 
 
 class UsageReportUser(BaseModel):
     """Stats d'un utilisateur pour le rapport"""
+
     email: str
     total_time_minutes: int
     features_used: list[str]
@@ -77,6 +75,7 @@ class UsageReportUser(BaseModel):
 
 class UsageReport(BaseModel):
     """Rapport d'usage global (toutes les N heures)"""
+
     period_start: datetime
     period_end: datetime
     active_users: int
@@ -87,6 +86,4 @@ class UsageReport(BaseModel):
     error_breakdown: dict[str, int]  # {"400": 5, "500": 2}
 
     class Config:
-        json_encoders = {
-            datetime: lambda dt: dt.isoformat() if dt else None
-        }
+        json_encoders = {datetime: lambda dt: dt.isoformat() if dt else None}

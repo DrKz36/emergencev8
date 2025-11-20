@@ -6,7 +6,6 @@ Vérifie les fonctionnalités du dashboard admin (threads, coûts, sessions JWT)
 import sys
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, Any
 
 import pytest
 from fastapi import FastAPI, Header, HTTPException, Depends
@@ -70,39 +69,34 @@ def admin_app():
         threads_list = []
 
         for thread_id, thread_data in _mock_threads.items():
-            threads_list.append({
-                "session_id": thread_id,
-                "user_id": thread_data.get("user_id"),
-                "email": thread_data.get("email"),
-                "role": thread_data.get("role", "member"),
-                "created_at": thread_data.get("created_at"),
-                "last_activity": thread_data.get("last_activity"),
-                "duration_minutes": thread_data.get("duration_minutes", 0),
-                "is_active": thread_data.get("is_active", True),
-                "device": thread_data.get("device", "Unknown"),
-                "ip_address": thread_data.get("ip_address", "127.0.0.1"),
-                "user_agent": thread_data.get("user_agent", "Mozilla/5.0"),
-            })
+            threads_list.append(
+                {
+                    "session_id": thread_id,
+                    "user_id": thread_data.get("user_id"),
+                    "email": thread_data.get("email"),
+                    "role": thread_data.get("role", "member"),
+                    "created_at": thread_data.get("created_at"),
+                    "last_activity": thread_data.get("last_activity"),
+                    "duration_minutes": thread_data.get("duration_minutes", 0),
+                    "is_active": thread_data.get("is_active", True),
+                    "device": thread_data.get("device", "Unknown"),
+                    "ip_address": thread_data.get("ip_address", "127.0.0.1"),
+                    "user_agent": thread_data.get("user_agent", "Mozilla/5.0"),
+                }
+            )
 
-        return {
-            "threads": threads_list,
-            "total": len(threads_list)
-        }
+        return {"threads": threads_list, "total": len(threads_list)}
 
     # Endpoint coûts (évolution 7 derniers jours)
     @app.get("/api/admin/analytics/costs")
     async def get_costs_data(_admin: bool = Depends(verify_admin_role)):
         """Retourne les données de coûts (7 derniers jours)"""
-        return {
-            "costs": _mock_costs_data,
-            "total": len(_mock_costs_data)
-        }
+        return {"costs": _mock_costs_data, "total": len(_mock_costs_data)}
 
     # Endpoint auth admin sessions (JWT)
     @app.get("/api/auth/admin/sessions")
     async def list_auth_sessions(
-        status_filter: str = None,
-        _admin: bool = Depends(verify_admin_role)
+        status_filter: str = None, _admin: bool = Depends(verify_admin_role)
     ):
         """Retourne les sessions d'authentification JWT (pas les threads)"""
         sessions_list = []
@@ -117,16 +111,18 @@ def admin_app():
                 if expires_at < datetime.now():
                     continue
 
-            sessions_list.append({
-                "id": session_id,
-                "email": session_data.get("email"),
-                "role": session_data.get("role"),
-                "ip_address": session_data.get("ip_address"),
-                "issued_at": session_data.get("issued_at"),
-                "expires_at": session_data.get("expires_at"),
-                "revoked_at": session_data.get("revoked_at"),
-                "revoked_by": session_data.get("revoked_by"),
-            })
+            sessions_list.append(
+                {
+                    "id": session_id,
+                    "email": session_data.get("email"),
+                    "role": session_data.get("role"),
+                    "ip_address": session_data.get("ip_address"),
+                    "issued_at": session_data.get("issued_at"),
+                    "expires_at": session_data.get("expires_at"),
+                    "revoked_at": session_data.get("revoked_at"),
+                    "revoked_by": session_data.get("revoked_by"),
+                }
+            )
 
         return {"items": sessions_list}
 
@@ -140,8 +136,7 @@ def admin_client(admin_app):
 
     # Login admin
     login_response = client.post(
-        "/api/auth/login",
-        json={"email": "admin@example.com", "password": "admin123"}
+        "/api/auth/login", json={"email": "admin@example.com", "password": "admin123"}
     )
     assert login_response.status_code == 200
     token = login_response.json()["access_token"]

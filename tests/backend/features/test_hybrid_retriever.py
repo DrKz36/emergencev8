@@ -16,7 +16,7 @@ class TestBM25Scorer:
         corpus = [
             "Le chat mange des croquettes",
             "Le chien aime jouer au parc",
-            "Les croquettes pour chat sont nutritives"
+            "Les croquettes pour chat sont nutritives",
         ]
 
         scorer = BM25Scorer(corpus, k1=1.5, b=0.75)
@@ -24,7 +24,9 @@ class TestBM25Scorer:
 
         # Vérifications
         assert len(scores) == 3, "Devrait retourner 3 scores"
-        assert all(isinstance(s, float) for s in scores), "Tous les scores doivent être des floats"
+        assert all(isinstance(s, float) for s in scores), (
+            "Tous les scores doivent être des floats"
+        )
 
         # Doc 0 et 2 devraient avoir des scores plus élevés (contiennent "chat" et "croquettes")
         assert scores[0] > 0, "Doc 0 devrait avoir un score > 0"
@@ -67,7 +69,9 @@ class TestHybridRetriever:
 
         # Alpha=0 : Full BM25
         retriever_bm25 = HybridRetriever(alpha=0.0, top_k=2)
-        results_bm25 = retriever_bm25.retrieve("chat croquettes", corpus, vector_results)
+        results_bm25 = retriever_bm25.retrieve(
+            "chat croquettes", corpus, vector_results
+        )
 
         assert len(results_bm25) <= 2
         assert all("score" in r for r in results_bm25)
@@ -76,20 +80,21 @@ class TestHybridRetriever:
 
         # Alpha=1 : Full Vector
         retriever_vector = HybridRetriever(alpha=1.0, top_k=2)
-        results_vector = retriever_vector.retrieve("chat croquettes", corpus, vector_results)
+        results_vector = retriever_vector.retrieve(
+            "chat croquettes", corpus, vector_results
+        )
 
         assert len(results_vector) <= 2
         # Avec alpha=1, le score vectoriel domine
         if len(results_vector) == 2:
             # Doc 0 (distance=0.2) devrait scorer mieux que Doc 1 (distance=0.8)
-            assert results_vector[0]["vector_score"] >= results_vector[1]["vector_score"]
+            assert (
+                results_vector[0]["vector_score"] >= results_vector[1]["vector_score"]
+            )
 
     def test_hybrid_retriever_threshold(self):
         """Test du seuil de score (RAG strict)"""
-        corpus = [
-            "très pertinent",
-            "peu pertinent"
-        ]
+        corpus = ["très pertinent", "peu pertinent"]
 
         vector_results = [
             {"text": corpus[0], "metadata": {}, "distance": 0.1},

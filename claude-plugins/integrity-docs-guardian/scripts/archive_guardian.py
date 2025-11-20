@@ -16,13 +16,15 @@ import sys
 import json
 import shutil
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Tuple
 
 # Fix Windows console encoding
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8") if hasattr(
+        sys.stdout, "reconfigure"
+    ) else None
 
 # Paths
 SCRIPT_DIR = Path(__file__).parent
@@ -37,28 +39,35 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 # Whitelist - Files that should NEVER be archived
 WHITELIST = {
     # Essential documentation
-    "README.md", "CLAUDE.md", "AGENT_SYNC.md", "AGENTS.md",
-    "CODEV_PROTOCOL.md", "CHANGELOG.md", "CONTRIBUTING.md",
-
+    "README.md",
+    "CLAUDE.md",
+    "AGENT_SYNC.md",
+    "AGENTS.md",
+    "CODEV_PROTOCOL.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     # Active roadmaps
-    "ROADMAP_OFFICIELLE.md", "ROADMAP_PROGRESS.md",
+    "ROADMAP_OFFICIELLE.md",
+    "ROADMAP_PROGRESS.md",
     "MEMORY_REFACTORING_ROADMAP.md",
-
     # Operational guides
-    "DEPLOYMENT_SUCCESS.md", "FIX_PRODUCTION_DEPLOYMENT.md",
-    "CANARY_DEPLOYMENT.md", "GUARDIAN_SETUP_COMPLETE.md",
-
+    "DEPLOYMENT_SUCCESS.md",
+    "FIX_PRODUCTION_DEPLOYMENT.md",
+    "CANARY_DEPLOYMENT.md",
+    "GUARDIAN_SETUP_COMPLETE.md",
     # Agent guides
-    "CLAUDE_CODE_GUIDE.md", "CODEX_GPT_GUIDE.md",
+    "CLAUDE_CODE_GUIDE.md",
+    "CODEX_GPT_GUIDE.md",
     "GUIDE_INTERFACE_BETA.md",
-
     # Configuration
-    "package.json", "package-lock.json", "requirements.txt",
-    "Dockerfile", "docker-compose.yaml", "docker-compose.override.yml",
-
+    "package.json",
+    "package-lock.json",
+    "requirements.txt",
+    "Dockerfile",
+    "docker-compose.yaml",
+    "docker-compose.override.yml",
     # Entry points
     "index.html",
-
     # Current cleanup plan (keep until next cleanup)
     "CLEANUP_PLAN_2025-10-18.md",
 }
@@ -70,18 +79,14 @@ OBSOLETE_PATTERNS = {
     "handoff": r"HANDOFF_.*\.(md|txt)",
     "next_session": r"NEXT_SESSION_.*\.md",
     "resume": r"RESUME_SESSION_.*\.md",
-
     # Phase-related (except active)
     "phase": r"PHASE\d+.*\.md",
-
     # Fixes and audits (> 14 days)
     "fix": r".*_FIX_.*\.md",
     "audit": r".*_AUDIT_.*\.md",
     "corrections": r"CORRECTIONS_.*\.md",
-
     # Deployment (except whitelisted)
     "deployment": r"DEPLOYMENT_(?!SUCCESS|QUICKSTART).*\.md",
-
     # Old guides
     "implementation": r".*_IMPLEMENTATION\.md",
     "summary": r".*_SUMMARY\.md",
@@ -117,7 +122,7 @@ def is_whitelisted(filename: str) -> bool:
 
 def is_config_file(filepath: Path) -> bool:
     """Check if file is a configuration file."""
-    return filepath.suffix in ['.yaml', '.yml', '.json', '.toml', '.ini', '.env']
+    return filepath.suffix in [".yaml", ".yml", ".json", ".toml", ".ini", ".env"]
 
 
 def should_archive_markdown(filepath: Path) -> Tuple[bool, str]:
@@ -132,15 +137,22 @@ def should_archive_markdown(filepath: Path) -> Tuple[bool, str]:
 
     # Check obsolete patterns
     import re
+
     for pattern_name, pattern in OBSOLETE_PATTERNS.items():
         if re.match(pattern, filename):
             # Different age thresholds for different patterns
             if pattern_name in ["prompt", "handoff", "next_session", "resume"]:
                 if age_days > 7:
-                    return True, f"obsolete pattern ({pattern_name}), {age_days} days old"
+                    return (
+                        True,
+                        f"obsolete pattern ({pattern_name}), {age_days} days old",
+                    )
             elif pattern_name in ["fix", "audit", "corrections"]:
                 if age_days > 14:
-                    return True, f"obsolete pattern ({pattern_name}), {age_days} days old"
+                    return (
+                        True,
+                        f"obsolete pattern ({pattern_name}), {age_days} days old",
+                    )
             else:
                 return True, f"obsolete pattern ({pattern_name})"
 
@@ -166,14 +178,24 @@ def should_archive_script(filepath: Path) -> Tuple[bool, str]:
         return True, "test script in root"
 
     # Batch/shell scripts (except whitelisted)
-    if filepath.suffix in ['.bat', '.sh']:
+    if filepath.suffix in [".bat", ".sh"]:
         return True, "batch/shell script in root"
 
     # Check specific patterns
     obsolete_script_patterns = [
-        "check_db", "fix_", "fetch_", "send_", "consolidate_",
-        "qa_", "inject_", "generate_", "deploy_", "cleanup",
-        "revoke_", "disable_", "add_password"
+        "check_db",
+        "fix_",
+        "fetch_",
+        "send_",
+        "consolidate_",
+        "qa_",
+        "inject_",
+        "generate_",
+        "deploy_",
+        "cleanup",
+        "revoke_",
+        "disable_",
+        "add_password",
     ]
 
     for pattern in obsolete_script_patterns:
@@ -190,6 +212,7 @@ def should_delete_temp(filepath: Path) -> Tuple[bool, str]:
     filename = filepath.name
 
     import re
+
     for pattern_name, pattern in TEMP_PATTERNS.items():
         if re.match(pattern, filename):
             return True, f"temporary file ({pattern_name})"
@@ -203,12 +226,7 @@ def should_delete_temp(filepath: Path) -> Tuple[bool, str]:
 
 def scan_root_directory() -> Dict[str, List[Dict]]:
     """Scan root directory and categorize files."""
-    results = {
-        "to_archive": [],
-        "to_delete": [],
-        "whitelisted": [],
-        "kept": []
-    }
+    results = {"to_archive": [], "to_delete": [], "whitelisted": [], "kept": []}
 
     # Scan only files in root directory (not subdirectories)
     for item in REPO_ROOT.iterdir():
@@ -219,61 +237,63 @@ def scan_root_directory() -> Dict[str, List[Dict]]:
 
         # Check whitelist first
         if is_whitelisted(filename):
-            results["whitelisted"].append({
-                "file": filename,
-                "reason": "whitelisted"
-            })
+            results["whitelisted"].append({"file": filename, "reason": "whitelisted"})
             continue
 
         # Check if should be deleted (temp files)
         should_delete, delete_reason = should_delete_temp(item)
         if should_delete:
-            results["to_delete"].append({
-                "file": filename,
-                "reason": delete_reason,
-                "age_days": get_file_age_days(item)
-            })
+            results["to_delete"].append(
+                {
+                    "file": filename,
+                    "reason": delete_reason,
+                    "age_days": get_file_age_days(item),
+                }
+            )
             continue
 
         # Check markdown files
         if item.suffix == ".md":
             should_archive, archive_reason = should_archive_markdown(item)
             if should_archive:
-                results["to_archive"].append({
-                    "file": filename,
-                    "type": "markdown",
-                    "reason": archive_reason,
-                    "age_days": get_file_age_days(item)
-                })
+                results["to_archive"].append(
+                    {
+                        "file": filename,
+                        "type": "markdown",
+                        "reason": archive_reason,
+                        "age_days": get_file_age_days(item),
+                    }
+                )
                 continue
 
         # Check scripts (Python, Batch, Shell)
         if item.suffix in [".py", ".bat", ".sh"]:
             should_archive, archive_reason = should_archive_script(item)
             if should_archive:
-                results["to_archive"].append({
-                    "file": filename,
-                    "type": "script",
-                    "reason": archive_reason,
-                    "age_days": get_file_age_days(item)
-                })
+                results["to_archive"].append(
+                    {
+                        "file": filename,
+                        "type": "script",
+                        "reason": archive_reason,
+                        "age_days": get_file_age_days(item),
+                    }
+                )
                 continue
 
         # Check HTML files (except index.html)
         if item.suffix == ".html" and filename != "index.html":
-            results["to_archive"].append({
-                "file": filename,
-                "type": "html",
-                "reason": "HTML test file in root",
-                "age_days": get_file_age_days(item)
-            })
+            results["to_archive"].append(
+                {
+                    "file": filename,
+                    "type": "html",
+                    "reason": "HTML test file in root",
+                    "age_days": get_file_age_days(item),
+                }
+            )
             continue
 
         # Keep everything else
-        results["kept"].append({
-            "file": filename,
-            "reason": "no matching rule"
-        })
+        results["kept"].append({"file": filename, "reason": "no matching rule"})
 
     return results
 
@@ -295,7 +315,9 @@ def create_archive_structure(year_month: str) -> Dict[str, Path]:
     return subdirs
 
 
-def archive_file(filepath: Path, file_type: str, year_month: str, dry_run: bool = False) -> bool:
+def archive_file(
+    filepath: Path, file_type: str, year_month: str, dry_run: bool = False
+) -> bool:
     """Archive a single file to appropriate location."""
     subdirs = create_archive_structure(year_month)
 
@@ -312,7 +334,9 @@ def archive_file(filepath: Path, file_type: str, year_month: str, dry_run: bool 
     dest_path = dest_dir / filepath.name
 
     if dry_run:
-        print(f"[DRY-RUN] Would archive: {filepath.name} -> {dest_path.relative_to(REPO_ROOT)}")
+        print(
+            f"[DRY-RUN] Would archive: {filepath.name} -> {dest_path.relative_to(REPO_ROOT)}"
+        )
         return True
 
     try:
@@ -348,16 +372,16 @@ def generate_report(scan_results: Dict, actions_taken: Dict, year_month: str) ->
             "to_archive": len(scan_results["to_archive"]),
             "to_delete": len(scan_results["to_delete"]),
             "whitelisted": len(scan_results["whitelisted"]),
-            "kept": len(scan_results["kept"])
+            "kept": len(scan_results["kept"]),
         },
         "actions_taken": actions_taken,
         "files": {
             "to_archive": scan_results["to_archive"],
             "to_delete": scan_results["to_delete"],
             "whitelisted": scan_results["whitelisted"][:10],  # Limit to 10 for brevity
-            "kept": scan_results["kept"][:10]  # Limit to 10 for brevity
+            "kept": scan_results["kept"][:10],  # Limit to 10 for brevity
         },
-        "summary": f"{actions_taken['archived']} fichiers archivés, {actions_taken['deleted']} fichiers supprimés"
+        "summary": f"{actions_taken['archived']} fichiers archivés, {actions_taken['deleted']} fichiers supprimés",
     }
 
     return report
@@ -365,15 +389,23 @@ def generate_report(scan_results: Dict, actions_taken: Dict, year_month: str) ->
 
 def save_report(report: Dict, report_path: Path):
     """Save report to JSON file."""
-    with open(report_path, 'w', encoding='utf-8') as f:
+    with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
     print(f"\n[REPORT] Saved to: {report_path}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ANIMA Archive Guardian - Automatic repository cleanup")
-    parser.add_argument("--auto", action="store_true", help="Archive automatically without confirmation")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without doing it")
+    parser = argparse.ArgumentParser(
+        description="ANIMA Archive Guardian - Automatic repository cleanup"
+    )
+    parser.add_argument(
+        "--auto", action="store_true", help="Archive automatically without confirmation"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be done without doing it",
+    )
     args = parser.parse_args()
 
     print("=" * 80)
@@ -414,7 +446,9 @@ def main():
             print("[OK] No actions needed. Repository is clean!")
             return
 
-        response = input(f"\n[CONFIRM] Proceed with {total_actions} actions? (yes/no): ")
+        response = input(
+            f"\n[CONFIRM] Proceed with {total_actions} actions? (yes/no): "
+        )
         if response.lower() != "yes":
             print("[CANCELLED] Cleanup cancelled.")
             return
@@ -423,14 +457,12 @@ def main():
     year_month = datetime.now().strftime("%Y-%m")
 
     # Execute actions
-    actions_taken = {
-        "archived": 0,
-        "deleted": 0,
-        "errors": 0
-    }
+    actions_taken = {"archived": 0, "deleted": 0, "errors": 0}
 
     print()
-    print(f"[EXECUTE] {'DRY-RUN - ' if args.dry_run else ''}Archiving files to docs/archive/{year_month}/...")
+    print(
+        f"[EXECUTE] {'DRY-RUN - ' if args.dry_run else ''}Archiving files to docs/archive/{year_month}/..."
+    )
     print()
 
     # Archive files

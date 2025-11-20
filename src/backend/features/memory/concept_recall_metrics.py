@@ -27,27 +27,27 @@ METRICS_ENABLED = os.getenv("CONCEPT_RECALL_METRICS_ENABLED", "false").lower() =
 # ============================================================================
 
 DETECTIONS_TOTAL = Counter(
-    'concept_recall_detections_total',
-    'Total number of concept recall detections',
-    ['user_id_hash', 'similarity_range']
+    "concept_recall_detections_total",
+    "Total number of concept recall detections",
+    ["user_id_hash", "similarity_range"],
 )
 
 EVENTS_EMITTED_TOTAL = Counter(
-    'concept_recall_events_emitted_total',
-    'Total WebSocket concept_recall events emitted',
-    ['user_id_hash']
+    "concept_recall_events_emitted_total",
+    "Total WebSocket concept_recall events emitted",
+    ["user_id_hash"],
 )
 
 SIMILARITY_SCORE = Histogram(
-    'concept_recall_similarity_score',
-    'Distribution of similarity scores for detected concepts',
-    buckets=[0.5, 0.75, 0.8, 0.9, 1.0]
+    "concept_recall_similarity_score",
+    "Distribution of similarity scores for detected concepts",
+    buckets=[0.5, 0.75, 0.8, 0.9, 1.0],
 )
 
 DETECTION_LATENCY = Histogram(
-    'concept_recall_detection_latency_seconds',
-    'Time to detect recurring concepts (vector search + filtering)',
-    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0]
+    "concept_recall_detection_latency_seconds",
+    "Time to detect recurring concepts (vector search + filtering)",
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0],
 )
 
 
@@ -56,15 +56,15 @@ DETECTION_LATENCY = Histogram(
 # ============================================================================
 
 FALSE_POSITIVES_TOTAL = Counter(
-    'concept_recall_false_positives_total',
-    'Detections dismissed by user (Ignorer button)',
-    ['user_id_hash']
+    "concept_recall_false_positives_total",
+    "Detections dismissed by user (Ignorer button)",
+    ["user_id_hash"],
 )
 
 INTERACTIONS_TOTAL = Counter(
-    'concept_recall_interactions_total',
-    'User interactions with concept recall banners',
-    ['user_id_hash', 'action']  # action: view_history, dismiss, auto_hide
+    "concept_recall_interactions_total",
+    "User interactions with concept recall banners",
+    ["user_id_hash", "action"],  # action: view_history, dismiss, auto_hide
 )
 
 
@@ -73,15 +73,15 @@ INTERACTIONS_TOTAL = Counter(
 # ============================================================================
 
 VECTOR_SEARCH_DURATION = Histogram(
-    'concept_recall_vector_search_duration_seconds',
-    'Duration of ChromaDB vector search',
-    buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1.0]
+    "concept_recall_vector_search_duration_seconds",
+    "Duration of ChromaDB vector search",
+    buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1.0],
 )
 
 METADATA_UPDATE_DURATION = Histogram(
-    'concept_recall_metadata_update_duration_seconds',
-    'Duration to update vector metadata (mention_count, thread_ids)',
-    buckets=[0.01, 0.05, 0.1, 0.5, 1.0]
+    "concept_recall_metadata_update_duration_seconds",
+    "Duration to update vector metadata (mention_count, thread_ids)",
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0],
 )
 
 
@@ -90,21 +90,19 @@ METADATA_UPDATE_DURATION = Histogram(
 # ============================================================================
 
 CROSS_THREAD_DETECTIONS = Counter(
-    'concept_recall_cross_thread_detections_total',
-    'Cross-thread detections by thread count range',
-    ['thread_count_range']  # 2, 3-5, 6-10, 10+
+    "concept_recall_cross_thread_detections_total",
+    "Cross-thread detections by thread count range",
+    ["thread_count_range"],  # 2, 3-5, 6-10, 10+
 )
 
 CONCEPT_REUSE_TOTAL = Counter(
-    'concept_recall_concept_reuse_total',
-    'Concepts reused across conversations (mention_count > 1)',
-    ['user_id_hash']
+    "concept_recall_concept_reuse_total",
+    "Concepts reused across conversations (mention_count > 1)",
+    ["user_id_hash"],
 )
 
 CONCEPTS_TOTAL = Gauge(
-    'concept_recall_concepts_total',
-    'Total concepts in vector store',
-    ['user_id_hash']
+    "concept_recall_concepts_total", "Total concepts in vector store", ["user_id_hash"]
 )
 
 
@@ -112,24 +110,24 @@ CONCEPTS_TOTAL = Gauge(
 # 5. SYSTEM INFO
 # ============================================================================
 
-SYSTEM_INFO = Info(
-    'concept_recall_system',
-    'Concept recall system information'
-)
+SYSTEM_INFO = Info("concept_recall_system", "Concept recall system information")
 
 # Set system info on module load
 if METRICS_ENABLED:
-    SYSTEM_INFO.info({
-        'version': '1.0',
-        'similarity_threshold': '0.75',
-        'max_recalls_per_message': '3',
-        'collection_name': 'emergence_knowledge',
-    })
+    SYSTEM_INFO.info(
+        {
+            "version": "1.0",
+            "similarity_threshold": "0.75",
+            "max_recalls_per_message": "3",
+            "collection_name": "emergence_knowledge",
+        }
+    )
 
 
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
 
 def _hash_user_id(user_id: str) -> str:
     """
@@ -137,6 +135,7 @@ def _hash_user_id(user_id: str) -> str:
     Returns first 8 chars of SHA256 hash.
     """
     import hashlib
+
     return hashlib.sha256(user_id.encode()).hexdigest()[:8]
 
 
@@ -172,6 +171,7 @@ def _get_thread_count_range(count: int) -> str:
 # INSTRUMENTATION API
 # ============================================================================
 
+
 class ConceptRecallMetrics:
     """
     High-level API for instrumenting concept recall operations.
@@ -188,7 +188,7 @@ class ConceptRecallMetrics:
         user_id: str,
         similarity_score: float,
         thread_count: int,
-        duration_seconds: float
+        duration_seconds: float,
     ) -> None:
         """Record a successful concept recall detection."""
         if not self.enabled:
@@ -199,16 +199,13 @@ class ConceptRecallMetrics:
         thread_range = _get_thread_count_range(thread_count)
 
         DETECTIONS_TOTAL.labels(
-            user_id_hash=user_hash,
-            similarity_range=similarity_range
+            user_id_hash=user_hash, similarity_range=similarity_range
         ).inc()
 
         SIMILARITY_SCORE.observe(similarity_score)
         DETECTION_LATENCY.observe(duration_seconds)
 
-        CROSS_THREAD_DETECTIONS.labels(
-            thread_count_range=thread_range
-        ).inc()
+        CROSS_THREAD_DETECTIONS.labels(thread_count_range=thread_range).inc()
 
     def record_event_emitted(self, user_id: str, recall_count: int) -> None:
         """Record WebSocket event emission."""
@@ -244,13 +241,10 @@ class ConceptRecallMetrics:
             return
 
         user_hash = _hash_user_id(user_id)
-        INTERACTIONS_TOTAL.labels(
-            user_id_hash=user_hash,
-            action=action
-        ).inc()
+        INTERACTIONS_TOTAL.labels(user_id_hash=user_hash, action=action).inc()
 
         # Track false positives (dismissals)
-        if action == 'dismiss':
+        if action == "dismiss":
             FALSE_POSITIVES_TOTAL.labels(user_id_hash=user_hash).inc()
 
     def record_concept_reuse(self, user_id: str, mention_count: int) -> None:

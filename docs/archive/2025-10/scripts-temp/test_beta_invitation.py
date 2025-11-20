@@ -1,6 +1,7 @@
 """
 Test beta invitation email
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -32,8 +33,7 @@ async def main():
 
     try:
         success = await email_service.send_beta_invitation_email(
-            to_email=test_email,
-            base_url="https://emergence-app.ch"
+            to_email=test_email, base_url="https://emergence-app.ch"
         )
 
         print()
@@ -60,6 +60,7 @@ async def main():
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
 
     try:

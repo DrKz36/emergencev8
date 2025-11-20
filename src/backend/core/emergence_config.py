@@ -30,7 +30,9 @@ def _normalize_google_model(value: Optional[str]) -> str:
 
 # --- Fallback global (héritage) ---
 # Utilisé si un agent ne trouve ni son provider ni son model.
-DEFAULT_MODEL = _normalize_google_model(os.getenv("DEFAULT_MODEL", DEFAULT_GOOGLE_MODEL))
+DEFAULT_MODEL = _normalize_google_model(
+    os.getenv("DEFAULT_MODEL", DEFAULT_GOOGLE_MODEL)
+)
 
 # --- Mapping par agent (provider + model) ---
 # Valeurs par défaut validées pour ÉMERGENCE (Q/P):
@@ -111,4 +113,3 @@ def _load_env_patterns() -> list[str]:
 
 
 DENYLIST_PATTERNS: list[str] = _load_env_patterns()
-

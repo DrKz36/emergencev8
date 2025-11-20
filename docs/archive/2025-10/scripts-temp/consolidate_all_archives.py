@@ -33,11 +33,11 @@ async def main():
 
     try:
         await run_consolidation(
-            user_id=None,      # Tous les utilisateurs
-            limit=None,        # Tous les threads
-            force=False,       # Seulement ceux non consolidés
-            dry_run=False,     # Vraie consolidation
-            verbose=True       # Mode verbose pour voir le progrès
+            user_id=None,  # Tous les utilisateurs
+            limit=None,  # Tous les threads
+            force=False,  # Seulement ceux non consolidés
+            dry_run=False,  # Vraie consolidation
+            verbose=True,  # Mode verbose pour voir le progrès
         )
         print()
         print("✅ Consolidation terminée avec succès!")

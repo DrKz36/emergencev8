@@ -191,6 +191,7 @@ def _build_scope_condition(
         return f"{session_column} = ?", (normalized_session,)
     raise ValueError("Scope requires at least user_id or session_id.")
 
+
 # ------------------- Bootstraps legacy ------------------- #
 def _guess_default_for(
     col_name: str, col_type: str, now_iso: str, user_id: Optional[str]
@@ -274,7 +275,9 @@ async def _maybe_neutralize_agent_id(
     if exists:
         return agent_id
     if not await _messages_col_notnull(db, "agent_id"):
-        logger.info(f"[FK] agent_id='{agent_id}' non rÃ©fÃ©rencÃ© â†’ neutralisÃ© (NULL).")
+        logger.info(
+            f"[FK] agent_id='{agent_id}' non rÃ©fÃ©rencÃ© â†’ neutralisÃ© (NULL)."
+        )
         return None
     try:
         await _bootstrap_row_for_fk_table(
@@ -330,7 +333,7 @@ async def _build_costs_where_clause(
     user_id: Optional[str],
     session_id: Optional[str],
     *,
-    allow_global: bool = False
+    allow_global: bool = False,
 ) -> tuple[str, tuple[Any, ...]]:
     """
     Construit la clause WHERE pour la table costs.
@@ -365,7 +368,9 @@ async def _build_costs_where_clause(
         else:
             # Si la colonne user_id n'existe pas encore (ancienne DB), retourner une clause qui ne matche rien
             # pour éviter de montrer des données non filtrées
-            logger.warning("[SECURITY] costs table missing user_id column - returning empty results for safety")
+            logger.warning(
+                "[SECURITY] costs table missing user_id column - returning empty results for safety"
+            )
             clauses.append("1 = 0")  # Clause qui ne matche jamais
 
     if normalized_session and has_session_id:
@@ -395,7 +400,9 @@ async def get_costs_summary(
         session_id: Optional session ID to filter by
         allow_global: If True, allows querying all costs without user_id (ADMIN ONLY)
     """
-    where_clause, params = await _build_costs_where_clause(db, user_id, session_id, allow_global=allow_global)
+    where_clause, params = await _build_costs_where_clause(
+        db, user_id, session_id, allow_global=allow_global
+    )
     query = f"""
         SELECT
             SUM(total_cost) AS total_cost,
@@ -427,7 +434,9 @@ async def get_messages_by_period(
     """
     # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
     if not user_id:
-        raise ValueError("user_id est obligatoire pour accéder aux statistiques de messages")
+        raise ValueError(
+            "user_id est obligatoire pour accéder aux statistiques de messages"
+        )
 
     scope_conditions = []
     params = []
@@ -440,7 +449,9 @@ async def get_messages_by_period(
         params.append(user_id)
     else:
         # Si la colonne user_id n'existe pas, retourner des données vides pour la sécurité
-        logger.warning("[SECURITY] messages table missing user_id column - returning empty results for safety")
+        logger.warning(
+            "[SECURITY] messages table missing user_id column - returning empty results for safety"
+        )
         return {"total": 0, "today": 0, "week": 0, "month": 0}
 
     if session_id:
@@ -457,7 +468,11 @@ async def get_messages_by_period(
     has_created_at = await _table_has_column(db, "messages", "created_at")
     has_timestamp = await _table_has_column(db, "messages", "timestamp")
 
-    date_field = "created_at" if has_created_at else ("timestamp" if has_timestamp else "created_at")
+    date_field = (
+        "created_at"
+        if has_created_at
+        else ("timestamp" if has_timestamp else "created_at")
+    )
 
     query = f"""
         SELECT
@@ -496,7 +511,9 @@ async def get_tokens_summary(
         session_id: Optional session ID to filter by
         allow_global: If True, allows querying all tokens without user_id (ADMIN ONLY)
     """
-    where_clause, params = await _build_costs_where_clause(db, user_id, session_id, allow_global=allow_global)
+    where_clause, params = await _build_costs_where_clause(
+        db, user_id, session_id, allow_global=allow_global
+    )
 
     query = f"""
         SELECT
@@ -550,6 +567,8 @@ async def insert_document(
     if row is None:
         raise RuntimeError("Failed to retrieve inserted document identifier.")
     return int(row["id"])
+
+
 async def update_document_processing_info(
     db: DatabaseManager,
     doc_id: int,
@@ -567,6 +586,7 @@ async def update_document_processing_info(
         commit=True,
     )
 
+
 async def update_document_filepath(
     db: DatabaseManager,
     doc_id: int,
@@ -581,8 +601,15 @@ async def update_document_filepath(
         (filepath, doc_id, *scope_params),
         commit=True,
     )
+
+
 async def set_document_error_status(
-    db: DatabaseManager, doc_id: int, session_id: Optional[str], error_message: str, *, user_id: Optional[str] = None
+    db: DatabaseManager,
+    doc_id: int,
+    session_id: Optional[str],
+    error_message: str,
+    *,
+    user_id: Optional[str] = None,
 ) -> None:
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
@@ -590,6 +617,8 @@ async def set_document_error_status(
         (error_message, doc_id, *scope_params),
         commit=True,
     )
+
+
 async def insert_document_chunks(
     db: DatabaseManager,
     session_id: Optional[str],
@@ -617,6 +646,8 @@ async def insert_document_chunks(
         payload,
         commit=True,
     )
+
+
 async def get_all_documents(
     db: DatabaseManager,
     session_id: Optional[str] = None,
@@ -635,7 +666,9 @@ async def get_all_documents(
     """
     # IMPORTANT: user_id ou session_id doivent être fournis pour isoler les données (hors mode admin).
     if not user_id and not session_id and not allow_global:
-        raise ValueError("user_id ou session_id est obligatoire pour accéder aux documents")
+        raise ValueError(
+            "user_id ou session_id est obligatoire pour accéder aux documents"
+        )
 
     if user_id or session_id:
         scope_sql, scope_params = _build_scope_condition(user_id, session_id)
@@ -650,6 +683,7 @@ async def get_all_documents(
         )
     return [dict(row) for row in rows]
 
+
 async def get_document_by_id(
     db: DatabaseManager,
     doc_id: int,
@@ -659,7 +693,9 @@ async def get_document_by_id(
 ) -> Optional[Dict[str, Any]]:
     # IMPORTANT: user_id ou session_id requis pour isoler les données utilisateur
     if not user_id and not session_id:
-        raise ValueError("user_id ou session_id est obligatoire pour accéder aux documents")
+        raise ValueError(
+            "user_id ou session_id est obligatoire pour accéder aux documents"
+        )
 
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     row = await db.fetch_one(
@@ -667,6 +703,7 @@ async def get_document_by_id(
         (doc_id, *scope_params),
     )
     return dict(row) if row else None
+
 
 async def get_document_chunks(
     db: DatabaseManager,
@@ -732,6 +769,8 @@ async def delete_document(
         commit=True,
     )
     return True
+
+
 # ------------------- Sessions (existant) ------------------- #
 async def get_session_by_id(
     db: DatabaseManager, session_id: str
@@ -784,7 +823,9 @@ async def get_all_sessions_overview(
     elif not allow_global:
         # Si ni user_id ni allow_global, c'est une erreur de sécurité potentielle
         # On retourne une liste vide par sécurité
-        logger.warning("[SECURITY] get_all_sessions_overview called without user_id and allow_global=False")
+        logger.warning(
+            "[SECURITY] get_all_sessions_overview called without user_id and allow_global=False"
+        )
         return []
 
     where_clause = ""
@@ -820,7 +861,9 @@ async def update_session_analysis_data(
         ),
         commit=True,
     )
-    logger.info(f"DonnÃ©es d'analyse pour la session {session_id} mises Ã  jour en BDD.")
+    logger.info(
+        f"DonnÃ©es d'analyse pour la session {session_id} mises Ã  jour en BDD."
+    )
 
 
 # ------------------- Threads / Messages / Thread Docs ------------------- #
@@ -836,7 +879,9 @@ async def create_thread(
     title: Optional[str] = None,
     agent_id: Optional[str] = None,
     meta: Optional[Dict[str, Any]] = None,
-    conversation_id: Optional[str] = None,  # ✅ NOUVEAU: identifiant canonique conversation
+    conversation_id: Optional[
+        str
+    ] = None,  # ✅ NOUVEAU: identifiant canonique conversation
 ) -> str:
     thread_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc).isoformat()
@@ -865,6 +910,8 @@ async def create_thread(
         commit=True,
     )
     return thread_id
+
+
 async def get_threads(
     db: DatabaseManager,
     session_id: Optional[str],
@@ -911,6 +958,8 @@ async def get_threads(
     params.extend([limit, offset])
     rows = await db.fetch_all(query, tuple(params))
     return [dict(r) for r in rows]
+
+
 async def get_thread(
     db: DatabaseManager,
     thread_id: str,
@@ -928,6 +977,8 @@ async def get_thread(
         (thread_id, *scope_params),
     )
     return dict(row) if row else None
+
+
 async def get_thread_any(
     db: DatabaseManager,
     thread_id: str,
@@ -947,12 +998,14 @@ async def get_thread_any(
     # Fallback sans filtrage (pour usage interne seulement, pas pour API publique)
     fallback = await db.fetch_one("SELECT * FROM threads WHERE id = ?", (thread_id,))
     return dict(fallback) if fallback else None
+
+
 async def get_threads_by_conversation(
     db: DatabaseManager,
     conversation_id: str,
     user_id: str,
     *,
-    include_archived: bool = False
+    include_archived: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     ✅ NOUVEAU Sprint 1: Récupère tous threads d'une conversation.
@@ -981,7 +1034,7 @@ async def get_threads_by_conversation(
             COALESCE(t.last_message_at, (SELECT MAX(m.created_at) FROM messages m WHERE m.thread_id = t.id)) as last_message_at,
             COALESCE(t.message_count, (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id)) as message_count
         FROM threads t
-        WHERE {' AND '.join(clauses)}
+        WHERE {" AND ".join(clauses)}
         ORDER BY t.created_at DESC
     """
     rows = await db.fetch_all(query, tuple(params))
@@ -1028,7 +1081,7 @@ async def update_thread(
             params.append(datetime.now(timezone.utc).isoformat())
 
             # Raison par défaut si pas dans meta
-            archival_reason = (meta or {}).get('archival_reason', 'manual_archive')
+            archival_reason = (meta or {}).get("archival_reason", "manual_archive")
             fields.append("archival_reason = ?")
             params.append(archival_reason)
 
@@ -1045,32 +1098,38 @@ async def update_thread(
     # ✅ NOUVEAU Sprint 2: Déclencher consolidation si archivage
     if archived and gardener:
         try:
-            logger.info(f"Thread {thread_id} archivé, déclenchement consolidation LTM...")
+            logger.info(
+                f"Thread {thread_id} archivé, déclenchement consolidation LTM..."
+            )
 
             # Récupérer user_id si pas fourni
             if not user_id:
-                thread = await get_thread_any(db, thread_id, session_id=session_id, user_id=None)
-                user_id = thread.get('user_id') if thread else None
+                thread = await get_thread_any(
+                    db, thread_id, session_id=session_id, user_id=None
+                )
+                user_id = thread.get("user_id") if thread else None
 
             if user_id:
                 await gardener._tend_single_thread(
-                    thread_id=thread_id,
-                    session_id=session_id,
-                    user_id=user_id
+                    thread_id=thread_id, session_id=session_id, user_id=user_id
                 )
 
                 # Marquer comme consolidé
                 await db.execute(
                     "UPDATE threads SET consolidated_at = ? WHERE id = ?",
                     (datetime.now(timezone.utc).isoformat(), thread_id),
-                    commit=True
+                    commit=True,
                 )
                 logger.info(f"Thread {thread_id} consolidé en LTM avec succès")
             else:
-                logger.warning(f"Impossible de consolider thread {thread_id}: user_id introuvable")
+                logger.warning(
+                    f"Impossible de consolider thread {thread_id}: user_id introuvable"
+                )
         except Exception as e:
             logger.error(f"Échec consolidation thread {thread_id}: {e}", exc_info=True)
             # Ne pas bloquer l'archivage si consolidation échoue
+
+
 async def delete_thread(
     db: DatabaseManager,
     thread_id: str,
@@ -1142,6 +1201,8 @@ async def delete_thread(
         )
 
     return True
+
+
 # -- Messages --
 async def add_message(
     db: DatabaseManager,
@@ -1179,7 +1240,9 @@ async def add_message(
     session_value = normalized_session or _resolve_user_scope(user_id, session_id)
     user_value = _resolve_user_scope(user_id, session_id)
 
-    def _cols_vals(base_cols: List[str], base_vals: List[Any]) -> tuple[List[str], List[Any]]:
+    def _cols_vals(
+        base_cols: List[str], base_vals: List[Any]
+    ) -> tuple[List[str], List[Any]]:
         cols, vals = list(base_cols), list(base_vals)
         if need_session:
             cols.append("session_id")
@@ -1222,7 +1285,7 @@ async def add_message(
             scope_sql, scope_params = _build_scope_condition(user_id, session_id)
             existing = await db.fetch_one(
                 f"SELECT id, created_at FROM messages WHERE id = ? AND thread_id = ? AND {scope_sql}",
-                (assigned_id, thread_id, *scope_params)
+                (assigned_id, thread_id, *scope_params),
             )
             if existing:
                 logger.warning(
@@ -1256,6 +1319,8 @@ async def add_message(
         commit=True,
     )
     return {"id": persisted_id, "created_at": now}
+
+
 async def get_messages(
     db: DatabaseManager,
     thread_id: str,
@@ -1284,6 +1349,8 @@ async def get_messages(
     params.append(limit)
     rows = await db.fetch_all(query, tuple(params))
     return [dict(r) for r in rows][::-1]
+
+
 # -- Thread Docs --
 async def set_thread_docs(
     db: DatabaseManager,
@@ -1316,6 +1383,8 @@ async def set_thread_docs(
             params,
             commit=True,
         )
+
+
 async def append_thread_docs(
     db: DatabaseManager,
     thread_id: str,
@@ -1346,6 +1415,8 @@ async def append_thread_docs(
             params,
             commit=True,
         )
+
+
 async def get_thread_docs(
     db: DatabaseManager,
     thread_id: str,

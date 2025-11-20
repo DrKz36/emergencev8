@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Fix Windows console encoding
 if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # Configuration
 DB_PATH = Path("src/backend/data/db/emergence_v7.db")
@@ -40,19 +40,25 @@ cursor = conn.cursor()
 # Créer session et thread
 print("📦 Création de la session et du thread...")
 
-cursor.execute("""
+cursor.execute(
+    """
     INSERT OR IGNORE INTO sessions (id, user_id, created_at, updated_at)
     VALUES (?, ?, datetime('now'), datetime('now'))
-""", (SESSION_ID, USER_ID))
+""",
+    (SESSION_ID, USER_ID),
+)
 
-cursor.execute("""
+cursor.execute(
+    """
     INSERT OR IGNORE INTO threads (
         id, session_id, user_id, type, title, archived,
         created_at, updated_at, last_message_at
     )
     VALUES (?, ?, ?, 'chat', 'Test Mémoire Phase 3 - Groupement Thématique', 0,
             datetime('now'), datetime('now'), datetime('now'))
-""", (THREAD_ID, SESSION_ID, USER_ID))
+""",
+    (THREAD_ID, SESSION_ID, USER_ID),
+)
 
 conn.commit()
 print(f"   ✅ Session créée: {SESSION_ID}")
@@ -76,13 +82,16 @@ for msg in messages:
         print(f"   ⚠️  Erreur parsing timestamp {timestamp_iso}: {e}")
         created_at = datetime.now().isoformat()
 
-    cursor.execute("""
+    cursor.execute(
+        """
         INSERT INTO messages (
             id, thread_id, role, content, created_at,
             tokens, meta, agent_id, session_id, user_id
         )
         VALUES (?, ?, 'user', ?, ?, 0, '{}', NULL, ?, ?)
-    """, (msg_id, THREAD_ID, content, created_at, SESSION_ID, USER_ID))
+    """,
+        (msg_id, THREAD_ID, content, created_at, SESSION_ID, USER_ID),
+    )
 
     injected_count += 1
 
@@ -97,9 +106,11 @@ print()
 print(f"✅ {injected_count} messages injectés avec succès !")
 print()
 print("🌱 Prochaine étape : déclencher la consolidation mémoire")
-print(f"   Commande: curl -X POST http://127.0.0.1:8000/api/memory/tend-garden \\")
-print(f"             -H 'Content-Type: application/json' \\")
-print(f"             -d '{{\"thread_id\": \"{THREAD_ID}\", \"session_id\": \"{SESSION_ID}\"}}'")
+print("   Commande: curl -X POST http://127.0.0.1:8000/api/memory/tend-garden \\")
+print("             -H 'Content-Type: application/json' \\")
+print(
+    f'             -d \'{{"thread_id": "{THREAD_ID}", "session_id": "{SESSION_ID}"}}\''
+)
 print()
 print("📊 Validation : vérifier le groupement thématique avec")
 print("   GET /api/memory/concepts/search?q=docker")

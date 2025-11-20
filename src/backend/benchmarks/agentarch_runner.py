@@ -120,10 +120,14 @@ class BenchmarkResultSink(Protocol):
 class NullBenchmarkResultSink:
     """Implémentation par défaut qui ignore la persistance."""
 
-    async def persist_run(self, result: "BenchmarkRunResult") -> None:  # pragma: no cover - null sink
+    async def persist_run(
+        self, result: "BenchmarkRunResult"
+    ) -> None:  # pragma: no cover - null sink
         return
 
-    async def persist_matrix(self, matrix: "BenchmarkMatrixResult") -> None:  # pragma: no cover - null sink
+    async def persist_matrix(
+        self, matrix: "BenchmarkMatrixResult"
+    ) -> None:  # pragma: no cover - null sink
         return
 
 
@@ -227,15 +231,23 @@ class BenchmarksRunner:
         started_at = datetime.now(timezone.utc)
         context_payload = dict(context or {})
         metadata_payload = dict(metadata or {})
-        configs = list(self._iter_matrix(scenario_id=scenario_id, metadata=metadata_payload))
-        logger.info("Démarrage matrice benchmarks (%s runs) pour scenario=%s", len(configs), scenario_id)
+        configs = list(
+            self._iter_matrix(scenario_id=scenario_id, metadata=metadata_payload)
+        )
+        logger.info(
+            "Démarrage matrice benchmarks (%s runs) pour scenario=%s",
+            len(configs),
+            scenario_id,
+        )
 
         semaphore = asyncio.Semaphore(self.concurrency)
         run_results: List[BenchmarkRunResult] = []
 
         async def _run(config: BenchmarkRunConfig) -> None:
             async with semaphore:
-                result = await self._execute_with_retries(config=config, context=context_payload)
+                result = await self._execute_with_retries(
+                    config=config, context=context_payload
+                )
                 await self.sink.persist_run(result)
                 run_results.append(result)
 
@@ -268,7 +280,9 @@ class BenchmarksRunner:
     ) -> BenchmarkRunResult:
         """Exécute une seule configuration (utile pour les tests ciblés)."""
 
-        result = await self._execute_with_retries(config=config, context=dict(context or {}))
+        result = await self._execute_with_retries(
+            config=config, context=dict(context or {})
+        )
         await self.sink.persist_run(result)
         return result
 
@@ -315,7 +329,9 @@ class BenchmarksRunner:
                     details={},
                 )
 
-            latency_ms = outcome.latency_ms or (time.perf_counter() - attempt_timer) * 1000.0
+            latency_ms = (
+                outcome.latency_ms or (time.perf_counter() - attempt_timer) * 1000.0
+            )
             cost_accumulator += max(0.0, float(outcome.cost))
             executor_details = {**executor_details, **outcome.details}
 

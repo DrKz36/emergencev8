@@ -162,9 +162,7 @@ class TestIncrementalConsolidation:
         assert result["status"] in ["success", "partial", "skipped"]
 
     @pytest.mark.asyncio
-    async def test_micro_consolidate_merges_concepts(
-        self, consolidator, mock_analyzer
-    ):
+    async def test_micro_consolidate_merges_concepts(self, consolidator, mock_analyzer):
         """Test que les concepts sont fusionnés avec STM existante."""
         session_manager = Mock()
         session_manager.get_session = Mock(
@@ -182,9 +180,7 @@ class TestIncrementalConsolidation:
 
         messages = [{"role": "user", "content": f"Message {i}"} for i in range(10)]
 
-        result = await consolidator._micro_consolidate(
-            "session1", "thread1", messages
-        )
+        result = await consolidator._micro_consolidate("session1", "thread1", messages)
 
         assert result["status"] == "success"
         # Should have called update with merged concepts
@@ -248,7 +244,9 @@ class TestIntentTracker:
             return_value=collection
         )
 
-        expiring = await intent_tracker.check_expiring_intents("user1", lookahead_days=7)
+        expiring = await intent_tracker.check_expiring_intents(
+            "user1", lookahead_days=7
+        )
 
         assert len(expiring) == 1
         assert expiring[0]["id"] == "intent1"

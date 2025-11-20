@@ -37,8 +37,7 @@ async def main():
     embed_model_name = os.getenv("EMBED_MODEL_NAME", "all-MiniLM-L6-v2")
 
     vector_service = VectorService(
-        persist_directory=persist_directory,
-        embed_model_name=embed_model_name
+        persist_directory=persist_directory, embed_model_name=embed_model_name
     )
 
     memory_tool = MemoryQueryTool(vector_service)
@@ -51,15 +50,19 @@ async def main():
     # Recuperer un echantillon de concepts pour voir les user_ids
     sample_results = collection.get(limit=100)
 
-    if not sample_results or 'metadatas' not in sample_results or not sample_results['metadatas']:
+    if (
+        not sample_results
+        or "metadatas" not in sample_results
+        or not sample_results["metadatas"]
+    ):
         print("[!] Aucun concept trouve dans ChromaDB")
         print("    Il semble qu'il n'y ait pas encore de souvenirs consolides.")
         return
 
     user_ids = set()
-    for meta in sample_results['metadatas']:
-        if meta and 'user_id' in meta:
-            user_ids.add(meta['user_id'])
+    for meta in sample_results["metadatas"]:
+        if meta and "user_id" in meta:
+            user_ids.add(meta["user_id"])
 
     print(f"[OK] Trouve {len(user_ids)} utilisateur(s) avec des concepts\n")
 
@@ -70,18 +73,18 @@ async def main():
 
         # Test avec agent Anima
         topics = await memory_tool.list_discussed_topics(
-            user_id=user_id,
-            timeframe="all",
-            agent_id="anima"
+            user_id=user_id, timeframe="all", agent_id="anima"
         )
 
         if not topics:
-            print(f"    [!] Aucun topic trouve pour cet utilisateur")
+            print("    [!] Aucun topic trouve pour cet utilisateur")
             continue
 
         # Analyser les resultats
         legacy_topics = [t for t in topics if not t.agent_id]
-        anima_topics = [t for t in topics if t.agent_id and t.agent_id.lower() == "anima"]
+        anima_topics = [
+            t for t in topics if t.agent_id and t.agent_id.lower() == "anima"
+        ]
 
         print(f"    Total topics recuperes: {len(topics)}")
         print(f"    Topics legacy (sans agent_id): {len(legacy_topics)}")
@@ -93,7 +96,9 @@ async def main():
         for i, topic in enumerate(topics[:5]):
             agent_label = topic.agent_id or "LEGACY"
             topic_label = getattr(topic, "topic", getattr(topic, "name", "???"))
-            print(f"       {i+1}. {topic_label} (agent: {agent_label}, count: {topic.mention_count})")
+            print(
+                f"       {i + 1}. {topic_label} (agent: {agent_label}, count: {topic.mention_count})"
+            )
 
         if len(topics) > 5:
             print(f"       ... et {len(topics) - 5} autres")
@@ -126,9 +131,9 @@ async def main():
     all_results = collection.get(limit=total_concepts)
     agent_id_stats = {}
 
-    for meta in all_results.get('metadatas', []):
+    for meta in all_results.get("metadatas", []):
         if meta:
-            agent_id = meta.get('agent_id', 'LEGACY')
+            agent_id = meta.get("agent_id", "LEGACY")
             agent_id_stats[agent_id] = agent_id_stats.get(agent_id, 0) + 1
 
     print("\nRépartition par agent_id:")

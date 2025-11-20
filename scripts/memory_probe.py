@@ -37,7 +37,10 @@ from typing import List, Dict
 
 # Configuration
 AGENT_NAME = os.getenv("AGENT_NAME", "Neo")
-SESSION_ID = os.getenv("SESSION_ID", f"session-{AGENT_NAME.lower()}-{dt.datetime.utcnow().strftime('%Y%m%d%H%M%S')}")
+SESSION_ID = os.getenv(
+    "SESSION_ID",
+    f"session-{AGENT_NAME.lower()}-{dt.datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+)
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 JWT_TOKEN = os.getenv("JWT_TOKEN", "demo-token")
 
@@ -49,21 +52,13 @@ GROUND_TRUTH_PATH = ROOT_DIR / "prompts" / "ground_truth.yml"
 # Délais de test (nom, secondes)
 # Pour tests rapides, utiliser des délais courts (ex: 60s, 120s, 180s)
 # Pour production, utiliser les vrais délais (3600, 86400, 604800)
-DELTAS = [
-    ("T+1h", 3600),
-    ("T+1d", 86400),
-    ("T+1w", 604800)
-]
+DELTAS = [("T+1h", 3600), ("T+1d", 86400), ("T+1w", 604800)]
 
 # Mode debug (délais raccourcis)
 DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
 if DEBUG_MODE:
     print("⚠️  MODE DEBUG: Délais raccourcis pour tests rapides")
-    DELTAS = [
-        ("T+1min", 60),
-        ("T+2min", 120),
-        ("T+3min", 180)
-    ]
+    DELTAS = [("T+1min", 60), ("T+2min", 120), ("T+3min", 180)]
 
 
 def call_agent(message: str) -> str:
@@ -72,11 +67,11 @@ def call_agent(message: str) -> str:
     payload = {
         "agent": AGENT_NAME.lower(),
         "message": message,
-        "session_id": SESSION_ID
+        "session_id": SESSION_ID,
     }
     headers = {
         "Authorization": f"Bearer {JWT_TOKEN}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     try:
@@ -124,7 +119,7 @@ def ensure_csv():
     if not RESULTS_CSV.exists():
         RESULTS_CSV.write_text(
             "timestamp_utc,agent,session,tick,fact_id,score,truth,prediction\n",
-            encoding="utf-8"
+            encoding="utf-8",
         )
 
 
@@ -132,16 +127,18 @@ def log_result(tick: str, fact_id: str, score_val: float, truth: str, prediction
     """Enregistre un résultat dans le CSV."""
     ensure_csv()
     with open(RESULTS_CSV, "a", newline="", encoding="utf-8") as f:
-        csv.writer(f).writerow([
-            dt.datetime.utcnow().isoformat(),
-            AGENT_NAME,
-            SESSION_ID,
-            tick,
-            fact_id,
-            f"{score_val:.2f}",
-            truth,
-            prediction
-        ])
+        csv.writer(f).writerow(
+            [
+                dt.datetime.utcnow().isoformat(),
+                AGENT_NAME,
+                SESSION_ID,
+                tick,
+                fact_id,
+                f"{score_val:.2f}",
+                truth,
+                prediction,
+            ]
+        )
 
 
 def inject_context(facts: List[Dict]):
@@ -172,14 +169,16 @@ def ask_recall(tick: str, facts: List[Dict]):
 
         # Affichage résultat
         emoji = "✅" if score_val >= 0.5 else "❌"
-        print(f"  {emoji} {fact['id']}: score={score_val:.2f} | attendu='{fact['answer']}' | obtenu='{pred[:50]}'")
+        print(
+            f"  {emoji} {fact['id']}: score={score_val:.2f} | attendu='{fact['answer']}' | obtenu='{pred[:50]}'"
+        )
 
 
 def run():
     """Exécute le benchmark complet."""
-    print("="*80)
+    print("=" * 80)
     print(f"🧠 BENCHMARK DE RÉTENTION MÉMOIRE - Agent {AGENT_NAME}")
-    print("="*80)
+    print("=" * 80)
     print(f"Session ID : {SESSION_ID}")
     print(f"Backend URL: {BACKEND_URL}")
     print(f"Résultats  : {RESULTS_CSV}")
@@ -203,7 +202,7 @@ def run():
     t0 = time.time()
     schedule = [(label, t0 + seconds) for label, seconds in DELTAS]
 
-    print(f"\n⏰ Tests planifiés:")
+    print("\n⏰ Tests planifiés:")
     for label, when in schedule:
         dt_when = dt.datetime.fromtimestamp(when)
         print(f"  - {label}: {dt_when.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -214,20 +213,25 @@ def run():
         now = time.time()
 
         if now >= when:
-            print(f"\n🚀 Exécution test {label} (planifié à {dt.datetime.fromtimestamp(when).strftime('%H:%M:%S')})")
+            print(
+                f"\n🚀 Exécution test {label} (planifié à {dt.datetime.fromtimestamp(when).strftime('%H:%M:%S')})"
+            )
             ask_recall(label, facts)
             schedule.pop(0)
         else:
             # Attente
             remaining = int(when - now)
             if remaining > 60:
-                print(f"⏳ Attente {remaining // 60}min {remaining % 60}s avant prochain test ({label})...", end="\r")
+                print(
+                    f"⏳ Attente {remaining // 60}min {remaining % 60}s avant prochain test ({label})...",
+                    end="\r",
+                )
             time.sleep(min(30, remaining))
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print(f"✅ Benchmark terminé pour {AGENT_NAME}")
     print(f"📊 Résultats sauvegardés dans : {RESULTS_CSV}")
-    print("="*80)
+    print("=" * 80)
 
 
 if __name__ == "__main__":
@@ -238,4 +242,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Erreur fatale: {e}")
         import traceback
+
         traceback.print_exc()

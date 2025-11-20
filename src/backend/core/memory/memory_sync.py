@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AgentContext:
     """Contexte mémoire d'un agent spécifique"""
+
     agent_id: str
     user_id: str
     context_id: str  # Format: "conv:{session_id}"
@@ -69,7 +70,7 @@ class MemorySyncManager:
         agent_id: str,
         user_id: str,
         session_id: str,
-        capabilities: Optional[List[str]] = None
+        capabilities: Optional[List[str]] = None,
     ) -> AgentContext:
         """
         Crée ou récupère le contexte pour un agent donné.
@@ -98,7 +99,7 @@ class MemorySyncManager:
             last_seen_at=now,
             capabilities=capabilities or self._default_capabilities(agent_id),
             stm_count=stm_count,
-            ltm_count=ltm_count
+            ltm_count=ltm_count,
         )
 
         # Cache le contexte
@@ -118,10 +119,7 @@ class MemorySyncManager:
         return self._active_contexts.get(cache_key)
 
     def update_context_revision(
-        self,
-        agent_id: str,
-        user_id: str,
-        reason: str = "memory_update"
+        self, agent_id: str, user_id: str, reason: str = "memory_update"
     ) -> str:
         """
         Met à jour la révision de contexte après modification.
@@ -159,7 +157,9 @@ class MemorySyncManager:
 
         return new_rev
 
-    def build_hello_payload(self, context: AgentContext, model: str, provider: str) -> Dict[str, Any]:
+    def build_hello_payload(
+        self, context: AgentContext, model: str, provider: str
+    ) -> Dict[str, Any]:
         """
         Construit le payload HELLO pour le protocole de handshake.
 
@@ -175,16 +175,11 @@ class MemorySyncManager:
             "context_rev": context.context_rev,
             "last_seen_at": context.last_seen_at,
             "capabilities": context.capabilities,
-            "memory_stats": {
-                "stm": context.stm_count,
-                "ltm": context.ltm_count
-            }
+            "memory_stats": {"stm": context.stm_count, "ltm": context.ltm_count},
         }
 
     def build_ack_payload(
-        self,
-        context: AgentContext,
-        sync_status: str = "ok"
+        self, context: AgentContext, sync_status: str = "ok"
     ) -> Dict[str, Any]:
         """
         Construit le payload ACK en réponse au HELLO.
@@ -199,14 +194,14 @@ class MemorySyncManager:
             "context_id": context.context_id,
             "context_rev": context.context_rev,
             "sync_status": sync_status,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def build_sync_payload(
         self,
         context: AgentContext,
         stm_items: List[Dict[str, Any]],
-        ltm_items: List[Dict[str, Any]]
+        ltm_items: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         """
         Construit le payload SYNC pour resynchroniser le contexte.
@@ -223,7 +218,7 @@ class MemorySyncManager:
             "context_rev": context.context_rev,
             "stm": stm_items,
             "ltm": ltm_items,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _count_agent_memories(self, agent_id: str, user_id: str) -> tuple[int, int]:
@@ -235,6 +230,7 @@ class MemorySyncManager:
         """
         try:
             import os
+
             knowledge_name = os.getenv(
                 "EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge"
             )
@@ -245,7 +241,7 @@ class MemorySyncManager:
                 "$and": [
                     {"user_id": user_id},
                     {"agent_id": agent_id.lower()},
-                    {"type": "conversation"}
+                    {"type": "conversation"},
                 ]
             }
             stm_results = col.get(where=stm_where, limit=1)
@@ -256,7 +252,7 @@ class MemorySyncManager:
                 "$and": [
                     {"user_id": user_id},
                     {"agent_id": agent_id.lower()},
-                    {"type": {"$in": ["fact", "preference", "concept"]}}
+                    {"type": {"$in": ["fact", "preference", "concept"]}},
                 ]
             }
             ltm_results = col.get(where=ltm_where, limit=1000)
@@ -287,9 +283,7 @@ class MemorySyncManager:
         return base
 
     def filter_memories_by_agent(
-        self,
-        memories: List[Dict[str, Any]],
-        agent_id: str
+        self, memories: List[Dict[str, Any]], agent_id: str
     ) -> List[Dict[str, Any]]:
         """
         Filtre les souvenirs pour ne garder que ceux de l'agent spécifié.
@@ -315,9 +309,7 @@ class MemorySyncManager:
         return filtered
 
     def add_agent_tag_to_memory(
-        self,
-        memory_item: Dict[str, Any],
-        agent_id: str
+        self, memory_item: Dict[str, Any], agent_id: str
     ) -> Dict[str, Any]:
         """
         Ajoute le tag agent_id à un item mémoire avant stockage.

@@ -20,7 +20,9 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
     Middleware qui monitore automatiquement toutes les requêtes
     """
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Any]
+    ) -> Response:
         # Capturer le début
         start_time = time.time()
         endpoint = request.url.path
@@ -118,7 +120,9 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     Middleware de sécurité pour détecter les comportements suspects
     """
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Any]
+    ) -> Response:
         # Vérifier la taille du body
         content_length = request.headers.get("content-length")
         if content_length:
@@ -178,7 +182,9 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             response.headers["X-Content-Type-Options"] = "nosniff"
             response.headers["X-Frame-Options"] = "DENY"
             response.headers["X-XSS-Protection"] = "1; mode=block"
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
 
             return cast(Response, response)
 
@@ -214,16 +220,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, requests_per_minute: int = 60):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
-        self.request_counts: dict[str, list[tuple[float, int]]] = {}  # {ip: [(timestamp, count)]}
+        self.request_counts: dict[
+            str, list[tuple[float, int]]
+        ] = {}  # {ip: [(timestamp, count)]}
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Any]
+    ) -> Response:
         client_ip = request.client.host if request.client else "unknown"
         current_time = time.time()
 
         # Nettoyer les entrées anciennes (>1 minute)
         if client_ip in self.request_counts:
             self.request_counts[client_ip] = [
-                (ts, count) for ts, count in self.request_counts[client_ip]
+                (ts, count)
+                for ts, count in self.request_counts[client_ip]
                 if current_time - ts < 60
             ]
 
@@ -312,7 +323,9 @@ class CORSSecurityMiddleware(BaseHTTPMiddleware):
             "https://emergence.app",  # Production
         ]
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Any]
+    ) -> Response:
         origin = request.headers.get("origin")
 
         # OPTIONS (preflight)

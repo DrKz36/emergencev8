@@ -2,7 +2,7 @@
 # Tests d'intégration pour le tracing dans ChatService (Phase 3)
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from backend.features.chat.service import ChatService
 from backend.core.tracing import get_trace_manager
 
@@ -30,10 +30,11 @@ def chat_service(mock_services):
     """Fixture: ChatService mocké avec tracing activé."""
     session_manager, cost_tracker, vector_service, settings = mock_services
 
-    with patch("backend.features.chat.service.AsyncOpenAI"), \
-         patch("backend.features.chat.service.genai"), \
-         patch("backend.features.chat.service.AsyncAnthropic"):
-
+    with (
+        patch("backend.features.chat.service.AsyncOpenAI"),
+        patch("backend.features.chat.service.genai"),
+        patch("backend.features.chat.service.AsyncAnthropic"),
+    ):
         service = ChatService(
             session_manager=session_manager,
             cost_tracker=cost_tracker,
@@ -58,7 +59,7 @@ async def test_build_memory_context_creates_retrieval_span(chat_service):
         session_id="test_session",
         last_user_message="test query",
         top_k=5,
-        agent_id="anima"
+        agent_id="anima",
     )
 
     # Vérifier que le span a été créé
@@ -82,9 +83,7 @@ async def test_build_memory_context_error_creates_error_span(chat_service):
 
     # Appeler _build_memory_context (ne devrait pas crasher grâce au try/except)
     result = await chat_service._build_memory_context(
-        session_id="test_session",
-        last_user_message="test query",
-        agent_id="anima"
+        session_id="test_session", last_user_message="test query", agent_id="anima"
     )
 
     # Vérifier que le span ERROR a été créé
@@ -98,6 +97,7 @@ async def test_build_memory_context_error_creates_error_span(chat_service):
 @pytest.mark.asyncio
 async def test_get_llm_response_stream_creates_llm_generate_span(chat_service):
     """Test: _get_llm_response_stream génère un span 'llm_generate'."""
+
     # Mock OpenAI stream - retourner directement le generator, pas wrapped dans AsyncMock
     async def mock_openai_stream(*args, **kwargs):
         yield "Hello"
@@ -113,7 +113,7 @@ async def test_get_llm_response_stream_creates_llm_generate_span(chat_service):
         system_prompt="test",
         history=[],
         cost_info_container=cost_container,
-        agent_id="neo"
+        agent_id="neo",
     )
 
     # Consommer le stream
@@ -146,9 +146,7 @@ async def test_multiple_spans_share_trace_id(chat_service):
 
     # Simuler retrieval + LLM
     await chat_service._build_memory_context(
-        session_id="test_session",
-        last_user_message="query",
-        agent_id="anima"
+        session_id="test_session", last_user_message="query", agent_id="anima"
     )
 
     stream = chat_service._get_llm_response_stream(
@@ -157,7 +155,7 @@ async def test_multiple_spans_share_trace_id(chat_service):
         system_prompt="test",
         history=[],
         cost_info_container={},
-        agent_id="anima"
+        agent_id="anima",
     )
     async for _ in stream:
         pass
@@ -186,6 +184,7 @@ class TestTracingMetricsIntegration:
         """Test: end_span enregistre les métriques Prometheus."""
         # Patch metrics recorder
         import time
+
         with patch("backend.core.tracing.trace_manager.record_span") as mock_record:
             span_id = trace_mgr.start_span("retrieval", attrs={"agent": "anima"})
             time.sleep(0.001)  # Attendre 1ms pour duration > 0

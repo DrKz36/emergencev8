@@ -54,7 +54,9 @@ class RunResult:
     timestamp: str
 
 
-def extract_token_ids(payload: Dict[str, Any]) -> tuple[list[int] | None, list[int] | None]:
+def extract_token_ids(
+    payload: Dict[str, Any],
+) -> tuple[list[int] | None, list[int] | None]:
     """Attempt to pull prompt + completion token ids from various OpenAI-compatible payloads."""
 
     prompt_ids = payload.get("prompt_token_ids")
@@ -65,8 +67,14 @@ def extract_token_ids(payload: Dict[str, Any]) -> tuple[list[int] | None, list[i
         if choices:
             choice = choices[0]
             message = choice.get("message") or {}
-            prompt_ids = prompt_ids or message.get("prompt_token_ids") or choice.get("prompt_token_ids")
-            completion_ids = completion_ids or message.get("token_ids") or choice.get("token_ids")
+            prompt_ids = (
+                prompt_ids
+                or message.get("prompt_token_ids")
+                or choice.get("prompt_token_ids")
+            )
+            completion_ids = (
+                completion_ids or message.get("token_ids") or choice.get("token_ids")
+            )
             metadata = message.get("metadata") or {}
             prompt_ids = prompt_ids or metadata.get("prompt_token_ids")
             completion_ids = completion_ids or metadata.get("token_ids")
@@ -74,7 +82,9 @@ def extract_token_ids(payload: Dict[str, Any]) -> tuple[list[int] | None, list[i
     def _convert(maybe_sequence: Any) -> list[int] | None:
         if maybe_sequence is None:
             return None
-        if isinstance(maybe_sequence, Sequence) and not isinstance(maybe_sequence, (str, bytes)):
+        if isinstance(maybe_sequence, Sequence) and not isinstance(
+            maybe_sequence, (str, bytes)
+        ):
             try:
                 return [int(item) for item in maybe_sequence]
             except Exception:  # noqa: BLE001 - permissive conversion
@@ -89,10 +99,16 @@ def diff_tokens(reference: list[int] | None, candidate: list[int] | None) -> lis
         return []
     if len(reference) != len(candidate):
         return [len(reference) - len(candidate)]
-    return [idx for idx, (r, c) in enumerate(zip(reference, candidate, strict=True)) if r != c]
+    return [
+        idx
+        for idx, (r, c) in enumerate(zip(reference, candidate, strict=True))
+        if r != c
+    ]
 
 
-def post_completion(client: httpx.Client, base: str, api_key: str | None, model: str, prompt: str) -> tuple[dict, float]:
+def post_completion(
+    client: httpx.Client, base: str, api_key: str | None, model: str, prompt: str
+) -> tuple[dict, float]:
     url = f"{base.rstrip('/')}/v1/chat/completions"
     headers = {"Content-Type": "application/json"}
     if api_key:
@@ -124,14 +140,25 @@ def load_prompts(args: argparse.Namespace) -> Iterable[str]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--openai-base", help="Base URL for the OpenAI-compatible upstream endpoint.")
+    parser.add_argument(
+        "--openai-base", help="Base URL for the OpenAI-compatible upstream endpoint."
+    )
     parser.add_argument("--openai-key", help="API key for the upstream endpoint.")
-    parser.add_argument("--vllm-base", help="Base URL for the vLLM server (must expose /v1/chat/completions).")
+    parser.add_argument(
+        "--vllm-base",
+        help="Base URL for the vLLM server (must expose /v1/chat/completions).",
+    )
     parser.add_argument("--vllm-key", help="Optional bearer token for the vLLM server.")
-    parser.add_argument("--model", required=True, help="Model identifier shared by both endpoints.")
+    parser.add_argument(
+        "--model", required=True, help="Model identifier shared by both endpoints."
+    )
     parser.add_argument("--prompt", help="Single prompt to benchmark.")
     parser.add_argument("--prompt-file", help="File containing one prompt per line.")
-    parser.add_argument("--no-log", action="store_true", help="Print results instead of appending to the log file.")
+    parser.add_argument(
+        "--no-log",
+        action="store_true",
+        help="Print results instead of appending to the log file.",
+    )
     return parser.parse_args()
 
 
@@ -165,7 +192,9 @@ def main() -> None:
                 openai_latency_ms=openai_latency,
                 vllm_latency_ms=vllm_latency,
                 prompt_token_diff=diff_tokens(upstream_prompt, local_prompt),
-                completion_token_diff=diff_tokens(upstream_completion, local_completion),
+                completion_token_diff=diff_tokens(
+                    upstream_completion, local_completion
+                ),
                 openai_prompt_ids=upstream_prompt,
                 vllm_prompt_ids=local_prompt,
                 openai_completion_ids=upstream_completion,
@@ -175,7 +204,11 @@ def main() -> None:
         )
 
     if args.no_log:
-        print(json.dumps([asdict(result) for result in results], indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                [asdict(result) for result in results], indent=2, ensure_ascii=False
+            )
+        )
     else:
         with LOG_PATH.open("a", encoding="utf-8") as handle:
             for result in results:
@@ -185,4 +218,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

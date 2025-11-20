@@ -6,8 +6,8 @@ GAP #2 - Cockpit Debug
 
 Test automatique avec conversations reelles pour les 3 providers.
 """
+
 import asyncio
-import json
 import os
 import sys
 from datetime import datetime
@@ -22,7 +22,8 @@ pytestmark = pytest.mark.skip(
 # Fix encodage Windows
 if sys.platform == "win32":
     import locale
-    locale.setlocale(locale.LC_ALL, '')
+
+    locale.setlocale(locale.LC_ALL, "")
 
 # Ajout du path pour importer les modules backend
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -47,14 +48,14 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 MODELS_TO_TEST = {
     "openai": "gpt-4o-mini",
     "google": "gemini-1.5-flash",
-    "anthropic": "claude-3-5-haiku-20241022"
+    "anthropic": "claude-3-5-haiku-20241022",
 }
 
 # Messages de test
 TEST_PROMPTS = [
     "Explique-moi Docker en 2 phrases.",
     "Qu'est-ce que Kubernetes ?",
-    "Donne-moi un exemple de CI/CD pipeline."
+    "Donne-moi un exemple de CI/CD pipeline.",
 ]
 
 
@@ -89,7 +90,7 @@ class CostTestRunner:
         self.llm_streamer = LLMStreamer(
             openai_client=self.openai_client,
             anthropic_client=self.anthropic_client,
-            rate_limits={}
+            rate_limits={},
         )
 
         # Initialize DB
@@ -100,9 +101,9 @@ class CostTestRunner:
 
     async def test_provider(self, provider: str, model: str):
         """Test un provider spécifique et vérifie les coûts."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"[TEST] {provider.upper()} - Modele: {model}")
-        print('='*60)
+        print("=" * 60)
 
         cost_info = {}
         full_response = ""
@@ -122,7 +123,7 @@ class CostTestRunner:
                 model=model,
                 system_prompt=system_prompt,
                 history=history,
-                cost_info_container=cost_info
+                cost_info_container=cost_info,
             ):
                 full_response += chunk
                 # Print partial response (limite 80 chars)
@@ -131,7 +132,9 @@ class CostTestRunner:
 
             duration = (datetime.now() - start_time).total_seconds()
 
-            print(f"\n\n✅ Réponse reçue ({len(full_response)} caractères en {duration:.1f}s)")
+            print(
+                f"\n\n✅ Réponse reçue ({len(full_response)} caractères en {duration:.1f}s)"
+            )
 
             # Vérifier les coûts
             input_tokens = cost_info.get("input_tokens", 0)
@@ -171,13 +174,17 @@ class CostTestRunner:
 
             # Vérifier cohérence du pricing
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-            expected_cost = (input_tokens * pricing["input"]) + (output_tokens * pricing["output"])
+            expected_cost = (input_tokens * pricing["input"]) + (
+                output_tokens * pricing["output"]
+            )
 
             if abs(expected_cost - total_cost) > 0.000001:
                 passed = False
-                issues.append(f"❌ Coût incohérent (attendu: ${expected_cost:.6f}, obtenu: ${total_cost:.6f})")
+                issues.append(
+                    f"❌ Coût incohérent (attendu: ${expected_cost:.6f}, obtenu: ${total_cost:.6f})"
+                )
             else:
-                print(f"  ✅ Calcul du coût cohérent")
+                print("  ✅ Calcul du coût cohérent")
 
             # Stocker résultats
             self.results[provider] = {
@@ -187,7 +194,7 @@ class CostTestRunner:
                 "total_cost": total_cost,
                 "issues": issues,
                 "duration": duration,
-                "response_length": len(full_response)
+                "response_length": len(full_response),
             }
 
             if passed:
@@ -200,19 +207,20 @@ class CostTestRunner:
         except Exception as e:
             print(f"\n❌ Erreur lors du test {provider}: {e}")
             import traceback
+
             traceback.print_exc()
 
             self.results[provider] = {
                 "passed": False,
                 "error": str(e),
-                "issues": [f"Exception: {e}"]
+                "issues": [f"Exception: {e}"],
             }
 
     async def check_database_costs(self):
         """Vérifie les derniers coûts enregistrés dans la BDD."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("🗄️  Vérification Base de Données")
-        print('='*60)
+        print("=" * 60)
 
         try:
             query = """
@@ -237,18 +245,22 @@ class CostTestRunner:
                 cost = row["total_cost"]
                 timestamp = row["timestamp"]
 
-                status = "✅" if (input_tok > 0 and output_tok > 0 and cost > 0) else "❌"
+                status = (
+                    "✅" if (input_tok > 0 and output_tok > 0 and cost > 0) else "❌"
+                )
 
-                print(f"{status} {model:25s} | ${cost:8.6f} | {input_tok:5d} in, {output_tok:5d} out | {timestamp}")
+                print(
+                    f"{status} {model:25s} | ${cost:8.6f} | {input_tok:5d} in, {output_tok:5d} out | {timestamp}"
+                )
 
         except Exception as e:
             print(f"❌ Erreur lors de la lecture BDD: {e}")
 
     async def run_all_tests(self):
         """Lance tous les tests."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🚀 TEST AUTOMATIQUE - Fix Coûts Gemini/Anthropic")
-        print("="*60)
+        print("=" * 60)
         print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"DB:   {DB_PATH}")
 
@@ -280,9 +292,9 @@ class CostTestRunner:
 
     def print_summary(self):
         """Affiche un résumé des tests."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("📊 RÉSUMÉ DES TESTS")
-        print('='*60 + "\n")
+        print("=" * 60 + "\n")
 
         total_tests = len(self.results)
         passed_tests = sum(1 for r in self.results.values() if r.get("passed", False))
@@ -295,7 +307,7 @@ class CostTestRunner:
                 for issue in result.get("issues", []):
                     print(f"       {issue}")
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Résultat global: {passed_tests}/{total_tests} tests réussis")
 
         if passed_tests == total_tests:
@@ -305,7 +317,7 @@ class CostTestRunner:
             print("\n⚠️  CERTAINS TESTS ONT ÉCHOUÉ")
             print("Voir les détails ci-dessus pour plus d'informations.")
 
-        print('='*60 + "\n")
+        print("=" * 60 + "\n")
 
     async def cleanup(self):
         """Cleanup resources."""
@@ -324,6 +336,7 @@ async def main():
     except Exception as e:
         print(f"\n\n❌ Erreur fatale: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

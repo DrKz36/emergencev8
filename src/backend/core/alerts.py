@@ -22,7 +22,7 @@ class SlackAlerter:
         self,
         message: str,
         severity: Literal["critical", "warning", "info"] = "warning",
-        **metadata: Any
+        **metadata: Any,
     ) -> None:
         """
         Envoie une alerte Slack
@@ -37,8 +37,8 @@ class SlackAlerter:
 
         color = {
             "critical": "#ff0000",  # Rouge
-            "warning": "#ff9900",   # Orange
-            "info": "#36a64f",      # Vert
+            "warning": "#ff9900",  # Orange
+            "info": "#36a64f",  # Vert
         }[severity]
 
         emoji = {
@@ -77,6 +77,7 @@ class SlackAlerter:
         except Exception as e:
             # Ne pas crasher l'app si Slack est down
             import logging
+
             logging.error(f"Erreur envoi alerte Slack: {e}")
 
     async def alert_critical(self, message: str, **metadata: Any) -> None:

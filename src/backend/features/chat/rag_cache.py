@@ -17,6 +17,7 @@ from collections import OrderedDict
 
 try:
     import redis
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -40,7 +41,7 @@ class RAGCache:
         self,
         redis_url: Optional[str] = None,
         ttl_seconds: int = 3600,
-        max_memory_items: int = 500
+        max_memory_items: int = 500,
     ):
         """
         Initialize RAG cache.
@@ -52,7 +53,7 @@ class RAGCache:
         """
         self.ttl_seconds = ttl_seconds
         self.max_memory_items = max_memory_items
-        self.redis_client: Optional['redis.Redis'] = None
+        self.redis_client: Optional["redis.Redis"] = None
         self.memory_cache: OrderedDict[str, Tuple[datetime, Any]] = OrderedDict()
         self.enabled = True
 
@@ -63,13 +64,15 @@ class RAGCache:
                     redis_url,
                     decode_responses=True,
                     socket_connect_timeout=2,
-                    socket_timeout=2
+                    socket_timeout=2,
                 )
                 # Test de connexion
                 self.redis_client.ping()
                 logger.info(f"[RAG Cache] Connected to Redis: {redis_url}")
             except Exception as e:
-                logger.warning(f"[RAG Cache] Redis connection failed: {e}, using memory cache")
+                logger.warning(
+                    f"[RAG Cache] Redis connection failed: {e}, using memory cache"
+                )
                 self.redis_client = None
         else:
             logger.info("[RAG Cache] Using in-memory cache (Redis not configured)")
@@ -79,7 +82,7 @@ class RAGCache:
         query_text: str,
         where_filter: Optional[Dict[str, Any]],
         agent_id: str,
-        selected_doc_ids: Optional[List[int]] = None
+        selected_doc_ids: Optional[List[int]] = None,
     ) -> str:
         """
         Génère un fingerprint unique pour une requête RAG.
@@ -106,7 +109,7 @@ class RAGCache:
         composite_key = f"{normalized_query}|{filter_str}|{agent_id}|{doc_ids_str}"
 
         # Hash
-        hash_obj = hashlib.sha256(composite_key.encode('utf-8'))
+        hash_obj = hashlib.sha256(composite_key.encode("utf-8"))
         fingerprint = hash_obj.hexdigest()[:16]  # 16 premiers caractères suffisent
 
         return fingerprint
@@ -116,7 +119,7 @@ class RAGCache:
         query_text: str,
         where_filter: Optional[Dict[str, Any]],
         agent_id: str,
-        selected_doc_ids: Optional[List[int]] = None
+        selected_doc_ids: Optional[List[int]] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Récupère un résultat depuis le cache.
@@ -147,7 +150,7 @@ class RAGCache:
         agent_id: str,
         doc_hits: List[Dict[str, Any]],
         rag_sources: List[Dict[str, Any]],
-        selected_doc_ids: Optional[List[int]] = None
+        selected_doc_ids: Optional[List[int]] = None,
     ) -> None:
         """
         Stocke un résultat dans le cache.
@@ -160,10 +163,10 @@ class RAGCache:
         )
 
         cache_entry = {
-            'doc_hits': doc_hits,
-            'rag_sources': rag_sources,
-            'timestamp': datetime.utcnow().isoformat(),
-            'query_text': query_text[:100],  # Pour debug
+            "doc_hits": doc_hits,
+            "rag_sources": rag_sources,
+            "timestamp": datetime.utcnow().isoformat(),
+            "query_text": query_text[:100],  # Pour debug
         }
 
         try:
@@ -188,11 +191,15 @@ class RAGCache:
             if self.redis_client:
                 # En production Redis, on préfère un flush complet (pattern scan = coûteux)
                 # Alternative: utiliser Redis Sets pour tracker documents <-> fingerprints
-                logger.info(f"[RAG Cache] Document {document_id} updated, flushing Redis cache")
+                logger.info(
+                    f"[RAG Cache] Document {document_id} updated, flushing Redis cache"
+                )
                 self._flush_redis()
             else:
                 # En mémoire locale, on peut scanner
-                logger.info(f"[RAG Cache] Document {document_id} updated, scanning memory cache")
+                logger.info(
+                    f"[RAG Cache] Document {document_id} updated, scanning memory cache"
+                )
                 self._invalidate_memory_by_doc(document_id)
         except Exception as e:
             logger.error(f"[RAG Cache] Error invalidating cache: {e}")
@@ -214,20 +221,20 @@ class RAGCache:
             try:
                 from typing import cast
 
-                info = cast(Mapping[str, Any], self.redis_client.info('stats'))
+                info = cast(Mapping[str, Any], self.redis_client.info("stats"))
                 return {
-                    'backend': 'redis',
-                    'keyspace_hits': info.get('keyspace_hits', 0),
-                    'keyspace_misses': info.get('keyspace_misses', 0),
-                    'connected': True,
+                    "backend": "redis",
+                    "keyspace_hits": info.get("keyspace_hits", 0),
+                    "keyspace_misses": info.get("keyspace_misses", 0),
+                    "connected": True,
                 }
             except Exception:
-                return {'backend': 'redis', 'connected': False}
+                return {"backend": "redis", "connected": False}
         else:
             return {
-                'backend': 'memory',
-                'size': len(self.memory_cache),
-                'max_size': self.max_memory_items,
+                "backend": "memory",
+                "size": len(self.memory_cache),
+                "max_size": self.max_memory_items,
             }
 
     # ==========================================
@@ -254,11 +261,7 @@ class RAGCache:
         if self.redis_client is None:
             return
         key = f"rag:query:{fingerprint}"
-        self.redis_client.setex(
-            key,
-            self.ttl_seconds,
-            json.dumps(entry)
-        )
+        self.redis_client.setex(key, self.ttl_seconds, json.dumps(entry))
         logger.debug(f"[RAG Cache] Redis SET: {fingerprint} (TTL={self.ttl_seconds}s)")
 
     def _flush_redis(self) -> None:
@@ -273,7 +276,7 @@ class RAGCache:
 
             cursor, keys = cast(
                 Tuple[int, Sequence[Any]],
-                self.redis_client.scan(cursor, match='rag:query:*', count=100),
+                self.redis_client.scan(cursor, match="rag:query:*", count=100),
             )
             if keys:
                 deleted += cast(int, self.redis_client.delete(*keys))
@@ -296,6 +299,7 @@ class RAGCache:
                 self.memory_cache.move_to_end(fingerprint)
                 logger.debug(f"[RAG Cache] Memory HIT: {fingerprint} (age={age:.1f}s)")
                 from typing import cast
+
                 return cast(dict[str, Any], entry)
             else:
                 # Expiré
@@ -320,10 +324,10 @@ class RAGCache:
         """Invalide les entrées mémoire contenant un document_id."""
         to_delete = []
         for fingerprint, (timestamp, entry) in self.memory_cache.items():
-            doc_hits = entry.get('doc_hits', [])
+            doc_hits = entry.get("doc_hits", [])
             for hit in doc_hits:
-                md = hit.get('metadata', {})
-                if md.get('document_id') == document_id:
+                md = hit.get("metadata", {})
+                if md.get("document_id") == document_id:
                     to_delete.append(fingerprint)
                     break
 
@@ -331,16 +335,18 @@ class RAGCache:
             del self.memory_cache[fp]
 
         if to_delete:
-            logger.info(f"[RAG Cache] Invalidated {len(to_delete)} memory entries for doc {document_id}")
+            logger.info(
+                f"[RAG Cache] Invalidated {len(to_delete)} memory entries for doc {document_id}"
+            )
 
 
 # ==========================================
 # Factory function
 # ==========================================
 
+
 def create_rag_cache(
-    redis_url: Optional[str] = None,
-    ttl_seconds: Optional[int] = None
+    redis_url: Optional[str] = None, ttl_seconds: Optional[int] = None
 ) -> RAGCache:
     """
     Factory pour créer une instance RAGCache avec config depuis env.
@@ -352,15 +358,13 @@ def create_rag_cache(
     - RAG_CACHE_MAX_MEMORY_ITEMS: Taille max cache mémoire (défaut: 500)
     """
     # Lire config depuis env
-    redis_url = redis_url or os.getenv('RAG_CACHE_REDIS_URL')
-    ttl_seconds = ttl_seconds or int(os.getenv('RAG_CACHE_TTL_SECONDS', '3600'))
-    max_memory_items = int(os.getenv('RAG_CACHE_MAX_MEMORY_ITEMS', '500'))
-    enabled = os.getenv('RAG_CACHE_ENABLED', 'true').lower() in ('true', '1', 'yes')
+    redis_url = redis_url or os.getenv("RAG_CACHE_REDIS_URL")
+    ttl_seconds = ttl_seconds or int(os.getenv("RAG_CACHE_TTL_SECONDS", "3600"))
+    max_memory_items = int(os.getenv("RAG_CACHE_MAX_MEMORY_ITEMS", "500"))
+    enabled = os.getenv("RAG_CACHE_ENABLED", "true").lower() in ("true", "1", "yes")
 
     cache = RAGCache(
-        redis_url=redis_url,
-        ttl_seconds=ttl_seconds,
-        max_memory_items=max_memory_items
+        redis_url=redis_url, ttl_seconds=ttl_seconds, max_memory_items=max_memory_items
     )
 
     cache.enabled = enabled

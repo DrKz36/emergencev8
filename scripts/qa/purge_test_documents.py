@@ -73,7 +73,9 @@ async def purge_documents(args: argparse.Namespace) -> int:
     base_url = qa._normalize_base_url(args.base_url)  # type: ignore[attr-defined]
     timeout = httpx.Timeout(args.http_timeout)
     async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as client:
-        auth = await qa.attempt_password_login(client, args.login_email, args.login_password)
+        auth = await qa.attempt_password_login(
+            client, args.login_email, args.login_password
+        )
         if auth is None and not args.no_dev_login:
             auth = await qa.attempt_dev_login(client)
     if auth is None:
@@ -85,7 +87,9 @@ async def purge_documents(args: argparse.Namespace) -> int:
         "X-Session-Id": auth.session_id,
     }
     async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as client:
-        resp = await client.get("/api/documents", headers=headers, params={"limit": args.limit})
+        resp = await client.get(
+            "/api/documents", headers=headers, params={"limit": args.limit}
+        )
         resp.raise_for_status()
         payload = resp.json()
         if isinstance(payload, dict):
@@ -120,7 +124,9 @@ async def purge_documents(args: argparse.Namespace) -> int:
                 name = _select_name(entry)
                 print(f"Deleted document {doc_id} ({name})")
             else:
-                print(f"Failed to delete {doc_id}: {resp.status_code} {resp.text[:120]}")
+                print(
+                    f"Failed to delete {doc_id}: {resp.status_code} {resp.text[:120]}"
+                )
         print(f"Deleted {deleted} / {len(to_remove)} documents.")
         return 0 if deleted == len(to_remove) else 2
 
@@ -129,19 +135,48 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Purge les documents QA (test_upload, etc.) via l'API Emergence."
     )
-    parser.add_argument("--base-url", default=qa.DEFAULT_BASE_URL, help="Base URL de l'API Emergence.")
-    parser.add_argument("--login-email", default=qa.DEFAULT_LOGIN_EMAIL, help="Email pour /api/auth/login.")
-    parser.add_argument("--login-password", default=qa.DEFAULT_LOGIN_PASSWORD, help="Mot de passe authentifié.")
-    parser.add_argument("--pattern", default=_default_pattern(), help="Motif à rechercher dans les noms de documents.")
-    parser.add_argument("--min-id", type=int, help="Supprime uniquement les documents avec un ID >= min-id.")
-    parser.add_argument("--limit", type=int, default=200, help="Limite de documents récupérés (pagination simple).")
-    parser.add_argument("--dry-run", action="store_true", help="Affiche les documents ciblés sans supprimer.")
+    parser.add_argument(
+        "--base-url", default=qa.DEFAULT_BASE_URL, help="Base URL de l'API Emergence."
+    )
+    parser.add_argument(
+        "--login-email",
+        default=qa.DEFAULT_LOGIN_EMAIL,
+        help="Email pour /api/auth/login.",
+    )
+    parser.add_argument(
+        "--login-password",
+        default=qa.DEFAULT_LOGIN_PASSWORD,
+        help="Mot de passe authentifié.",
+    )
+    parser.add_argument(
+        "--pattern",
+        default=_default_pattern(),
+        help="Motif à rechercher dans les noms de documents.",
+    )
+    parser.add_argument(
+        "--min-id",
+        type=int,
+        help="Supprime uniquement les documents avec un ID >= min-id.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=200,
+        help="Limite de documents récupérés (pagination simple).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Affiche les documents ciblés sans supprimer.",
+    )
     parser.add_argument(
         "--no-dev-login",
         action="store_true",
         help="N'utilise pas le fallback dev login lorsque l'auth standard échoue.",
     )
-    parser.add_argument("--http-timeout", type=float, default=45.0, help="Timeout HTTP (s).")
+    parser.add_argument(
+        "--http-timeout", type=float, default=45.0, help="Timeout HTTP (s)."
+    )
     return parser
 
 

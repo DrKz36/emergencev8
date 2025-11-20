@@ -12,8 +12,10 @@ import platform
 from pathlib import Path
 
 # Fix encoding pour Windows
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8") if hasattr(
+        sys.stdout, "reconfigure"
+    ) else None
 
 # Configuration
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
@@ -38,11 +40,7 @@ def run_command(cmd, description="", check=True):
     """Execute a command and return success status"""
     try:
         result = subprocess.run(
-            cmd,
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            check=check
+            cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=check
         )
         return result.returncode == 0, result.stdout, result.stderr
     except subprocess.CalledProcessError as e:
@@ -107,18 +105,18 @@ def setup_environment_variables():
         "AUTO_UPDATE_DOCS": {
             "description": "Active la mise à jour auto de la documentation",
             "values": "0 (désactivé) ou 1 (activé)",
-            "default": "0"
+            "default": "0",
         },
         "AUTO_APPLY": {
             "description": "Applique et commit automatiquement les mises à jour",
             "values": "0 (désactivé) ou 1 (activé)",
-            "default": "0"
+            "default": "0",
         },
         "CHECK_GIT_STATUS": {
             "description": "Vérifie les changements non commités avant l'exécution",
             "values": "0 (skip) ou 1 (vérifier)",
-            "default": "1"
-        }
+            "default": "1",
+        },
     }
 
     # Vérifier les valeurs actuelles
@@ -133,7 +131,9 @@ def setup_environment_variables():
         print("      $env:AUTO_UPDATE_DOCS='1'")
         print("      $env:AUTO_APPLY='1'")
         print("\n      PowerShell (permanent - ajoute à ton $PROFILE):")
-        print("      [System.Environment]::SetEnvironmentVariable('AUTO_UPDATE_DOCS','1','User')")
+        print(
+            "      [System.Environment]::SetEnvironmentVariable('AUTO_UPDATE_DOCS','1','User')"
+        )
     else:
         print("      Bash/Zsh (ajoute à ~/.bashrc ou ~/.zshrc):")
         print("      export AUTO_UPDATE_DOCS=1")
@@ -179,7 +179,7 @@ def test_agents():
         ("scan_docs.py", "Anima (DocKeeper)"),
         ("check_integrity.py", "Neo (IntegrityWatcher)"),
         ("check_prod_logs.py", "ProdGuardian"),
-        ("generate_report.py", "Nexus (Coordinator)")
+        ("generate_report.py", "Nexus (Coordinator)"),
     ]
 
     all_ok = True
@@ -231,10 +231,18 @@ def show_usage_guide():
     print("      - git push             → Déclenche pre-push\n")
 
     print("   📊 Voir les rapports:")
-    print(f"      - Documentation: {REPO_ROOT}/claude-plugins/integrity-docs-guardian/reports/docs_report.json")
-    print(f"      - Intégrité:     {REPO_ROOT}/claude-plugins/integrity-docs-guardian/reports/integrity_report.json")
-    print(f"      - Production:    {REPO_ROOT}/claude-plugins/integrity-docs-guardian/reports/prod_report.json")
-    print(f"      - Unifié:        {REPO_ROOT}/claude-plugins/integrity-docs-guardian/reports/unified_report.json\n")
+    print(
+        f"      - Documentation: {REPO_ROOT}/claude-plugins/integrity-docs-guardian/reports/docs_report.json"
+    )
+    print(
+        f"      - Intégrité:     {REPO_ROOT}/claude-plugins/integrity-docs-guardian/reports/integrity_report.json"
+    )
+    print(
+        f"      - Production:    {REPO_ROOT}/claude-plugins/integrity-docs-guardian/reports/prod_report.json"
+    )
+    print(
+        f"      - Unifié:        {REPO_ROOT}/claude-plugins/integrity-docs-guardian/reports/unified_report.json\n"
+    )
 
     print("   🚀 Pour le monitoring continu en arrière-plan:")
     print("      - Utilise le scheduler.py (voir HIDDEN_MODE_GUIDE.md)")
@@ -271,7 +279,9 @@ def main():
 
     if hooks_ok and deps_ok and agents_ok:
         print("   ✅ Configuration réussie! L'automatisation est activée.\n")
-        print("   🎯 Prochain commit déclenchera automatiquement les agents Guardian.\n")
+        print(
+            "   🎯 Prochain commit déclenchera automatiquement les agents Guardian.\n"
+        )
         return 0
     else:
         print("   ⚠️  Configuration partiellement réussie.\n")

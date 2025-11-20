@@ -1,6 +1,7 @@
 """
 Router pour les endpoints Guardian - Auto-fix et monitoring
 """
+
 from fastapi import APIRouter, HTTPException, Header, BackgroundTasks
 from typing import Optional, Any
 import hashlib
@@ -20,7 +21,9 @@ logger = logging.getLogger("emergence.guardian.router")
 GUARDIAN_SECRET = os.getenv("GUARDIAN_SECRET", "dev-secret-change-in-prod")
 
 # Token pour Cloud Scheduler (authentification scheduled jobs)
-GUARDIAN_SCHEDULER_TOKEN = os.getenv("GUARDIAN_SCHEDULER_TOKEN", "dev-scheduler-token-change-in-prod")
+GUARDIAN_SCHEDULER_TOKEN = os.getenv(
+    "GUARDIAN_SCHEDULER_TOKEN", "dev-scheduler-token-change-in-prod"
+)
 
 
 def generate_fix_token(report_id: str) -> str:
@@ -28,9 +31,7 @@ def generate_fix_token(report_id: str) -> str:
     timestamp = str(int(datetime.now().timestamp()))
     data = f"{report_id}:{timestamp}"
     signature = hmac.new(
-        GUARDIAN_SECRET.encode(),
-        data.encode(),
-        hashlib.sha256
+        GUARDIAN_SECRET.encode(), data.encode(), hashlib.sha256
     ).hexdigest()
     return f"{data}:{signature}"
 
@@ -53,9 +54,7 @@ def verify_fix_token(token: str, max_age_seconds: int = 86400) -> bool:
         # Vérifier la signature
         data = f"{report_id}:{timestamp}"
         expected_sig = hmac.new(
-            GUARDIAN_SECRET.encode(),
-            data.encode(),
-            hashlib.sha256
+            GUARDIAN_SECRET.encode(), data.encode(), hashlib.sha256
         ).hexdigest()
 
         return hmac.compare_digest(signature, expected_sig)
@@ -63,12 +62,14 @@ def verify_fix_token(token: str, max_age_seconds: int = 86400) -> bool:
         return False
 
 
-async def execute_anima_fixes(recommendations: list[Any]) -> dict[str, list[dict[str, Any]]]:
+async def execute_anima_fixes(
+    recommendations: list[Any],
+) -> dict[str, list[dict[str, Any]]]:
     """Exécute les corrections Anima (Documentation)"""
     results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
         "failed": [],
-        "skipped": []
+        "skipped": [],
     }
 
     for rec in recommendations:
@@ -79,31 +80,33 @@ async def execute_anima_fixes(recommendations: list[Any]) -> dict[str, list[dict
             # Exemple: Mettre à jour un fichier de doc
             if "update" in action.lower() and "documentation" in action.lower():
                 # TODO: Implémenter la mise à jour automatique
-                results["fixed"].append({
-                    "action": action,
-                    "priority": priority,
-                    "status": "simulated"  # Pour l'instant simulation
-                })
+                results["fixed"].append(
+                    {
+                        "action": action,
+                        "priority": priority,
+                        "status": "simulated",  # Pour l'instant simulation
+                    }
+                )
             else:
-                results["skipped"].append({
-                    "action": action,
-                    "reason": "Type de correction non supporté"
-                })
+                results["skipped"].append(
+                    {"action": action, "reason": "Type de correction non supporté"}
+                )
         except Exception as e:
-            results["failed"].append({
-                "action": rec.get("action", "unknown"),
-                "error": str(e)
-            })
+            results["failed"].append(
+                {"action": rec.get("action", "unknown"), "error": str(e)}
+            )
 
     return results
 
 
-async def execute_neo_fixes(recommendations: list[Any]) -> dict[str, list[dict[str, Any]]]:
+async def execute_neo_fixes(
+    recommendations: list[Any],
+) -> dict[str, list[dict[str, Any]]]:
     """Exécute les corrections Neo (Intégrité)"""
     results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
         "failed": [],
-        "skipped": []
+        "skipped": [],
     }
 
     for rec in recommendations:
@@ -113,40 +116,40 @@ async def execute_neo_fixes(recommendations: list[Any]) -> dict[str, list[dict[s
 
             # Exemple: Fix imports, dependencies
             if "import" in action.lower() or "dependency" in action.lower():
-                results["fixed"].append({
-                    "action": action,
-                    "priority": priority,
-                    "status": "simulated"
-                })
+                results["fixed"].append(
+                    {"action": action, "priority": priority, "status": "simulated"}
+                )
             else:
-                results["skipped"].append({
-                    "action": action,
-                    "reason": "Correction manuelle requise"
-                })
+                results["skipped"].append(
+                    {"action": action, "reason": "Correction manuelle requise"}
+                )
         except Exception as e:
-            results["failed"].append({
-                "action": rec.get("action", "unknown"),
-                "error": str(e)
-            })
+            results["failed"].append(
+                {"action": rec.get("action", "unknown"), "error": str(e)}
+            )
 
     return results
 
 
-async def execute_prod_fixes(recommendations: list[Any]) -> dict[str, list[dict[str, Any]]]:
+async def execute_prod_fixes(
+    recommendations: list[Any],
+) -> dict[str, list[dict[str, Any]]]:
     """Exécute les corrections Production (ATTENTION: très sensible)"""
     results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
         "failed": [],
-        "skipped": []
+        "skipped": [],
     }
 
     # Pour la prod, on ne fait RIEN automatiquement pour l'instant
     # Trop risqué de modifier la prod sans validation humaine
     for rec in recommendations:
-        results["skipped"].append({
-            "action": rec.get("action", "unknown"),
-            "reason": "Corrections production nécessitent validation manuelle"
-        })
+        results["skipped"].append(
+            {
+                "action": rec.get("action", "unknown"),
+                "reason": "Corrections production nécessitent validation manuelle",
+            }
+        )
 
     return results
 
@@ -160,7 +163,7 @@ async def apply_guardian_fixes(report_data: dict[str, Any]) -> dict[str, Any]:
         "prod": {},
         "total_fixed": 0,
         "total_failed": 0,
-        "total_skipped": 0
+        "total_skipped": 0,
     }
 
     # Anima (Documentation)
@@ -201,8 +204,7 @@ async def apply_guardian_fixes(report_data: dict[str, Any]) -> dict[str, Any]:
 
 @router.post("/auto-fix")
 async def auto_fix_endpoint(
-    background_tasks: BackgroundTasks,
-    x_guardian_token: Optional[str] = Header(None)
+    background_tasks: BackgroundTasks, x_guardian_token: Optional[str] = Header(None)
 ) -> dict[str, Any]:
     """
     Endpoint pour appliquer automatiquement les corrections Guardian
@@ -225,7 +227,7 @@ async def auto_fix_endpoint(
             "prod": "prod_report.json",
             "docs": "docs_report.json",
             "integrity": "integrity_report.json",
-            "unified": "unified_report.json"
+            "unified": "unified_report.json",
         }
 
         reports = {}
@@ -249,13 +251,13 @@ async def auto_fix_endpoint(
         return {
             "status": "success",
             "message": "Corrections Guardian appliquées",
-            "details": fixes_result
+            "details": fixes_result,
         }
 
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors de l'application des corrections: {str(e)}"
+            detail=f"Erreur lors de l'application des corrections: {str(e)}",
         )
 
 
@@ -268,13 +270,13 @@ async def get_guardian_status() -> dict[str, Any]:
         "prod": "prod_report.json",
         "docs": "docs_report.json",
         "integrity": "integrity_report.json",
-        "unified": "unified_report.json"
+        "unified": "unified_report.json",
     }
 
     status: dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
         "reports_available": [],
-        "reports_missing": []
+        "reports_missing": [],
     }
 
     for key, filename in report_files.items():
@@ -290,7 +292,9 @@ async def get_guardian_status() -> dict[str, Any]:
 @router.post("/scheduled-report")
 async def scheduled_guardian_report(
     background_tasks: BackgroundTasks,
-    x_guardian_scheduler_token: Optional[str] = Header(None, alias="X-Guardian-Scheduler-Token")
+    x_guardian_scheduler_token: Optional[str] = Header(
+        None, alias="X-Guardian-Scheduler-Token"
+    ),
 ) -> dict[str, Any]:
     """
     Endpoint appelé par Cloud Scheduler toutes les 2h
@@ -303,15 +307,12 @@ async def scheduled_guardian_report(
         logger.warning("Scheduled report called without token")
         raise HTTPException(
             status_code=401,
-            detail="Token scheduler manquant (X-Guardian-Scheduler-Token header)"
+            detail="Token scheduler manquant (X-Guardian-Scheduler-Token header)",
         )
 
     if x_guardian_scheduler_token != GUARDIAN_SCHEDULER_TOKEN:
         logger.warning(f"Invalid scheduler token: {x_guardian_scheduler_token[:10]}...")
-        raise HTTPException(
-            status_code=403,
-            detail="Token scheduler invalide"
-        )
+        raise HTTPException(status_code=403, detail="Token scheduler invalide")
 
     logger.info("Scheduled Guardian report triggered by Cloud Scheduler")
 
@@ -322,7 +323,9 @@ async def scheduled_guardian_report(
                 email_service = GuardianEmailService()
                 success = await email_service.send_report()
                 if success:
-                    logger.info("✅ Guardian report email sent successfully (scheduled)")
+                    logger.info(
+                        "✅ Guardian report email sent successfully (scheduled)"
+                    )
                 else:
                     logger.error("❌ Failed to send Guardian report email (scheduled)")
             except Exception as e:
@@ -334,14 +337,13 @@ async def scheduled_guardian_report(
             "status": "success",
             "message": "Guardian report génération lancée",
             "timestamp": datetime.now().isoformat(),
-            "trigger": "cloud_scheduler"
+            "trigger": "cloud_scheduler",
         }
 
     except Exception as e:
         logger.error(f"Error in scheduled_guardian_report endpoint: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Erreur lors de la génération du rapport: {str(e)}"
+            status_code=500, detail=f"Erreur lors de la génération du rapport: {str(e)}"
         )
 
 
@@ -365,11 +367,11 @@ async def generate_guardian_reports():
 
         # Fetch recent production logs (last 1 hour)
         logger.info("Fetching production logs from Cloud Logging...")
-        filter_str = '''
+        filter_str = """
             resource.type="cloud_run_revision"
             AND resource.labels.service_name="emergence-app"
             AND timestamp>="{}Z"
-        '''.format((datetime.now() - timedelta(hours=1)).isoformat())
+        """.format((datetime.now() - timedelta(hours=1)).isoformat())
 
         entries = list(log_client.list_entries(filter_=filter_str, max_results=100))
 
@@ -378,29 +380,41 @@ async def generate_guardian_reports():
         warnings = []
         for entry in entries:
             if entry.severity in ["ERROR", "CRITICAL"]:
-                errors.append({
-                    "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
-                    "severity": entry.severity,
-                    "message": str(entry.payload)[:500]
-                })
+                errors.append(
+                    {
+                        "timestamp": entry.timestamp.isoformat()
+                        if entry.timestamp
+                        else None,
+                        "severity": entry.severity,
+                        "message": str(entry.payload)[:500],
+                    }
+                )
             elif entry.severity == "WARNING":
-                warnings.append({
-                    "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
-                    "message": str(entry.payload)[:500]
-                })
+                warnings.append(
+                    {
+                        "timestamp": entry.timestamp.isoformat()
+                        if entry.timestamp
+                        else None,
+                        "message": str(entry.payload)[:500],
+                    }
+                )
 
         # Generate prod report
         prod_report = {
             "timestamp": datetime.now().isoformat(),
-            "status": "CRITICAL" if len(errors) >= 5 else ("DEGRADED" if len(errors) > 0 else "OK"),
+            "status": "CRITICAL"
+            if len(errors) >= 5
+            else ("DEGRADED" if len(errors) > 0 else "OK"),
             "logs_analyzed": len(entries),
             "summary": {
                 "errors": len(errors),
                 "warnings": len(warnings),
-                "critical_signals": sum(1 for e in errors if e["severity"] == "CRITICAL")
+                "critical_signals": sum(
+                    1 for e in errors if e["severity"] == "CRITICAL"
+                ),
             },
             "errors": errors[:10],  # Top 10 errors
-            "warnings": warnings[:5]  # Top 5 warnings
+            "warnings": warnings[:5],  # Top 5 warnings
         }
 
         # Upload to Cloud Storage
@@ -412,21 +426,21 @@ async def generate_guardian_reports():
                 "status": "success",
                 "message": "Rapport production généré et uploadé",
                 "timestamp": datetime.now().isoformat(),
-                "report": prod_report
+                "report": prod_report,
             }
         else:
             logger.error("Failed to upload report to Cloud Storage")
             return {
                 "status": "error",
                 "message": "Erreur lors de l'upload vers Cloud Storage",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
     except Exception as e:
         logger.error(f"Error generating Guardian reports: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors de la génération des rapports: {str(e)}"
+            detail=f"Erreur lors de la génération des rapports: {str(e)}",
         )
 
 
@@ -451,7 +465,7 @@ async def run_guardian_audit():
                 "status": "warning",
                 "message": "Aucun rapport Guardian trouvé (générez-les d'abord avec /generate-reports)",
                 "timestamp": datetime.now().isoformat(),
-                "reports": {}
+                "reports": {},
             }
 
         # Extraire summary de chaque rapport
@@ -464,15 +478,15 @@ async def run_guardian_audit():
             "total_critical": 0,
             "total_warnings": 0,
             "total_recommendations": 0,
-            "details": {}
+            "details": {},
         }
 
         report_names = [
-            'prod_report.json',
-            'docs_report.json',
-            'integrity_report.json',
-            'unified_report.json',
-            'usage_report.json'
+            "prod_report.json",
+            "docs_report.json",
+            "integrity_report.json",
+            "unified_report.json",
+            "usage_report.json",
         ]
 
         for report_name in report_names:
@@ -499,26 +513,30 @@ async def run_guardian_audit():
                 summary["details"][report_name] = {
                     "status": status,
                     "summary": report_summary,
-                    "recommendations_count": len(recs) if isinstance(recs, list) else 0
+                    "recommendations_count": len(recs) if isinstance(recs, list) else 0,
                 }
 
                 # Update global status
                 if status in ["CRITICAL", "ERROR", "FAILED"]:
                     summary["global_status"] = "CRITICAL"
-                elif status in ["WARNING", "NEEDS_UPDATE"] and summary["global_status"] != "CRITICAL":
+                elif (
+                    status in ["WARNING", "NEEDS_UPDATE"]
+                    and summary["global_status"] != "CRITICAL"
+                ):
                     summary["global_status"] = "WARNING"
 
             else:
                 summary["reports_missing"].append(report_name)
 
         summary["status"] = "success"
-        logger.info(f"Guardian audit completed: {summary['global_status']} - {len(summary['reports_loaded'])} reports loaded")
+        logger.info(
+            f"Guardian audit completed: {summary['global_status']} - {len(summary['reports_loaded'])} reports loaded"
+        )
 
         return summary
 
     except Exception as e:
         logger.error(f"Error in run_guardian_audit: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Erreur lors de l'audit Guardian: {str(e)}"
+            status_code=500, detail=f"Erreur lors de l'audit Guardian: {str(e)}"
         )

@@ -7,7 +7,6 @@ Tests pour RAG Startup-Safe V13.2
 import pytest
 import tempfile
 import shutil
-import os
 from unittest.mock import patch, MagicMock
 
 from backend.features.memory.vector_service import VectorService
@@ -41,6 +40,7 @@ class TestRAGStartupSafe:
         finally:
             # Cleanup with retry on Windows
             import time
+
             for attempt in range(3):
                 try:
                     shutil.rmtree(tmpdir)
@@ -122,6 +122,7 @@ class TestRAGStartupSafe:
         finally:
             # Cleanup with retry on Windows
             import time
+
             for attempt in range(3):
                 try:
                     shutil.rmtree(tmpdir)
@@ -157,7 +158,7 @@ class TestHealthReadyEndpoint:
     async def test_health_ready_ok_status(self):
         """Test /health/ready retourne OK si tout est up"""
         from fastapi.testclient import TestClient
-        from fastapi import FastAPI, Request
+        from fastapi import FastAPI
         from backend.features.monitoring.router import router as monitoring_router
 
         app = FastAPI()

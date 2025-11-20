@@ -3,6 +3,7 @@ Email Service for authentication-related emails
 Handles password reset emails, beta invitations, Guardian reports
 Uses Jinja2 templates for clean HTML/text email generation
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,6 +24,7 @@ logger = logging.getLogger("emergence.auth.email")
 @dataclass
 class EmailConfig:
     """Configuration for email service"""
+
     smtp_host: str
     smtp_port: int
     smtp_user: str
@@ -35,12 +37,19 @@ class EmailConfig:
 
 def build_email_config_from_env() -> EmailConfig:
     """Build email configuration from environment variables"""
-    enabled = os.getenv("EMAIL_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+    enabled = os.getenv("EMAIL_ENABLED", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     smtp_password = os.getenv("SMTP_PASSWORD", "")
 
     # Diagnostic logging
-    logger.info(f"Email config: enabled={enabled}, smtp_host={os.getenv('SMTP_HOST', 'NOT_SET')}, "
-                f"smtp_user={os.getenv('SMTP_USER', 'NOT_SET')}, smtp_password={'SET' if smtp_password else 'NOT_SET'}")
+    logger.info(
+        f"Email config: enabled={enabled}, smtp_host={os.getenv('SMTP_HOST', 'NOT_SET')}, "
+        f"smtp_user={os.getenv('SMTP_USER', 'NOT_SET')}, smtp_password={'SET' if smtp_password else 'NOT_SET'}"
+    )
 
     return EmailConfig(
         smtp_host=os.getenv("SMTP_HOST", "smtp.gmail.com"),
@@ -49,7 +58,8 @@ def build_email_config_from_env() -> EmailConfig:
         smtp_password=smtp_password,
         from_email=os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "")),
         from_name=os.getenv("SMTP_FROM_NAME", "ÉMERGENCE"),
-        use_tls=os.getenv("SMTP_USE_TLS", "1").strip().lower() in {"1", "true", "yes", "on"},
+        use_tls=os.getenv("SMTP_USE_TLS", "1").strip().lower()
+        in {"1", "true", "yes", "on"},
         enabled=enabled,
     )
 
@@ -64,7 +74,7 @@ class EmailService:
         templates_dir = Path(__file__).parent.parent.parent / "templates"
         self.jinja_env = Environment(
             loader=FileSystemLoader(str(templates_dir)),
-            autoescape=select_autoescape(['html', 'xml']),
+            autoescape=select_autoescape(["html", "xml"]),
             trim_blocks=True,
             lstrip_blocks=True,
         )
@@ -108,14 +118,14 @@ class EmailService:
             return False
 
         context = {
-            'to_email': to_email,
-            'app_url': base_url,
-            'report_url': f"{base_url}/beta_report.html",
+            "to_email": to_email,
+            "app_url": base_url,
+            "report_url": f"{base_url}/beta_report.html",
         }
 
         subject = "🎉 Bienvenue dans le programme Beta ÉMERGENCE V8"
-        html_body = self._render_template('beta_invitation_email.html', context)
-        text_body = self._render_template('beta_invitation_email.txt', context)
+        html_body = self._render_template("beta_invitation_email.html", context)
+        text_body = self._render_template("beta_invitation_email.txt", context)
 
         return await self._send_email(
             to_email=to_email,
@@ -174,14 +184,16 @@ class EmailService:
             return False
 
         context = {
-            'to_email': to_email,
-            'reset_url': f"{base_url}/reset-password.html",
-            'report_url': f"{base_url}/beta_report.html",
+            "to_email": to_email,
+            "reset_url": f"{base_url}/reset-password.html",
+            "report_url": f"{base_url}/beta_report.html",
         }
 
         subject = "🔧 ÉMERGENCE Beta - Mise à jour importante sur l'authentification"
-        html_body = self._render_template('auth_issue_email.html', context)
-        text_body = self._render_template('beta_invitation_email.txt', context)  # Reuse text template
+        html_body = self._render_template("auth_issue_email.html", context)
+        text_body = self._render_template(
+            "beta_invitation_email.txt", context
+        )  # Reuse text template
 
         return await self._send_email(
             to_email=to_email,
@@ -212,12 +224,12 @@ class EmailService:
             return False
 
         context = {
-            'reset_link': f"{base_url}/reset-password.html?token={reset_token}",
+            "reset_link": f"{base_url}/reset-password.html?token={reset_token}",
         }
 
         subject = "Réinitialisation de votre mot de passe ÉMERGENCE"
-        html_body = self._render_template('password_reset_email.html', context)
-        text_body = self._render_template('password_reset_email.txt', context)
+        html_body = self._render_template("password_reset_email.html", context)
+        text_body = self._render_template("password_reset_email.txt", context)
 
         return await self._send_email(
             to_email=to_email,
@@ -258,23 +270,23 @@ class EmailService:
 
         # Build context for template
         context = {
-            'timestamp': datetime.now().strftime("%d/%m/%Y à %H:%M:%S"),
-            'global_status': global_status,
-            'summary': summary,
-            'prod_report': reports.get('prod_report.json'),
-            'docs_report': reports.get('docs_report.json'),
-            'integrity_report': reports.get('integrity_report.json'),
-            'unified_report': reports.get('unified_report.json'),
-            'usage_stats': reports.get('usage_stats'),  # For Phase 2
-            'all_problems': all_problems,
-            'admin_ui_url': f"{base_url}/admin",
-            'cloud_storage_url': f"{base_url}/api/guardian/reports",
-            'cloud_logging_url': "https://console.cloud.google.com/logs/query",
+            "timestamp": datetime.now().strftime("%d/%m/%Y à %H:%M:%S"),
+            "global_status": global_status,
+            "summary": summary,
+            "prod_report": reports.get("prod_report.json"),
+            "docs_report": reports.get("docs_report.json"),
+            "integrity_report": reports.get("integrity_report.json"),
+            "unified_report": reports.get("unified_report.json"),
+            "usage_stats": reports.get("usage_stats"),  # For Phase 2
+            "all_problems": all_problems,
+            "admin_ui_url": f"{base_url}/admin",
+            "cloud_storage_url": f"{base_url}/api/guardian/reports",
+            "cloud_logging_url": "https://console.cloud.google.com/logs/query",
         }
 
         subject = f"🛡️ Guardian ÉMERGENCE - {global_status} - {datetime.now().strftime('%d/%m %H:%M')}"
-        html_body = self._render_template('guardian_report_email.html', context)
-        text_body = self._render_template('guardian_report_email.txt', context)
+        html_body = self._render_template("guardian_report_email.html", context)
+        text_body = self._render_template("guardian_report_email.txt", context)
 
         return await self._send_email(
             to_email=to_email,
@@ -283,12 +295,14 @@ class EmailService:
             text_body=text_body,
         )
 
-    def _determine_global_status(self, reports: dict[str, Optional[dict[str, Any]]]) -> str:
+    def _determine_global_status(
+        self, reports: dict[str, Optional[dict[str, Any]]]
+    ) -> str:
         """Determine global status from all reports"""
         # Try global_report first
-        global_report = reports.get('global_report.json')
+        global_report = reports.get("global_report.json")
         if global_report and isinstance(global_report, dict):
-            return cast(str, global_report.get('status', 'UNKNOWN'))
+            return cast(str, global_report.get("status", "UNKNOWN"))
 
         # Otherwise aggregate from individual reports
         has_critical = False
@@ -296,61 +310,67 @@ class EmailService:
 
         for report_data in reports.values():
             if report_data and isinstance(report_data, dict):
-                status = report_data.get('status', '').upper()
-                if status in ['CRITICAL', 'ERROR', 'FAILED']:
+                status = report_data.get("status", "").upper()
+                if status in ["CRITICAL", "ERROR", "FAILED"]:
                     has_critical = True
-                elif status in ['WARNING', 'DEGRADED', 'NEEDS_UPDATE']:
+                elif status in ["WARNING", "DEGRADED", "NEEDS_UPDATE"]:
                     has_warning = True
 
         if has_critical:
-            return 'CRITICAL'
+            return "CRITICAL"
         elif has_warning:
-            return 'WARNING'
+            return "WARNING"
         else:
-            return 'OK'
+            return "OK"
 
-    def _prepare_summary(self, reports: dict[str, Optional[dict[str, Any]]]) -> dict[str, int]:
+    def _prepare_summary(
+        self, reports: dict[str, Optional[dict[str, Any]]]
+    ) -> dict[str, int]:
         """Prepare summary metrics from all reports"""
         summary = {
-            'critical_count': 0,
-            'warning_count': 0,
-            'active_users': 0,
+            "critical_count": 0,
+            "warning_count": 0,
+            "active_users": 0,
         }
 
         for report_data in reports.values():
             if report_data and isinstance(report_data, dict):
-                report_summary = report_data.get('summary')
+                report_summary = report_data.get("summary")
                 if report_summary and isinstance(report_summary, dict):
-                    summary['critical_count'] += report_summary.get('critical_count', 0)
-                    summary['warning_count'] += report_summary.get('warning_count', 0)
+                    summary["critical_count"] += report_summary.get("critical_count", 0)
+                    summary["warning_count"] += report_summary.get("warning_count", 0)
 
         return summary
 
-    def _collect_all_problems(self, reports: dict[str, Optional[dict[str, Any]]]) -> list[dict[str, Any]]:
+    def _collect_all_problems(
+        self, reports: dict[str, Optional[dict[str, Any]]]
+    ) -> list[dict[str, Any]]:
         """Collect all problems/recommendations from reports"""
         all_problems = []
 
         # Map report keys to source names
         source_map = {
-            'prod_report.json': '☁️ Production',
-            'docs_report.json': '📚 Documentation',
-            'integrity_report.json': '🔐 Intégrité',
+            "prod_report.json": "☁️ Production",
+            "docs_report.json": "📚 Documentation",
+            "integrity_report.json": "🔐 Intégrité",
         }
 
         for report_key, source_name in source_map.items():
             report_data = reports.get(report_key)
             if report_data and isinstance(report_data, dict):
-                recs = report_data.get('recommendations', [])
+                recs = report_data.get("recommendations", [])
                 if recs and isinstance(recs, list):
                     for rec in recs:
                         if isinstance(rec, dict):
-                            all_problems.append({
-                                'source': source_name,
-                                'priority': rec.get('priority', 'MEDIUM'),
-                                'action': rec.get('action', 'N/A'),
-                                'file': rec.get('file', ''),
-                                'details': rec.get('details', '')
-                            })
+                            all_problems.append(
+                                {
+                                    "source": source_name,
+                                    "priority": rec.get("priority", "MEDIUM"),
+                                    "action": rec.get("action", "N/A"),
+                                    "file": rec.get("file", ""),
+                                    "details": rec.get("details", ""),
+                                }
+                            )
 
         return all_problems
 
@@ -389,10 +409,14 @@ class EmailService:
 
             # Connect to SMTP server
             if self.config.use_tls:
-                server = smtplib.SMTP(self.config.smtp_host, self.config.smtp_port, timeout=10)
+                server = smtplib.SMTP(
+                    self.config.smtp_host, self.config.smtp_port, timeout=10
+                )
                 server.starttls()
             else:
-                server = smtplib.SMTP_SSL(self.config.smtp_host, self.config.smtp_port, timeout=10)
+                server = smtplib.SMTP_SSL(
+                    self.config.smtp_host, self.config.smtp_port, timeout=10
+                )
 
             # Login and send
             server.login(self.config.smtp_user, self.config.smtp_password)

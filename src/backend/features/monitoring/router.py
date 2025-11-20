@@ -19,10 +19,12 @@ from backend.core.monitoring import (
 
 logger = logging.getLogger(__name__)
 
+
 # Stub pour verify_admin - à remplacer par la vraie dépendance
 def verify_admin():
     """Placeholder - À remplacer par la vraie authentification admin"""
     return {"role": "admin"}
+
 
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
@@ -95,11 +97,13 @@ async def health_ready(request: Request) -> JSONResponse:
 
         # Return JSONResponse avec code HTTP approprié
         from fastapi.responses import JSONResponse
+
         return JSONResponse(content=response, status_code=http_code)
 
     except Exception as e:
         logger.error(f"/health/ready check failed: {e}", exc_info=True)
         from fastapi.responses import JSONResponse
+
         return JSONResponse(
             content={
                 "status": "down",
@@ -117,7 +121,7 @@ async def detailed_health_check() -> dict[str, Any]:
     """
     cpu_percent = psutil.cpu_percent(interval=1)
     memory = psutil.virtual_memory()
-    disk = psutil.disk_usage('/')
+    disk = psutil.disk_usage("/")
 
     return {
         "status": "healthy",
@@ -164,7 +168,9 @@ async def export_metrics(_: dict[str, Any] = Depends(verify_admin)) -> dict[str,
 
 
 @router.get("/metrics/endpoints")
-async def get_endpoint_metrics(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, Any]:
+async def get_endpoint_metrics(
+    _: dict[str, Any] = Depends(verify_admin),
+) -> dict[str, Any]:
     """
     Métriques détaillées par endpoint
     """
@@ -175,7 +181,9 @@ async def get_endpoint_metrics(_: dict[str, Any] = Depends(verify_admin)) -> dic
 
 
 @router.get("/security/alerts")
-async def get_security_alerts(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, Any]:
+async def get_security_alerts(
+    _: dict[str, Any] = Depends(verify_admin),
+) -> dict[str, Any]:
     """
     Récupère les alertes de sécurité
     """
@@ -273,6 +281,7 @@ async def reset_metrics(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, 
 # 🏥 HEALTH CHECKS AVANCÉS (P1.5 - Émergence V8)
 # ============================================================
 
+
 async def _check_database(request: Request) -> dict[str, Any]:
     """Vérifie la connexion à la base de données"""
     try:
@@ -316,12 +325,20 @@ async def _check_vector_service(request: Request) -> dict[str, Any]:
             client = getattr(vector_service, "client", None)
             if client:
                 collections = client.list_collections()
-                return {"status": "up", "backend": "chroma", "collections": len(collections)}
+                return {
+                    "status": "up",
+                    "backend": "chroma",
+                    "collections": len(collections),
+                }
         elif backend == "qdrant":
             qdrant_client = getattr(vector_service, "qdrant_client", None)
             if qdrant_client:
                 collections = qdrant_client.get_collections()
-                return {"status": "up", "backend": "qdrant", "collections": len(collections.collections)}
+                return {
+                    "status": "up",
+                    "backend": "qdrant",
+                    "collections": len(collections.collections),
+                }
 
         return {"status": "up", "backend": backend}
     except Exception as e:
@@ -369,7 +386,9 @@ async def _check_llm_providers(request: Request) -> dict[str, Any]:
         except Exception as e:
             providers["google"] = {"status": "down", "error": str(e)}
 
-        overall = "up" if any(p.get("status") == "up" for p in providers.values()) else "down"
+        overall = (
+            "up" if any(p.get("status") == "up" for p in providers.values()) else "down"
+        )
         return {"status": overall, "providers": providers}
     except Exception as e:
         logger.error(f"LLM providers health check failed: {e}", exc_info=True)
@@ -416,15 +435,12 @@ async def readiness_probe(request: Request) -> dict[str, Any] | JSONResponse:
                 content={
                     "ok": False,
                     "db": db_check.get("status", "unknown"),
-                    "vector": vector_check.get("status", "unknown")
-                }
+                    "vector": vector_check.get("status", "unknown"),
+                },
             )
     except Exception as e:
         logger.error(f"Readiness check failed: {e}", exc_info=True)
-        return JSONResponse(
-            status_code=503,
-            content={"ok": False, "error": str(e)}
-        )
+        return JSONResponse(status_code=503, content={"ok": False, "error": str(e)})
 
 
 @router.get("/system/info")
@@ -446,17 +462,21 @@ async def get_system_info(request: Request) -> dict[str, Any]:
 
         # Get process info
         process = psutil.Process()
-        process_create_time = datetime.fromtimestamp(process.create_time(), tz=timezone.utc)
+        process_create_time = datetime.fromtimestamp(
+            process.create_time(), tz=timezone.utc
+        )
         now = datetime.now(timezone.utc)
         uptime_seconds = (now - process_create_time).total_seconds()
 
         # System resources
         cpu_percent = psutil.cpu_percent(interval=0.1)
         memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage("/")
 
         # Version info
-        backend_version = os.getenv("APP_VERSION") or os.getenv("BACKEND_VERSION", "beta-2.1.4")
+        backend_version = os.getenv("APP_VERSION") or os.getenv(
+            "BACKEND_VERSION", "beta-2.1.4"
+        )
         env = os.getenv("ENVIRONMENT", "development")
 
         # Check services

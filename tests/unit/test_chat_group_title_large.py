@@ -4,7 +4,7 @@ import sys
 
 
 def _register_dummy_module(name: str) -> ModuleType:
-    module = ModuleType(name.split('.')[-1])
+    module = ModuleType(name.split(".")[-1])
     sys.modules[name] = module
     return module
 

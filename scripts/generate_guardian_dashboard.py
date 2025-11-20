@@ -20,7 +20,7 @@ def load_json_report(path: Path) -> Dict[str, Any] | None:
     try:
         if not path.exists():
             return None
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         print(f"⚠️  Erreur lecture {path}: {e}")
@@ -30,8 +30,8 @@ def load_json_report(path: Path) -> Dict[str, Any] | None:
 def format_timestamp(ts_str: str) -> str:
     """Formate un timestamp ISO en format lisible."""
     try:
-        dt = datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+        dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
     except Exception:
         return ts_str
 
@@ -39,11 +39,11 @@ def format_timestamp(ts_str: str) -> str:
 def get_status_badge(status: str) -> str:
     """Retourne un badge HTML coloré selon le status."""
     status_lower = status.lower()
-    if status_lower == 'ok':
+    if status_lower == "ok":
         return '<span class="badge badge-success">✅ OK</span>'
-    elif status_lower == 'warning':
+    elif status_lower == "warning":
         return '<span class="badge badge-warning">⚠️ WARNING</span>'
-    elif status_lower == 'error' or status_lower == 'critical':
+    elif status_lower == "error" or status_lower == "critical":
         return '<span class="badge badge-error">❌ ERROR</span>'
     else:
         return f'<span class="badge badge-info">{status}</span>'
@@ -51,11 +51,11 @@ def get_status_badge(status: str) -> str:
 
 def get_severity_badge(severity: str) -> str:
     """Badge pour sévérité (critical, warning, info)."""
-    if severity == 'critical':
+    if severity == "critical":
         return '<span class="badge badge-error">🔴 CRITICAL</span>'
-    elif severity == 'warning':
+    elif severity == "warning":
         return '<span class="badge badge-warning">🟠 WARNING</span>'
-    elif severity == 'info':
+    elif severity == "info":
         return '<span class="badge badge-info">🔵 INFO</span>'
     else:
         return f'<span class="badge">{severity}</span>'
@@ -66,27 +66,27 @@ def render_unified_report(report: Dict[str, Any] | None) -> str:
     if not report:
         return '<div class="card error"><p>❌ Rapport unifié introuvable</p></div>'
 
-    metadata = report.get('metadata', {})
-    summary = report.get('executive_summary', {})
-    agent_status = report.get('agent_status', {})
-    recommendations = report.get('recommendations', {})
+    metadata = report.get("metadata", {})
+    summary = report.get("executive_summary", {})
+    agent_status = report.get("agent_status", {})
+    recommendations = report.get("recommendations", {})
 
     # Status global
-    global_status = summary.get('status', 'unknown')
+    global_status = summary.get("status", "unknown")
     status_badge = get_status_badge(global_status)
 
     # Issues breakdown
-    total_issues = summary.get('total_issues', 0)
-    critical = summary.get('critical', 0)
-    warnings = summary.get('warnings', 0)
-    info = summary.get('info', 0)
+    total_issues = summary.get("total_issues", 0)
+    critical = summary.get("critical", 0)
+    warnings = summary.get("warnings", 0)
+    info = summary.get("info", 0)
 
-    html = f'''
+    html = f"""
     <div class="card">
         <h2>📊 Rapport Unifié (Nexus)</h2>
         <div class="meta">
-            <p><strong>Timestamp:</strong> {format_timestamp(metadata.get('timestamp', 'N/A'))}</p>
-            <p><strong>Commit:</strong> <code>{metadata.get('commit_hash', 'N/A')[:8]}</code></p>
+            <p><strong>Timestamp:</strong> {format_timestamp(metadata.get("timestamp", "N/A"))}</p>
+            <p><strong>Commit:</strong> <code>{metadata.get("commit_hash", "N/A")[:8]}</code></p>
             <p><strong>Status:</strong> {status_badge}</p>
         </div>
 
@@ -94,15 +94,15 @@ def render_unified_report(report: Dict[str, Any] | None) -> str:
         <div class="summary-grid">
             <div class="summary-item">
                 <div class="summary-label">Total Issues</div>
-                <div class="summary-value {'error' if total_issues > 0 else 'success'}">{total_issues}</div>
+                <div class="summary-value {"error" if total_issues > 0 else "success"}">{total_issues}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Critical</div>
-                <div class="summary-value {'error' if critical > 0 else 'success'}">{critical}</div>
+                <div class="summary-value {"error" if critical > 0 else "success"}">{critical}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Warnings</div>
-                <div class="summary-value {'warning' if warnings > 0 else 'success'}">{warnings}</div>
+                <div class="summary-value {"warning" if warnings > 0 else "success"}">{warnings}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Info</div>
@@ -121,38 +121,38 @@ def render_unified_report(report: Dict[str, Any] | None) -> str:
                 </tr>
             </thead>
             <tbody>
-    '''
+    """
 
     for agent_name, agent_data in agent_status.items():
-        agent_status_val = agent_data.get('status', 'unknown')
-        issues_count = agent_data.get('issues_found', 0)
-        summary_text = agent_data.get('summary', 'N/A')
+        agent_status_val = agent_data.get("status", "unknown")
+        issues_count = agent_data.get("issues_found", 0)
+        summary_text = agent_data.get("summary", "N/A")
 
-        html += f'''
+        html += f"""
                 <tr>
                     <td><strong>{agent_name.upper()}</strong></td>
                     <td>{get_status_badge(agent_status_val)}</td>
                     <td>{issues_count}</td>
                     <td>{summary_text}</td>
                 </tr>
-        '''
+        """
 
-    html += '''
+    html += """
             </tbody>
         </table>
-    '''
+    """
 
     # Recommendations
     if recommendations:
-        html += '<h3>Recommandations</h3>'
+        html += "<h3>Recommandations</h3>"
         for priority, actions in recommendations.items():
             if actions:
-                html += f'<h4>{priority.capitalize()}</h4><ul>'
+                html += f"<h4>{priority.capitalize()}</h4><ul>"
                 for action in actions:
-                    html += f'<li>{action}</li>'
-                html += '</ul>'
+                    html += f"<li>{action}</li>"
+                html += "</ul>"
 
-    html += '</div>'
+    html += "</div>"
     return html
 
 
@@ -161,25 +161,25 @@ def render_prod_report(report: Dict[str, Any] | None) -> str:
     if not report:
         return '<div class="card error"><p>❌ Rapport production introuvable</p></div>'
 
-    status = report.get('status', 'UNKNOWN')
-    summary = report.get('summary', {})
-    timestamp = format_timestamp(report.get('timestamp', 'N/A'))
-    logs_analyzed = report.get('logs_analyzed', 0)
+    status = report.get("status", "UNKNOWN")
+    summary = report.get("summary", {})
+    timestamp = format_timestamp(report.get("timestamp", "N/A"))
+    logs_analyzed = report.get("logs_analyzed", 0)
 
-    errors = summary.get('errors', 0)
-    warnings = summary.get('warnings', 0)
-    critical_signals = summary.get('critical_signals', 0)
-    latency_issues = summary.get('latency_issues', 0)
+    errors = summary.get("errors", 0)
+    warnings = summary.get("warnings", 0)
+    critical_signals = summary.get("critical_signals", 0)
+    latency_issues = summary.get("latency_issues", 0)
 
     status_badge = get_status_badge(status)
 
-    html = f'''
+    html = f"""
     <div class="card">
         <h2>☁️ Production Cloud Run</h2>
         <div class="meta">
             <p><strong>Timestamp:</strong> {timestamp}</p>
-            <p><strong>Service:</strong> {report.get('service', 'N/A')}</p>
-            <p><strong>Région:</strong> {report.get('region', 'N/A')}</p>
+            <p><strong>Service:</strong> {report.get("service", "N/A")}</p>
+            <p><strong>Région:</strong> {report.get("region", "N/A")}</p>
             <p><strong>Logs analysés:</strong> {logs_analyzed}</p>
             <p><strong>Status:</strong> {status_badge}</p>
         </div>
@@ -187,52 +187,52 @@ def render_prod_report(report: Dict[str, Any] | None) -> str:
         <div class="summary-grid">
             <div class="summary-item">
                 <div class="summary-label">Errors</div>
-                <div class="summary-value {'error' if errors > 0 else 'success'}">{errors}</div>
+                <div class="summary-value {"error" if errors > 0 else "success"}">{errors}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Warnings</div>
-                <div class="summary-value {'warning' if warnings > 0 else 'success'}">{warnings}</div>
+                <div class="summary-value {"warning" if warnings > 0 else "success"}">{warnings}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Critical Signals</div>
-                <div class="summary-value {'error' if critical_signals > 0 else 'success'}">{critical_signals}</div>
+                <div class="summary-value {"error" if critical_signals > 0 else "success"}">{critical_signals}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Latency Issues</div>
-                <div class="summary-value {'warning' if latency_issues > 0 else 'success'}">{latency_issues}</div>
+                <div class="summary-value {"warning" if latency_issues > 0 else "success"}">{latency_issues}</div>
             </div>
         </div>
-    '''
+    """
 
     # Afficher les erreurs si présentes
-    if report.get('errors'):
+    if report.get("errors"):
         html += '<h3>❌ Erreurs</h3><ul class="issues-list">'
-        for error in report['errors']:
+        for error in report["errors"]:
             html += f'<li class="error">{error}</li>'
-        html += '</ul>'
+        html += "</ul>"
 
     # Afficher les warnings si présents
-    if report.get('warnings'):
+    if report.get("warnings"):
         html += '<h3>⚠️ Warnings</h3><ul class="issues-list">'
-        for warning in report['warnings']:
+        for warning in report["warnings"]:
             html += f'<li class="warning">{warning}</li>'
-        html += '</ul>'
+        html += "</ul>"
 
     # Recommandations
-    if report.get('recommendations'):
-        html += '<h3>Recommandations</h3><ul>'
-        for rec in report['recommendations']:
-            priority = rec.get('priority', 'UNKNOWN')
-            action = rec.get('action', 'N/A')
-            details = rec.get('details', '')
+    if report.get("recommendations"):
+        html += "<h3>Recommandations</h3><ul>"
+        for rec in report["recommendations"]:
+            priority = rec.get("priority", "UNKNOWN")
+            action = rec.get("action", "N/A")
+            details = rec.get("details", "")
 
-            html += f'<li><strong>[{priority}]</strong> {action}'
+            html += f"<li><strong>[{priority}]</strong> {action}"
             if details:
-                html += f' - <em>{details}</em>'
-            html += '</li>'
-        html += '</ul>'
+                html += f" - <em>{details}</em>"
+            html += "</li>"
+        html += "</ul>"
 
-    html += '</div>'
+    html += "</div>"
     return html
 
 
@@ -241,16 +241,16 @@ def render_integrity_report(report: Dict[str, Any] | None) -> str:
     if not report:
         return '<div class="card error"><p>❌ Rapport intégrité introuvable</p></div>'
 
-    status = report.get('status', 'unknown')
-    timestamp = format_timestamp(report.get('timestamp', 'N/A'))
-    stats = report.get('statistics', {})
-    backend_changes = report.get('backend_changes', {})
-    frontend_changes = report.get('frontend_changes', {})
-    issues = report.get('issues', [])
+    status = report.get("status", "unknown")
+    timestamp = format_timestamp(report.get("timestamp", "N/A"))
+    stats = report.get("statistics", {})
+    backend_changes = report.get("backend_changes", {})
+    frontend_changes = report.get("frontend_changes", {})
+    issues = report.get("issues", [])
 
     status_badge = get_status_badge(status)
 
-    html = f'''
+    html = f"""
     <div class="card">
         <h2>🛡️ Intégrité Backend/Frontend (Neo)</h2>
         <div class="meta">
@@ -261,53 +261,53 @@ def render_integrity_report(report: Dict[str, Any] | None) -> str:
         <div class="summary-grid">
             <div class="summary-item">
                 <div class="summary-label">Backend Files</div>
-                <div class="summary-value">{stats.get('backend_files_changed', 0)}</div>
+                <div class="summary-value">{stats.get("backend_files_changed", 0)}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Frontend Files</div>
-                <div class="summary-value">{stats.get('frontend_files_changed', 0)}</div>
+                <div class="summary-value">{stats.get("frontend_files_changed", 0)}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Issues</div>
-                <div class="summary-value {'error' if stats.get('issues_found', 0) > 0 else 'success'}">{stats.get('issues_found', 0)}</div>
+                <div class="summary-value {"error" if stats.get("issues_found", 0) > 0 else "success"}">{stats.get("issues_found", 0)}</div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">Critical</div>
-                <div class="summary-value {'error' if stats.get('critical', 0) > 0 else 'success'}">{stats.get('critical', 0)}</div>
+                <div class="summary-value {"error" if stats.get("critical", 0) > 0 else "success"}">{stats.get("critical", 0)}</div>
             </div>
         </div>
-    '''
+    """
 
     # Backend changes
-    if backend_changes.get('files'):
-        html += '<h3>Backend Changes</h3><ul>'
-        for file in backend_changes['files']:
-            html += f'<li><code>{file}</code></li>'
-        html += '</ul>'
+    if backend_changes.get("files"):
+        html += "<h3>Backend Changes</h3><ul>"
+        for file in backend_changes["files"]:
+            html += f"<li><code>{file}</code></li>"
+        html += "</ul>"
 
     # Frontend changes
-    if frontend_changes.get('files'):
-        html += '<h3>Frontend Changes</h3><ul>'
-        for file in frontend_changes['files']:
-            html += f'<li><code>{file}</code></li>'
-        html += '</ul>'
+    if frontend_changes.get("files"):
+        html += "<h3>Frontend Changes</h3><ul>"
+        for file in frontend_changes["files"]:
+            html += f"<li><code>{file}</code></li>"
+        html += "</ul>"
 
     # Issues
     if issues:
         html += '<h3>Issues Détectées</h3><ul class="issues-list">'
         for issue in issues:
-            severity = issue.get('severity', 'info')
-            message = issue.get('message', 'N/A')
-            file_path = issue.get('file', '')
+            severity = issue.get("severity", "info")
+            message = issue.get("message", "N/A")
+            file_path = issue.get("file", "")
 
             badge = get_severity_badge(severity)
             html += f'<li class="{severity}">{badge} {message}'
             if file_path:
-                html += f' <code>{file_path}</code>'
-            html += '</li>'
-        html += '</ul>'
+                html += f" <code>{file_path}</code>"
+            html += "</li>"
+        html += "</ul>"
 
-    html += '</div>'
+    html += "</div>"
     return html
 
 
@@ -316,9 +316,21 @@ def generate_dashboard() -> str:
     project_root = Path(__file__).parent.parent
 
     # Chemins des rapports
-    unified_report_path = project_root / "claude-plugins" / "integrity-docs-guardian" / "reports" / "unified_report.json"
+    unified_report_path = (
+        project_root
+        / "claude-plugins"
+        / "integrity-docs-guardian"
+        / "reports"
+        / "unified_report.json"
+    )
     prod_report_path = project_root / "reports" / "prod_report.json"
-    integrity_report_path = project_root / "claude-plugins" / "integrity-docs-guardian" / "reports" / "integrity_report.json"
+    integrity_report_path = (
+        project_root
+        / "claude-plugins"
+        / "integrity-docs-guardian"
+        / "reports"
+        / "integrity_report.json"
+    )
 
     # Charger les rapports
     unified_report = load_json_report(unified_report_path)
@@ -326,9 +338,9 @@ def generate_dashboard() -> str:
     integrity_report = load_json_report(integrity_report_path)
 
     # Générer le HTML
-    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    html = f'''<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -624,7 +636,7 @@ def generate_dashboard() -> str:
     </div>
 </body>
 </html>
-'''
+"""
 
     return html
 
@@ -635,8 +647,8 @@ def main():
     import io
 
     # Fix Windows encoding bullshit
-    if sys.platform == 'win32':
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    if sys.platform == "win32":
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
     print("🤖 Guardian Dashboard Generator")
     print("=" * 60)
@@ -650,7 +662,7 @@ def main():
     output_path = project_root / "docs" / "guardian-status.html"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
 
     print(f"✅ Dashboard généré : {output_path}")

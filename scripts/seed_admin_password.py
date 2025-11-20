@@ -40,7 +40,9 @@ async def seed_password(
     )
 
     effective_role = role or (existing["role"] if existing else "admin")
-    effective_note = note if note is not None else (existing["note"] if existing else "seed-script")
+    effective_note = (
+        note if note is not None else (existing["note"] if existing else "seed-script")
+    )
 
     try:
         await service.upsert_allowlist(
@@ -57,12 +59,26 @@ async def seed_password(
 def main() -> None:
     backend = _import_backend()
 
-    parser = argparse.ArgumentParser(description="Seed or update an admin password in auth_allowlist.")
+    parser = argparse.ArgumentParser(
+        description="Seed or update an admin password in auth_allowlist."
+    )
     parser.add_argument("--email", required=True, help="Email address to seed/update")
-    parser.add_argument("--password", required=True, help="Plain password that will be hashed")
-    parser.add_argument("--db", default="src/backend/data/db/emergence_v7.db", help="Path to the SQLite database")
-    parser.add_argument("--role", default="admin", help="Role to apply when creating the entry (default: admin)")
-    parser.add_argument("--note", default=None, help="Optional note stored on the allowlist entry")
+    parser.add_argument(
+        "--password", required=True, help="Plain password that will be hashed"
+    )
+    parser.add_argument(
+        "--db",
+        default="src/backend/data/db/emergence_v7.db",
+        help="Path to the SQLite database",
+    )
+    parser.add_argument(
+        "--role",
+        default="admin",
+        help="Role to apply when creating the entry (default: admin)",
+    )
+    parser.add_argument(
+        "--note", default=None, help="Optional note stored on the allowlist entry"
+    )
     args = parser.parse_args()
 
     email = args.email.strip().lower()
@@ -72,7 +88,9 @@ def main() -> None:
         raise SystemExit("--password must contain at least 8 characters")
 
     db_path = Path(args.db).expanduser().resolve()
-    asyncio.run(seed_password(db_path, email, args.password, args.role, args.note, backend))
+    asyncio.run(
+        seed_password(db_path, email, args.password, args.role, args.note, backend)
+    )
     print(f"[OK] Password updated for {email} in {db_path}")
 
 

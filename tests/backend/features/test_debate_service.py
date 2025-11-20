@@ -15,7 +15,9 @@ class RecorderConnectionManager:
     def __init__(self):
         self.messages: list[tuple[str, dict[str, Any]]] = []
 
-    async def send_personal_message(self, payload: dict[str, Any], session_id: str) -> None:
+    async def send_personal_message(
+        self, payload: dict[str, Any], session_id: str
+    ) -> None:
         self.messages.append((session_id, payload))
 
 
@@ -42,7 +44,11 @@ def test_debate_say_once_handles_chat_failure():
     assert response["fallback"] is True
     assert response["provider"] is None
     assert response["model"] is None
-    assert response["cost_info"] == {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
+    assert response["cost_info"] == {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_cost": 0.0,
+    }
     assert "indisponible" in response["text"]
     assert "anthropic timeout" in response["text"]
     assert response["error"]["type"] == "RuntimeError"
@@ -62,7 +68,11 @@ def test_debate_run_continues_when_agent_fails():
                 raise RuntimeError("upstream 500")
             return {
                 "text": f"{agent_id} reply",
-                "cost_info": {"total_cost": 0.01, "input_tokens": 10, "output_tokens": 5},
+                "cost_info": {
+                    "total_cost": 0.01,
+                    "input_tokens": 10,
+                    "output_tokens": 5,
+                },
                 "provider": "stub",
                 "model": "stub-model",
                 "fallback": False,
@@ -120,28 +130,42 @@ def test_debate_run_cost_summary_aggregation():
         cost_map = {
             "neo": {
                 "text": "Neo opening",
-                "cost_info": {"total_cost": 0.0105, "input_tokens": 100, "output_tokens": 50},
+                "cost_info": {
+                    "total_cost": 0.0105,
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                },
                 "provider": "anthropic",
                 "model": "claude-neo",
                 "fallback": False,
             },
             "nexus": {
                 "text": "Nexus rebuttal",
-                "cost_info": {"total_cost": 0.021, "input_tokens": 120, "output_tokens": 60},
+                "cost_info": {
+                    "total_cost": 0.021,
+                    "input_tokens": 120,
+                    "output_tokens": 60,
+                },
                 "provider": "anthropic",
                 "model": "claude-nexus",
                 "fallback": False,
             },
             "anima": {
                 "text": "Anima synthesis",
-                "cost_info": {"total_cost": 0.01575, "input_tokens": 150, "output_tokens": 75},
+                "cost_info": {
+                    "total_cost": 0.01575,
+                    "input_tokens": 150,
+                    "output_tokens": 75,
+                },
                 "provider": "anthropic",
                 "model": "claude-anima",
                 "fallback": False,
             },
         }
 
-        async def _fake_say_once(self, session_id, agent_id, prompt, *, use_rag, doc_ids=None):
+        async def _fake_say_once(
+            self, session_id, agent_id, prompt, *, use_rag, doc_ids=None
+        ):
             data = cost_map[agent_id]
             return {
                 "text": data["text"],

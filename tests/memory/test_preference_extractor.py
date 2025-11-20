@@ -70,9 +70,7 @@ async def test_extract_preference(mock_llm):
         {"role": "assistant", "content": "Compris", "id": "msg2"},
     ]
 
-    records = await extractor.extract(
-        messages, user_sub="user123", thread_id="thread1"
-    )
+    records = await extractor.extract(messages, user_sub="user123", thread_id="thread1")
 
     assert len(records) == 1
     assert records[0].type == "preference"
@@ -90,9 +88,7 @@ async def test_extract_intent(mock_llm):
         {"role": "user", "content": "Je vais créer un nouveau projet", "id": "msg1"}
     ]
 
-    records = await extractor.extract(
-        messages, user_sub="user123", thread_id="thread1"
-    )
+    records = await extractor.extract(messages, user_sub="user123", thread_id="thread1")
 
     assert len(records) == 1
     assert records[0].type == "intent"
@@ -104,13 +100,9 @@ async def test_extract_constraint(mock_llm):
     """Test extraction contrainte"""
     extractor = PreferenceExtractor(mock_llm)
 
-    messages = [
-        {"role": "user", "content": "J'évite d'utiliser jQuery", "id": "msg1"}
-    ]
+    messages = [{"role": "user", "content": "J'évite d'utiliser jQuery", "id": "msg1"}]
 
-    records = await extractor.extract(
-        messages, user_sub="user123", thread_id="thread1"
-    )
+    records = await extractor.extract(messages, user_sub="user123", thread_id="thread1")
 
     assert len(records) == 1
     assert records[0].type == "constraint"
@@ -127,9 +119,7 @@ async def test_lexical_filtering(mock_llm):
         {"role": "user", "content": "Quelle heure est-il ?", "id": "msg2"},
     ]
 
-    records = await extractor.extract(
-        messages, user_sub="user123", thread_id="thread1"
-    )
+    records = await extractor.extract(messages, user_sub="user123", thread_id="thread1")
 
     assert len(records) == 0  # Aucun verbe cible
     assert extractor.stats["filtered"] == 2  # 2 messages filtrés
@@ -156,9 +146,7 @@ async def test_low_confidence_filtering(mock_llm):
 
     messages = [{"role": "user", "content": "Je préfère le café", "id": "msg1"}]
 
-    records = await extractor.extract(
-        messages, user_sub="user123", thread_id="thread1"
-    )
+    records = await extractor.extract(messages, user_sub="user123", thread_id="thread1")
 
     assert len(records) == 0  # Filtré par confiance < 0.6
 
@@ -193,9 +181,7 @@ async def test_multiple_messages(mock_llm):
         },  # Devrait être filtré
     ]
 
-    records = await extractor.extract(
-        messages, user_sub="user123", thread_id="thread1"
-    )
+    records = await extractor.extract(messages, user_sub="user123", thread_id="thread1")
 
     # 3 messages avec verbes cibles, 1 filtré
     assert len(records) == 3

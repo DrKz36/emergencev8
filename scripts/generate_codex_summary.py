@@ -11,7 +11,7 @@ import shutil
 import sys
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 
 # Paths
 REPO_ROOT = Path(__file__).parent.parent
@@ -24,8 +24,10 @@ FALLBACK_REPORT_DIRS = [
 OUTPUT_FILE = REPORTS_DIR / "codex_summary.md"
 
 # Fix Windows console encoding
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8") if hasattr(
+        sys.stdout, "reconfigure"
+    ) else None
 
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -38,7 +40,7 @@ def load_json_report(filename: str) -> Optional[Dict]:
             fallback_path = fallback_dir / filename
             if fallback_path.exists():
                 try:
-                    with open(fallback_path, 'r', encoding='utf-8') as f:
+                    with open(fallback_path, "r", encoding="utf-8") as f:
                         data = json.load(f)
                 except Exception as exc:  # pragma: no cover - fallback errors logged
                     print(f"⚠️  Erreur lecture {fallback_path}: {exc}", file=sys.stderr)
@@ -61,7 +63,7 @@ def load_json_report(filename: str) -> Optional[Dict]:
         return None
 
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         print(f"⚠️  Erreur lecture {filename}: {e}", file=sys.stderr)
@@ -79,7 +81,7 @@ def extract_prod_insights(prod_report: Dict) -> Dict[str, Any]:
             "critical_signals": 0,
             "insights": [],
             "recommendations": [],
-            "recent_commits": []
+            "recent_commits": [],
         }
 
     insights = []
@@ -89,11 +91,13 @@ def extract_prod_insights(prod_report: Dict) -> Dict[str, Any]:
     # Errors avec contexte
     errors_detailed = prod_report.get("errors_detailed", [])
     if errors_detailed:
-        insights.append({
-            "type": "error",
-            "title": f"🔴 {len(errors_detailed)} erreur(s) détectée(s) en production",
-            "details": []
-        })
+        insights.append(
+            {
+                "type": "error",
+                "title": f"🔴 {len(errors_detailed)} erreur(s) détectée(s) en production",
+                "details": [],
+            }
+        )
 
         for err in errors_detailed[:5]:  # Top 5
             error_type = err.get("error_type", "Unknown")
@@ -102,13 +106,15 @@ def extract_prod_insights(prod_report: Dict) -> Dict[str, Any]:
             line = err.get("line_number", "N/A")
             message = err.get("message", "")[:200]
 
-            insights[-1]["details"].append({
-                "error_type": error_type,
-                "endpoint": endpoint,
-                "file": file_path,
-                "line": line,
-                "message": message
-            })
+            insights[-1]["details"].append(
+                {
+                    "error_type": error_type,
+                    "endpoint": endpoint,
+                    "file": file_path,
+                    "line": line,
+                    "message": message,
+                }
+            )
 
     # Patterns d'erreurs
     error_patterns = prod_report.get("error_patterns", {})
@@ -119,40 +125,52 @@ def extract_prod_insights(prod_report: Dict) -> Dict[str, Any]:
 
         if by_endpoint:
             top_endpoint = list(by_endpoint.items())[0]
-            insights.append({
-                "type": "pattern",
-                "title": f"📊 Endpoint le plus affecté: {top_endpoint[0]}",
-                "details": [{"count": top_endpoint[1], "endpoint": top_endpoint[0]}]
-            })
+            insights.append(
+                {
+                    "type": "pattern",
+                    "title": f"📊 Endpoint le plus affecté: {top_endpoint[0]}",
+                    "details": [
+                        {"count": top_endpoint[1], "endpoint": top_endpoint[0]}
+                    ],
+                }
+            )
 
         if by_file:
             top_file = list(by_file.items())[0]
-            insights.append({
-                "type": "pattern",
-                "title": f"📁 Fichier le plus affecté: {top_file[0]}",
-                "details": [{"count": top_file[1], "file": top_file[0]}]
-            })
+            insights.append(
+                {
+                    "type": "pattern",
+                    "title": f"📁 Fichier le plus affecté: {top_file[0]}",
+                    "details": [{"count": top_file[1], "file": top_file[0]}],
+                }
+            )
 
         if by_error_type:
             top_error = list(by_error_type.items())[0]
-            insights.append({
-                "type": "pattern",
-                "title": f"⚠️ Type d'erreur récurrent: {top_error[0]}",
-                "details": [{"count": top_error[1], "error_type": top_error[0]}]
-            })
+            insights.append(
+                {
+                    "type": "pattern",
+                    "title": f"⚠️ Type d'erreur récurrent: {top_error[0]}",
+                    "details": [{"count": top_error[1], "error_type": top_error[0]}],
+                }
+            )
 
     # Code snippets
     code_snippets = prod_report.get("code_snippets", [])
     if code_snippets:
-        insights.append({
-            "type": "code",
-            "title": f"💻 {len(code_snippets)} fichier(s) avec erreurs + snippets de code",
-            "details": code_snippets
-        })
+        insights.append(
+            {
+                "type": "code",
+                "title": f"💻 {len(code_snippets)} fichier(s) avec erreurs + snippets de code",
+                "details": code_snippets,
+            }
+        )
 
     # Recommandations
     recommendations = prod_report.get("recommendations", [])
-    actionable_recs = [rec for rec in recommendations if rec.get("priority") in ["HIGH", "CRITICAL"]]
+    actionable_recs = [
+        rec for rec in recommendations if rec.get("priority") in ["HIGH", "CRITICAL"]
+    ]
 
     return {
         "status": status,
@@ -162,7 +180,7 @@ def extract_prod_insights(prod_report: Dict) -> Dict[str, Any]:
         "critical_signals": summary.get("critical_signals", 0),
         "insights": insights,
         "recommendations": actionable_recs,
-        "recent_commits": prod_report.get("recent_commits", [])
+        "recent_commits": prod_report.get("recent_commits", []),
     }
 
 
@@ -175,7 +193,7 @@ def extract_docs_insights(docs_report: Dict) -> Dict[str, Any]:
             "updates_count": 0,
             "backend_files_changed": 0,
             "frontend_files_changed": 0,
-            "insights": []
+            "insights": [],
         }
 
     insights = []
@@ -188,27 +206,33 @@ def extract_docs_insights(docs_report: Dict) -> Dict[str, Any]:
         medium_severity = [g for g in gaps if g.get("severity") == "medium"]
 
         if high_severity:
-            insights.append({
-                "type": "gap_high",
-                "title": f"🔴 {len(high_severity)} gap(s) documentation HAUTE priorité",
-                "details": high_severity[:5]
-            })
+            insights.append(
+                {
+                    "type": "gap_high",
+                    "title": f"🔴 {len(high_severity)} gap(s) documentation HAUTE priorité",
+                    "details": high_severity[:5],
+                }
+            )
 
         if medium_severity:
-            insights.append({
-                "type": "gap_medium",
-                "title": f"🟡 {len(medium_severity)} gap(s) documentation MOYENNE priorité",
-                "details": medium_severity[:5]
-            })
+            insights.append(
+                {
+                    "type": "gap_medium",
+                    "title": f"🟡 {len(medium_severity)} gap(s) documentation MOYENNE priorité",
+                    "details": medium_severity[:5],
+                }
+            )
 
     # Proposed updates
     updates = docs_report.get("proposed_updates", [])
     if updates:
-        insights.append({
-            "type": "updates",
-            "title": f"📝 {len(updates)} mise(s) à jour de documentation proposée(s)",
-            "details": updates
-        })
+        insights.append(
+            {
+                "type": "updates",
+                "title": f"📝 {len(updates)} mise(s) à jour de documentation proposée(s)",
+                "details": updates,
+            }
+        )
 
     # Changes detected
     changes = docs_report.get("changes_detected", {})
@@ -221,7 +245,7 @@ def extract_docs_insights(docs_report: Dict) -> Dict[str, Any]:
         "updates_count": len(updates),
         "backend_files_changed": len(backend_files),
         "frontend_files_changed": len(frontend_files),
-        "insights": insights
+        "insights": insights,
     }
 
 
@@ -232,7 +256,7 @@ def extract_integrity_insights(integrity_report: Dict) -> Dict[str, Any]:
             "status": "UNKNOWN",
             "issues_count": 0,
             "critical_count": 0,
-            "insights": []
+            "insights": [],
         }
 
     insights = []
@@ -245,18 +269,22 @@ def extract_integrity_insights(integrity_report: Dict) -> Dict[str, Any]:
         warnings = [i for i in issues if i.get("severity") == "warning"]
 
         if critical:
-            insights.append({
-                "type": "critical",
-                "title": f"🔴 {len(critical)} problème(s) intégrité CRITIQUE",
-                "details": critical
-            })
+            insights.append(
+                {
+                    "type": "critical",
+                    "title": f"🔴 {len(critical)} problème(s) intégrité CRITIQUE",
+                    "details": critical,
+                }
+            )
 
         if warnings:
-            insights.append({
-                "type": "warning",
-                "title": f"⚠️ {len(warnings)} warning(s) intégrité",
-                "details": warnings[:5]
-            })
+            insights.append(
+                {
+                    "type": "warning",
+                    "title": f"⚠️ {len(warnings)} warning(s) intégrité",
+                    "details": warnings[:5],
+                }
+            )
 
     # Backend/Frontend changes
     backend_changes = integrity_report.get("backend_changes", {})
@@ -264,25 +292,29 @@ def extract_integrity_insights(integrity_report: Dict) -> Dict[str, Any]:
 
     endpoints_modified = backend_changes.get("endpoints_modified", [])
     if endpoints_modified:
-        insights.append({
-            "type": "backend",
-            "title": f"🔧 {len(endpoints_modified)} endpoint(s) modifié(s)",
-            "details": endpoints_modified
-        })
+        insights.append(
+            {
+                "type": "backend",
+                "title": f"🔧 {len(endpoints_modified)} endpoint(s) modifié(s)",
+                "details": endpoints_modified,
+            }
+        )
 
     api_calls_modified = frontend_changes.get("api_calls_modified", [])
     if api_calls_modified:
-        insights.append({
-            "type": "frontend",
-            "title": f"🌐 {len(api_calls_modified)} appel(s) API modifié(s)",
-            "details": api_calls_modified
-        })
+        insights.append(
+            {
+                "type": "frontend",
+                "title": f"🌐 {len(api_calls_modified)} appel(s) API modifié(s)",
+                "details": api_calls_modified,
+            }
+        )
 
     return {
         "status": status,
         "issues_count": len(issues),
         "critical_count": len([i for i in issues if i.get("severity") == "critical"]),
-        "insights": insights
+        "insights": insights,
     }
 
 
@@ -295,7 +327,7 @@ def extract_unified_insights(unified_report: Dict) -> Dict[str, Any]:
             "critical": 0,
             "warnings": 0,
             "insights": [],
-            "statistics": {}
+            "statistics": {},
         }
 
     exec_summary = unified_report.get("executive_summary", {})
@@ -306,11 +338,13 @@ def extract_unified_insights(unified_report: Dict) -> Dict[str, Any]:
     # Priority actions
     priority_actions = unified_report.get("priority_actions", [])
     if priority_actions:
-        insights.append({
-            "type": "actions",
-            "title": f"⚡ {len(priority_actions)} action(s) prioritaire(s)",
-            "details": priority_actions
-        })
+        insights.append(
+            {
+                "type": "actions",
+                "title": f"⚡ {len(priority_actions)} action(s) prioritaire(s)",
+                "details": priority_actions,
+            }
+        )
 
     # Statistics
     stats = unified_report.get("statistics", {})
@@ -321,7 +355,7 @@ def extract_unified_insights(unified_report: Dict) -> Dict[str, Any]:
         "critical": exec_summary.get("critical", 0),
         "warnings": exec_summary.get("warnings", 0),
         "insights": insights,
-        "statistics": stats
+        "statistics": stats,
     }
 
 
@@ -329,7 +363,7 @@ def generate_markdown_summary(
     prod_insights: Dict,
     docs_insights: Dict,
     integrity_insights: Dict,
-    unified_insights: Dict
+    unified_insights: Dict,
 ) -> str:
     """Génère le résumé markdown exploitable pour Codex GPT."""
 
@@ -346,10 +380,10 @@ def generate_markdown_summary(
 
 | Guardian | Status | Métriques clés |
 |----------|--------|----------------|
-| **Production** | `{prod_insights['status']}` | {prod_insights['errors_count']} erreurs, {prod_insights['warnings_count']} warnings, {prod_insights['logs_analyzed']} logs analysés |
-| **Documentation** | `{docs_insights['status']}` | {docs_insights['gaps_count']} gaps, {docs_insights['updates_count']} mises à jour proposées |
-| **Intégrité** | `{integrity_insights['status']}` | {integrity_insights['issues_count']} issues ({integrity_insights['critical_count']} critiques) |
-| **Rapport Unifié** | `{unified_insights['status']}` | {unified_insights['total_issues']} issues totales |
+| **Production** | `{prod_insights["status"]}` | {prod_insights["errors_count"]} erreurs, {prod_insights["warnings_count"]} warnings, {prod_insights["logs_analyzed"]} logs analysés |
+| **Documentation** | `{docs_insights["status"]}` | {docs_insights["gaps_count"]} gaps, {docs_insights["updates_count"]} mises à jour proposées |
+| **Intégrité** | `{integrity_insights["status"]}` | {integrity_insights["issues_count"]} issues ({integrity_insights["critical_count"]} critiques) |
+| **Rapport Unifié** | `{unified_insights["status"]}` | {unified_insights["total_issues"]} issues totales |
 
 ---
 
@@ -358,62 +392,62 @@ def generate_markdown_summary(
 """
 
     # Insights production
-    if prod_insights['insights']:
-        for insight in prod_insights['insights']:
+    if prod_insights["insights"]:
+        for insight in prod_insights["insights"]:
             md += f"### {insight['title']}\n\n"
 
-            if insight['type'] == 'error':
-                for detail in insight['details']:
+            if insight["type"] == "error":
+                for detail in insight["details"]:
                     md += f"**{detail['error_type']}**\n"
                     md += f"- Endpoint: `{detail['endpoint']}`\n"
                     md += f"- Fichier: `{detail['file']}:{detail['line']}`\n"
                     md += f"- Message: {detail['message']}\n\n"
 
-            elif insight['type'] == 'pattern':
-                for detail in insight['details']:
-                    if 'endpoint' in detail:
+            elif insight["type"] == "pattern":
+                for detail in insight["details"]:
+                    if "endpoint" in detail:
                         md += f"- Endpoint: `{detail['endpoint']}` ({detail['count']} erreurs)\n"
-                    elif 'file' in detail:
+                    elif "file" in detail:
                         md += f"- Fichier: `{detail['file']}` ({detail['count']} erreurs)\n"
-                    elif 'error_type' in detail:
+                    elif "error_type" in detail:
                         md += f"- Type: `{detail['error_type']}` ({detail['count']} occurrences)\n"
                 md += "\n"
 
-            elif insight['type'] == 'code':
-                for snippet in insight['details']:
+            elif insight["type"] == "code":
+                for snippet in insight["details"]:
                     md += f"**Fichier:** `{snippet['file']}`  \n"
                     md += f"**Ligne:** {snippet['line']}  \n"
                     md += f"**Erreurs:** {snippet.get('error_count', 1)}  \n"
                     md += f"```python\n{snippet['code_snippet']}\n```\n\n"
 
     # Recommandations production
-    if prod_insights['recommendations']:
+    if prod_insights["recommendations"]:
         md += "### 💡 Recommandations actionnables\n\n"
-        for rec in prod_insights['recommendations']:
-            priority = rec.get('priority', 'MEDIUM')
-            action = rec.get('action', 'N/A')
-            details = rec.get('details', '')
+        for rec in prod_insights["recommendations"]:
+            priority = rec.get("priority", "MEDIUM")
+            action = rec.get("action", "N/A")
+            details = rec.get("details", "")
 
             md += f"**[{priority}]** {action}\n"
             if details:
                 md += f"- {details}\n"
 
             # Commandes gcloud si disponibles
-            if 'command' in rec:
+            if "command" in rec:
                 md += f"- Commande: `{rec['command']}`\n"
 
             # Fichiers affectés
-            if 'affected_files' in rec:
-                files = rec['affected_files'][:3]
+            if "affected_files" in rec:
+                files = rec["affected_files"][:3]
                 if files:
                     md += f"- Fichiers: {', '.join(f'`{f}`' for f in files)}\n"
 
             md += "\n"
 
     # Commits récents
-    if prod_insights['recent_commits']:
+    if prod_insights["recent_commits"]:
         md += "### 📝 Commits récents (contexte)\n\n"
-        for commit in prod_insights['recent_commits'][:5]:
+        for commit in prod_insights["recent_commits"][:5]:
             md += f"- `{commit['hash']}` - {commit['message']} ({commit['author']}, {commit['time']})\n"
         md += "\n"
 
@@ -422,23 +456,23 @@ def generate_markdown_summary(
     # Documentation (Anima)
     md += "## 📚 Documentation (Anima)\n\n"
 
-    if docs_insights['insights']:
-        for insight in docs_insights['insights']:
+    if docs_insights["insights"]:
+        for insight in docs_insights["insights"]:
             md += f"### {insight['title']}\n\n"
 
-            if insight['type'] in ['gap_high', 'gap_medium']:
-                for gap in insight['details']:
+            if insight["type"] in ["gap_high", "gap_medium"]:
+                for gap in insight["details"]:
                     md += f"**Fichier:** `{gap['file']}`  \n"
                     md += f"**Issue:** {gap['issue']}  \n"
                     md += f"**Docs affectées:** {', '.join(f'`{d}`' for d in gap.get('affected_docs', []))}  \n"
                     md += f"**Recommandation:** {gap['recommendation']}\n\n"
 
-            elif insight['type'] == 'updates':
-                for update in insight['details']:
+            elif insight["type"] == "updates":
+                for update in insight["details"]:
                     md += f"**Fichier:** `{update['file']}`  \n"
                     md += f"**Action:** {update['action']}  \n"
                     md += f"**Raison:** {update['reason']}  \n"
-                    if 'related_changes' in update:
+                    if "related_changes" in update:
                         md += f"**Changements liés:** {', '.join(f'`{c}`' for c in update['related_changes'][:3])}\n"
                     md += "\n"
     else:
@@ -449,25 +483,25 @@ def generate_markdown_summary(
     # Intégrité (Neo)
     md += "## 🔐 Intégrité Système (Neo)\n\n"
 
-    if integrity_insights['insights']:
-        for insight in integrity_insights['insights']:
+    if integrity_insights["insights"]:
+        for insight in integrity_insights["insights"]:
             md += f"### {insight['title']}\n\n"
 
-            if insight['type'] in ['critical', 'warning']:
-                for issue in insight['details']:
+            if insight["type"] in ["critical", "warning"]:
+                for issue in insight["details"]:
                     md += f"**Sévérité:** {issue.get('severity', 'N/A')}  \n"
                     md += f"**Message:** {issue.get('message', 'N/A')}  \n"
-                    if 'file' in issue:
+                    if "file" in issue:
                         md += f"**Fichier:** `{issue['file']}`  \n"
                     md += "\n"
 
-            elif insight['type'] == 'backend':
-                for endpoint in insight['details']:
+            elif insight["type"] == "backend":
+                for endpoint in insight["details"]:
                     md += f"- `{endpoint}`\n"
                 md += "\n"
 
-            elif insight['type'] == 'frontend':
-                for api_call in insight['details']:
+            elif insight["type"] == "frontend":
+                for api_call in insight["details"]:
                     md += f"- `{api_call}`\n"
                 md += "\n"
     else:
@@ -478,26 +512,26 @@ def generate_markdown_summary(
     # Rapport unifié (Nexus)
     md += "## 🎯 Rapport Unifié (Nexus)\n\n"
 
-    if unified_insights['insights']:
-        for insight in unified_insights['insights']:
+    if unified_insights["insights"]:
+        for insight in unified_insights["insights"]:
             md += f"### {insight['title']}\n\n"
 
-            if insight['type'] == 'actions':
-                for action in insight['details']:
+            if insight["type"] == "actions":
+                for action in insight["details"]:
                     md += f"- {action}\n"
                 md += "\n"
     else:
         md += "*Aucune action prioritaire.*\n\n"
 
     # Statistics globales
-    if unified_insights.get('statistics'):
-        stats = unified_insights['statistics']
+    if unified_insights.get("statistics"):
+        stats = unified_insights["statistics"]
         md += "### 📈 Statistiques globales\n\n"
         md += f"- Fichiers backend modifiés: {stats.get('backend_files', 0)}\n"
         md += f"- Fichiers frontend modifiés: {stats.get('frontend_files', 0)}\n"
         md += f"- Fichiers docs modifiés: {stats.get('docs_files', 0)}\n"
-        md += f"- Issues par sévérité:\n"
-        issues_by_severity = stats.get('issues_by_severity', {})
+        md += "- Issues par sévérité:\n"
+        issues_by_severity = stats.get("issues_by_severity", {})
         for severity, count in issues_by_severity.items():
             md += f"  - {severity}: {count}\n"
         md += "\n"
@@ -510,17 +544,25 @@ def generate_markdown_summary(
     # Prioriser les actions
     actions = []
 
-    if prod_insights['errors_count'] > 0:
-        actions.append("1. **🔴 PRIORITÉ HAUTE** - Corriger les erreurs production (voir section Production ci-dessus)")
+    if prod_insights["errors_count"] > 0:
+        actions.append(
+            "1. **🔴 PRIORITÉ HAUTE** - Corriger les erreurs production (voir section Production ci-dessus)"
+        )
 
-    if integrity_insights['critical_count'] > 0:
-        actions.append("2. **🔴 PRIORITÉ HAUTE** - Résoudre les problèmes d'intégrité critiques")
+    if integrity_insights["critical_count"] > 0:
+        actions.append(
+            "2. **🔴 PRIORITÉ HAUTE** - Résoudre les problèmes d'intégrité critiques"
+        )
 
-    if docs_insights['gaps_count'] > 0:
-        actions.append("3. **🟡 PRIORITÉ MOYENNE** - Mettre à jour la documentation (gaps détectés)")
+    if docs_insights["gaps_count"] > 0:
+        actions.append(
+            "3. **🟡 PRIORITÉ MOYENNE** - Mettre à jour la documentation (gaps détectés)"
+        )
 
-    if prod_insights['warnings_count'] > 0:
-        actions.append("4. **🟡 PRIORITÉ MOYENNE** - Investiguer les warnings production")
+    if prod_insights["warnings_count"] > 0:
+        actions.append(
+            "4. **🟡 PRIORITÉ MOYENNE** - Investiguer les warnings production"
+        )
 
     if not actions:
         actions.append("✅ **Tout va bien !** Aucune action urgente requise.")
@@ -558,14 +600,11 @@ def main():
     # Générer markdown
     print("📝 Génération du résumé markdown...")
     markdown = generate_markdown_summary(
-        prod_insights,
-        docs_insights,
-        integrity_insights,
-        unified_insights
+        prod_insights, docs_insights, integrity_insights, unified_insights
     )
 
     # Sauvegarder
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(markdown)
 
     print(f"✅ Résumé généré: {OUTPUT_FILE}")

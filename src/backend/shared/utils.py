@@ -1,4 +1,4 @@
-﻿# src/backend/shared/utils.py
+# src/backend/shared/utils.py
 """
 Utilitaires partagés pour le backend
 """
@@ -6,6 +6,7 @@ Utilitaires partagés pour le backend
 import datetime
 from enum import Enum
 from uuid import UUID
+
 
 def json_serializer(obj):
     """

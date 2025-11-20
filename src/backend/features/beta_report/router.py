@@ -2,6 +2,7 @@
 """
 Beta report endpoint - sends user feedback via email
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,14 +46,14 @@ def format_beta_report_email(data: BetaReportRequest) -> str:
 
     # Count by phase
     phase_counts = {
-        1: sum(1 for k, v in data.checklist.items() if k.startswith('test1_') and v),
-        2: sum(1 for k, v in data.checklist.items() if k.startswith('test2_') and v),
-        3: sum(1 for k, v in data.checklist.items() if k.startswith('test3_') and v),
-        4: sum(1 for k, v in data.checklist.items() if k.startswith('test4_') and v),
-        5: sum(1 for k, v in data.checklist.items() if k.startswith('test5_') and v),
-        6: sum(1 for k, v in data.checklist.items() if k.startswith('test6_') and v),
-        7: sum(1 for k, v in data.checklist.items() if k.startswith('test7_') and v),
-        8: sum(1 for k, v in data.checklist.items() if k.startswith('test8_') and v),
+        1: sum(1 for k, v in data.checklist.items() if k.startswith("test1_") and v),
+        2: sum(1 for k, v in data.checklist.items() if k.startswith("test2_") and v),
+        3: sum(1 for k, v in data.checklist.items() if k.startswith("test3_") and v),
+        4: sum(1 for k, v in data.checklist.items() if k.startswith("test4_") and v),
+        5: sum(1 for k, v in data.checklist.items() if k.startswith("test5_") and v),
+        6: sum(1 for k, v in data.checklist.items() if k.startswith("test6_") and v),
+        7: sum(1 for k, v in data.checklist.items() if k.startswith("test7_") and v),
+        8: sum(1 for k, v in data.checklist.items() if k.startswith("test8_") and v),
     }
 
     phase_totals = {1: 5, 2: 5, 3: 5, 4: 6, 5: 5, 6: 5, 7: 5, 8: 5}
@@ -61,9 +62,9 @@ def format_beta_report_email(data: BetaReportRequest) -> str:
 EMERGENCE Beta 1.0 - Rapport de Test
 =====================================
 
-Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 Utilisateur: {data.email}
-Navigateur/OS: {data.browserInfo or 'Non spécifié'}
+Navigateur/OS: {data.browserInfo or "Non spécifié"}
 
 PROGRESSION GLOBALE
 -------------------
@@ -81,7 +82,7 @@ DÉTAIL PAR PHASE
         5: "Débats autonomes",
         6: "Cockpit & Analytics",
         7: "Tests de robustesse",
-        8: "Edge cases & bugs connus"
+        8: "Edge cases & bugs connus",
     }
 
     for phase_num in range(1, 9):
@@ -107,21 +108,18 @@ DÉTAIL PAR PHASE
         "test1_3": "Tester le lien 'Mot de passe oublié'",
         "test1_4": "Se déconnecter et se reconnecter",
         "test1_5": "Vérifier la persistance de session",
-
         # Phase 2
         "test2_1": "Lancer une conversation avec Anima",
         "test2_2": "Lancer une conversation avec Neo",
         "test2_3": "Lancer une conversation avec Nexus",
         "test2_4": "Créer plusieurs threads et basculer entre eux",
         "test2_5": "Supprimer un thread",
-
         # Phase 3
         "test3_1": "Activer l'analyse mémoire",
         "test3_2": "Ouvrir le Centre Mémoire",
         "test3_3": "Faire référence à une information passée",
         "test3_4": "Tester le 'Clear' mémoire",
         "test3_5": "Tester la détection de topic shift",
-
         # Phase 4
         "test4_1": "Uploader un document PDF simple",
         "test4_2": "Uploader un document TXT contenant un poème",
@@ -129,28 +127,24 @@ DÉTAIL PAR PHASE
         "test4_4": "Tester avec document volumineux",
         "test4_5": "Supprimer un document",
         "test4_6": "Tester isolation documents",
-
         # Phase 5
         "test5_1": "Lancer un débat simple",
         "test5_2": "Vérifier la synthèse finale",
         "test5_3": "Lancer un débat avec RAG",
         "test5_4": "Tester débat long (4+ tours)",
         "test5_5": "Consulter les métriques du débat",
-
         # Phase 6
         "test6_1": "Ouvrir le Cockpit et consulter résumé coûts",
         "test6_2": "Filtrer par période",
         "test6_3": "Consulter répartition par agent",
         "test6_4": "Monitoring santé",
         "test6_5": "Dashboard admin",
-
         # Phase 7
         "test7_1": "Envoyer 10 messages rapidement",
         "test7_2": "Uploader 3 documents simultanément",
         "test7_3": "Forcer une déconnexion WebSocket",
         "test7_4": "Tester sur connexion lente",
         "test7_5": "Session très longue (50+ messages)",
-
         # Phase 8
         "test8_1": "Tester cache mémoire intensif",
         "test8_2": "Accès concurrents (2 onglets)",
@@ -175,7 +169,9 @@ DÉTAIL PAR PHASE
     if data.generalComments and data.generalComments.strip():
         email_body += f"\nCOMMENTAIRES LIBRES:\n{data.generalComments}\n"
 
-    email_body += "\n\n---\nRapport généré automatiquement par EMERGENCE Beta Report System"
+    email_body += (
+        "\n\n---\nRapport généré automatiquement par EMERGENCE Beta Report System"
+    )
 
     return email_body
 
@@ -200,32 +196,31 @@ async def send_beta_invitations(request: BetaInvitationRequest) -> dict[str, Any
     if not email_service.is_enabled():
         raise HTTPException(
             status_code=503,
-            detail="Email service is not configured. Please set EMAIL_ENABLED=1 and configure SMTP settings."
+            detail="Email service is not configured. Please set EMAIL_ENABLED=1 and configure SMTP settings.",
         )
 
-    results: dict[str, Any] = {
-        "total": len(request.emails),
-        "sent": [],
-        "failed": []
-    }
+    results: dict[str, Any] = {"total": len(request.emails), "sent": [], "failed": []}
 
     for email in request.emails:
         try:
             success = await email_service.send_beta_invitation_email(
-                to_email=email,
-                base_url=request.base_url
+                to_email=email, base_url=request.base_url
             )
 
             if success:
                 results["sent"].append(email)
                 logger.info(f"Beta invitation sent to {email}")
             else:
-                results["failed"].append({"email": email, "reason": "Email service returned false"})
+                results["failed"].append(
+                    {"email": email, "reason": "Email service returned false"}
+                )
                 logger.error(f"Failed to send beta invitation to {email}")
 
         except Exception as e:
             results["failed"].append({"email": email, "reason": str(e)})
-            logger.error(f"Error sending beta invitation to {email}: {e}", exc_info=True)
+            logger.error(
+                f"Error sending beta invitation to {email}: {e}", exc_info=True
+            )
 
     return {
         "status": "completed",
@@ -234,7 +229,7 @@ async def send_beta_invitations(request: BetaInvitationRequest) -> dict[str, Any
         "failed": len(results["failed"]),
         "sent_to": results["sent"],
         "failed_emails": results["failed"],
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
@@ -255,6 +250,7 @@ async def submit_beta_report(report: BetaReportRequest) -> dict[str, str]:
         # Save to file for backup
         try:
             from pathlib import Path
+
             reports_dir = Path("data/beta_reports")
             reports_dir.mkdir(parents=True, exist_ok=True)
 
@@ -283,13 +279,15 @@ async def submit_beta_report(report: BetaReportRequest) -> dict[str, str]:
                     to_email="gonzalefernando@gmail.com",
                     subject=f"EMERGENCE Beta Report - {report.email} ({report.completionPercentage}%)",
                     html_body=f"<pre>{email_body}</pre>",
-                    text_body=email_body
+                    text_body=email_body,
                 )
 
                 if email_sent:
                     logger.info("Beta report emailed successfully")
                 else:
-                    logger.warning("Email service returned false when sending beta report")
+                    logger.warning(
+                        "Email service returned false when sending beta report"
+                    )
 
             except Exception as e:
                 logger.error(f"Failed to email beta report: {e}", exc_info=True)
@@ -300,12 +298,12 @@ async def submit_beta_report(report: BetaReportRequest) -> dict[str, str]:
             "status": "success",
             "message": "Merci pour votre rapport! Il a été transmis à l'équipe.",
             "email_sent": str(email_sent),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
         logger.error(f"Error processing beta report: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail="Erreur lors de l'envoi du rapport. Veuillez réessayer."
+            detail="Erreur lors de l'envoi du rapport. Veuillez réessayer.",
         )

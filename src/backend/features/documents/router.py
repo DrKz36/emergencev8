@@ -25,12 +25,18 @@ async def _get_document_service(request: Request) -> DocumentService:
         raise
     except AttributeError as exc:
         logger.error("DocumentService provider unavailable: %s", exc)
-        raise HTTPException(status_code=503, detail="Document service unavailable.") from exc
+        raise HTTPException(
+            status_code=503, detail="Document service unavailable."
+        ) from exc
     except Exception as exc:
         logger.error("Failed to resolve DocumentService: %s", exc, exc_info=True)
-        raise HTTPException(status_code=503, detail="Document service unavailable.") from exc
+        raise HTTPException(
+            status_code=503, detail="Document service unavailable."
+        ) from exc
     if not isinstance(service, DocumentService):
-        raise HTTPException(status_code=503, detail="Invalid document service instance.")
+        raise HTTPException(
+            status_code=503, detail="Invalid document service instance."
+        )
     return service
 
 
@@ -104,7 +110,8 @@ async def upload_document(
     except Exception as exc:
         logger.error(f"Erreur critique lors de l'upload: {exc}", exc_info=True)
         raise HTTPException(
-            status_code=500, detail="Erreur interne lors du traitement du fichier.")
+            status_code=500, detail="Erreur interne lors du traitement du fichier."
+        )
 
 
 @router.get("/{document_id}")
@@ -115,7 +122,9 @@ async def get_document(
 ) -> Dict[str, Any]:
     """Retourne les détails d'un document spécifique."""
     try:
-        docs = await service.get_all_documents(session.session_id, user_id=session.user_id)
+        docs = await service.get_all_documents(
+            session.session_id, user_id=session.user_id
+        )
         document = next((doc for doc in docs if doc.get("id") == document_id), None)
         if document is None:
             raise HTTPException(status_code=404, detail="Document introuvable")
@@ -123,8 +132,13 @@ async def get_document(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error(f"Erreur lors de la récupération du document {document_id}: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Erreur interne lors de la récupération du document")
+        logger.error(
+            f"Erreur lors de la récupération du document {document_id}: {exc}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="Erreur interne lors de la récupération du document"
+        )
 
 
 @router.get("/{document_id}/content", response_model=Dict[str, Any])
@@ -152,9 +166,9 @@ async def download_document(
         user_id=session.user_id,
     )
     return FileResponse(
-        path=file_info['path'],
-        filename=file_info['filename'],
-        media_type=file_info['media_type'],
+        path=file_info["path"],
+        filename=file_info["filename"],
+        media_type=file_info["media_type"],
     )
 
 
@@ -190,9 +204,9 @@ async def delete_document(
     service: DocumentService = Depends(_get_document_service),
 ) -> Dict[str, str]:
     """Supprime un document, ses chunks et ses vecteurs."""
-    success = await service.delete_document(document_id, session.session_id, user_id=session.user_id)
+    success = await service.delete_document(
+        document_id, session.session_id, user_id=session.user_id
+    )
     if success:
         return {"message": "Document supprime avec succes."}
     raise HTTPException(status_code=404, detail="Document introuvable")
-
-

@@ -9,7 +9,11 @@ import statistics
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
-from .agentarch_runner import BenchmarkMatrixResult, BenchmarkRunResult, BenchmarkResultSink
+from .agentarch_runner import (
+    BenchmarkMatrixResult,
+    BenchmarkRunResult,
+    BenchmarkResultSink,
+)
 from ..core.database.manager import DatabaseManager
 
 logger = logging.getLogger(__name__)
@@ -66,7 +70,9 @@ class BenchmarksRepository:
     ) -> None:
         config = run.config
         metadata_json = _json_dumps(config.metadata or {}) if config.metadata else None
-        executor_details = _json_dumps(run.executor_details) if run.executor_details else None
+        executor_details = (
+            _json_dumps(run.executor_details) if run.executor_details else None
+        )
         query = """
             INSERT OR REPLACE INTO benchmark_runs (
                 id, matrix_id, scenario_id, slug,
@@ -107,13 +113,9 @@ class BenchmarksRepository:
         run_count = len(runs)
         success_count = sum(1 for item in runs if item.success)
         failure_count = run_count - success_count
-        average_cost = (
-            sum(item.cost for item in runs) / run_count if run_count else 0.0
-        )
+        average_cost = sum(item.cost for item in runs) / run_count if run_count else 0.0
         median_latency = (
-            statistics.median(item.latency_ms for item in runs)
-            if run_count
-            else 0.0
+            statistics.median(item.latency_ms for item in runs) if run_count else 0.0
         )
         context_json = _json_dumps(matrix.context or {}) if matrix.context else None
         query = """
@@ -196,7 +198,10 @@ class BenchmarksRepository:
                             else 0.0
                         ),
                     },
-                    "runs": [self._serialize_run(cast(Mapping[str, Any], run)) for run in runs],
+                    "runs": [
+                        self._serialize_run(cast(Mapping[str, Any], run))
+                        for run in runs
+                    ],
                 }
             )
         return results
@@ -210,7 +215,8 @@ class BenchmarksRepository:
                 "orchestration_mode": row["orchestration_mode"],
                 "memory_mode": row["memory_mode"],
                 "metadata": _json_loads(row["config_metadata"]) or {}
-                if "config_metadata" in row.keys() else {},
+                if "config_metadata" in row.keys()
+                else {},
             },
             "success": bool(row["success"]),
             "retries": row["retries"],
@@ -220,7 +226,8 @@ class BenchmarksRepository:
             "completed_at": row["completed_at"],
             "error_message": row["error_message"],
             "executor_details": _json_loads(row["executor_details"]) or {}
-            if "executor_details" in row.keys() else {},
+            if "executor_details" in row.keys()
+            else {},
         }
 
 
@@ -315,7 +322,9 @@ class FirestoreBenchmarkResultSink(BenchmarkResultSink):
 
     def _store_matrix(self, data: Dict[str, Any]) -> None:
         try:
-            self._client.collection(self._matrix_collection).document(data["id"]).set(data)
+            self._client.collection(self._matrix_collection).document(data["id"]).set(
+                data
+            )
         except Exception:  # pragma: no cover - logging only
             logger.exception("Failed to persist benchmark matrix to Firestore.")
 
@@ -347,20 +356,26 @@ def build_firestore_client(*, project_id: Optional[str] = None) -> Optional[Any]
     try:
         from google.cloud import firestore  # type: ignore
     except Exception:  # pragma: no cover - optional dependency
-        logger.debug("google-cloud-firestore not available; skipping Firestore client init.")
+        logger.debug(
+            "google-cloud-firestore not available; skipping Firestore client init."
+        )
         return None
 
     if project_id:
         try:
             return firestore.Client(project=project_id)
         except Exception:  # pragma: no cover - logging only
-            logger.exception("Unable to build Firestore client with provided project id.")
+            logger.exception(
+                "Unable to build Firestore client with provided project id."
+            )
             return None
 
     try:
         return firestore.Client()
     except Exception:  # pragma: no cover - logging only
-        logger.exception("Unable to build Firestore client; default credentials missing.")
+        logger.exception(
+            "Unable to build Firestore client; default credentials missing."
+        )
         return None
 
 

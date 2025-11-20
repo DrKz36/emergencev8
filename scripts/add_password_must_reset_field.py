@@ -2,6 +2,7 @@
 Migration script to add password_must_reset field to auth_allowlist
 This field tracks if user needs to reset their password on first login
 """
+
 import asyncio
 import sys
 from pathlib import Path

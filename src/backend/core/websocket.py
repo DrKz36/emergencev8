@@ -15,11 +15,13 @@ from starlette.websockets import WebSocketDisconnect
 
 from .session_manager import SessionManager
 from .ws_outbox import WsOutbox
+from backend.core.interfaces import NotificationService
 from backend.shared import dependencies  # auth WS (allowlist + sub=uid)
 
 logger = logging.getLogger(__name__)
 
-class ConnectionManager:
+
+class ConnectionManager(NotificationService):
     def __init__(self, session_manager: SessionManager):
         self.active_connections: Dict[str, List[WebSocket]] = {}
         # Map WebSocket -> WsOutbox
@@ -37,16 +39,20 @@ class ConnectionManager:
             if vector_service:
                 memory_sync = MemorySyncManager(vector_service)
                 self.handshake_handler = HandshakeHandler(memory_sync)
-                logger.info("✅ Handshake handler initialized for agent-specific context sync")
+                logger.info(
+                    "✅ Handshake handler initialized for agent-specific context sync"
+                )
             else:
                 logger.warning("⚠️ Vector service not available, handshake disabled")
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize handshake handler: {e}")
 
         try:
-            setattr(self.session_manager, "connection_manager", self)
+            self.session_manager.set_notification_service(self)
         except Exception as e:
-            logger.warning(f"Impossible d'exposer ConnectionManager dans SessionManager: {e}")
+            logger.warning(
+                f"Impossible d'injecter ConnectionManager dans SessionManager: {e}"
+            )
         logger.info("ConnectionManager initialisé.")
 
     async def _accept_with_subprotocol(self, websocket: WebSocket) -> Optional[str]:
@@ -73,7 +79,6 @@ class ConnectionManager:
             logger.info("WebSocket accepté sans sous-protocole compatible.")
         return selected
 
-
     async def connect(
         self,
         websocket: WebSocket,
@@ -86,7 +91,11 @@ class ConnectionManager:
         await self._accept_with_subprotocol(websocket)
 
         history_limit = 200
-        alias = client_session_id if client_session_id and client_session_id != session_id else None
+        alias = (
+            client_session_id
+            if client_session_id and client_session_id != session_id
+            else None
+        )
         first_connection = session_id not in self.active_connections
         if first_connection:
             self.active_connections[session_id] = []
@@ -187,7 +196,11 @@ class ConnectionManager:
                 session_id, limit=history_limit
             )
             metadata = self.session_manager.get_session_metadata(session_id)
-            meta_payload = {k: metadata.get(k) for k in ("summary", "concepts", "entities") if metadata.get(k)}
+            meta_payload = {
+                k: metadata.get(k)
+                for k in ("summary", "concepts", "entities")
+                if metadata.get(k)
+            }
             if history_export or meta_payload:
                 restored_payload = {
                     "session_id": session_id,
@@ -203,7 +216,9 @@ class ConnectionManager:
                     {"type": "ws:session_restored", "payload": restored_payload}
                 )
         except Exception as restore_err:
-            logger.debug("Unable to send restored history for %s: %s", session_id, restore_err)
+            logger.debug(
+                "Unable to send restored history for %s: %s", session_id, restore_err
+            )
 
         return session_id
 
@@ -255,7 +270,9 @@ class ConnectionManager:
                 resolved_id,
             )
 
-    async def send_personal_message(self, message: dict[str, Any], session_id: str) -> None:
+    async def send_personal_message(
+        self, message: dict[str, Any], session_id: str
+    ) -> None:
         """
         Envoie un message à tous les clients d'une session via WsOutbox.
 
@@ -274,13 +291,15 @@ class ConnectionManager:
                     await outbox.send(message)
                 else:
                     # Fallback si pas d'outbox (ne devrait pas arriver)
-                    logger.warning(f"No outbox for session {resolved_id}, using fallback send_json")
+                    logger.warning(
+                        f"No outbox for session {resolved_id}, using fallback send_json"
+                    )
                     await ws.send_json(message)
             except WebSocketDisconnect as exc:
                 logger.info(
                     "Client disconnected during send (session=%s, code=%s)",
                     resolved_id,
-                    getattr(exc, "code", "unknown")
+                    getattr(exc, "code", "unknown"),
                 )
                 await self.disconnect(resolved_id, ws)
             except RuntimeError as exc:
@@ -288,7 +307,7 @@ class ConnectionManager:
                 logger.info(
                     "Client connection lost during send (session=%s): %s",
                     resolved_id,
-                    exc
+                    exc,
                 )
                 await self.disconnect(resolved_id, ws)
             except Exception as exc:
@@ -297,16 +316,15 @@ class ConnectionManager:
                     "Unexpected send error (session=%s): %s",
                     resolved_id,
                     exc,
-                    exc_info=True
+                    exc_info=True,
                 )
                 await self.disconnect(resolved_id, ws)
 
-    async def send_system_message(self, session_id: str, payload: dict[str, Any]) -> None:
+    async def send_system_message(
+        self, session_id: str, payload: dict[str, Any]
+    ) -> None:
         """Envoie un message système à une session (ex: avertissement d'inactivité)."""
-        message = {
-            "type": "ws:system_notification",
-            "payload": payload
-        }
+        message = {"type": "ws:system_notification", "payload": payload}
         await self.send_personal_message(message, session_id)
 
     async def send_to_session(self, session_id: str, message: dict[str, Any]) -> None:
@@ -314,12 +332,7 @@ class ConnectionManager:
         await self.send_personal_message(message, session_id)
 
     async def send_agent_hello(
-        self,
-        session_id: str,
-        agent_id: str,
-        model: str,
-        provider: str,
-        user_id: str
+        self, session_id: str, agent_id: str, model: str, provider: str, user_id: str
     ) -> None:
         """
         Envoie un message HELLO pour synchroniser le contexte agent.
@@ -332,7 +345,9 @@ class ConnectionManager:
             user_id: ID utilisateur
         """
         if not self.handshake_handler:
-            logger.debug("[ConnectionManager] Handshake handler not available, skipping HELLO")
+            logger.debug(
+                "[ConnectionManager] Handshake handler not available, skipping HELLO"
+            )
             return
 
         try:
@@ -342,7 +357,7 @@ class ConnectionManager:
                 agent_id=agent_id,
                 model=model,
                 provider=provider,
-                user_id=user_id
+                user_id=user_id,
             )
         except Exception as e:
             logger.error(f"[ConnectionManager] Error sending HELLO: {e}", exc_info=True)
@@ -359,7 +374,10 @@ class ConnectionManager:
         if not connections:
             return 0
         closed = 0
-        notice = {"type": "ws:auth_required", "payload": {"reason": reason, "code": code}}
+        notice = {
+            "type": "ws:auth_required",
+            "payload": {"reason": reason, "code": code},
+        }
         for ws in list(connections):
             try:
                 await ws.send_json(notice)
@@ -378,12 +396,19 @@ class ConnectionManager:
         )
         return closed
 
+
 def _find_handler(sm: SessionManager) -> Optional[Callable[..., Any]]:
-    for name in ("on_client_message", "ingest_ws_message", "handle_client_message", "dispatch"):
+    for name in (
+        "on_client_message",
+        "ingest_ws_message",
+        "handle_client_message",
+        "dispatch",
+    ):
         fn = getattr(sm, name, None)
         if callable(fn):
             return cast(Callable[..., Any], fn)
     return None
+
 
 def get_websocket_router(container: Any) -> APIRouter:
     router = APIRouter()
@@ -420,9 +445,15 @@ def get_websocket_router(container: Any) -> APIRouter:
                 pass
 
         try:
-            user_id = await dependencies.get_user_id_for_ws(websocket, user_id=user_id_hint)
+            user_id = await dependencies.get_user_id_for_ws(
+                websocket, user_id=user_id_hint
+            )
         except HTTPException as exc:
-            reason = exc.detail if isinstance(exc.detail, str) else "invalid_or_missing_token"
+            reason = (
+                exc.detail
+                if isinstance(exc.detail, str)
+                else "invalid_or_missing_token"
+            )
             close_code = 4401 if exc.status_code in (401, 403) else 1008
             logger.warning("WS auth failed -> close %s : %s", close_code, exc)
             await _reject_ws(reason, close_code)
@@ -440,7 +471,10 @@ def get_websocket_router(container: Any) -> APIRouter:
             auth_email = claims.get("email")
             auth_session_id = claims.get("session_id") or claims.get("sid")
             session_revoked = bool(claims.get("session_revoked"))
-        canonical_session_id = str(auth_session_id or requested_session_id or "").strip() or requested_session_id
+        canonical_session_id = (
+            str(auth_session_id or requested_session_id or "").strip()
+            or requested_session_id
+        )
         if session_revoked:
             logger.warning(
                 "WS auth refused: session %s marked as revoked.",
@@ -455,7 +489,9 @@ def get_websocket_router(container: Any) -> APIRouter:
                 auth_email,
                 user_id,
                 canonical_session_id,
-                requested_session_id if requested_session_id != canonical_session_id else None,
+                requested_session_id
+                if requested_session_id != canonical_session_id
+                else None,
             )
         websocket.scope["auth_session_id"] = canonical_session_id
         if requested_session_id != canonical_session_id:
@@ -466,7 +502,11 @@ def get_websocket_router(container: Any) -> APIRouter:
         if conn_manager is None:
             conn_manager = ConnectionManager(session_manager)
 
-        alias_value = requested_session_id if requested_session_id != canonical_session_id else None
+        alias_value = (
+            requested_session_id
+            if requested_session_id != canonical_session_id
+            else None
+        )
         await conn_manager.connect(
             websocket,
             canonical_session_id,
@@ -499,18 +539,22 @@ def get_websocket_router(container: Any) -> APIRouter:
             logger.info(
                 "Client disconnected gracefully (session=%s, code=%s)",
                 target_session_id,
-                getattr(e, "code", "unknown")
+                getattr(e, "code", "unknown"),
             )
             await conn_manager.disconnect(target_session_id, websocket)
         except RuntimeError as err:
             # Protocol-level errors (e.g., connection lost during send/receive)
             # These are often caused by abrupt client disconnections
             err_msg = str(err).lower()
-            if "websocket" in err_msg or "connection" in err_msg or "disconnect" in err_msg:
+            if (
+                "websocket" in err_msg
+                or "connection" in err_msg
+                or "disconnect" in err_msg
+            ):
                 logger.info(
                     "Client disconnected abruptly (session=%s): %s",
                     target_session_id,
-                    err
+                    err,
                 )
             else:
                 logger.error("WS RuntimeError (session=%s): %s", target_session_id, err)
@@ -526,9 +570,8 @@ def get_websocket_router(container: Any) -> APIRouter:
                 "Unexpected WebSocket error (session=%s): %s",
                 target_session_id,
                 err,
-                exc_info=True
+                exc_info=True,
             )
             await conn_manager.disconnect(target_session_id, websocket)
 
     return router
-

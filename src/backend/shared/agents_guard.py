@@ -26,9 +26,11 @@ T = TypeVar("T")
 # 1️⃣ RoutePolicy - Redirection SLM/LLM intelligente
 # ============================================================
 
+
 class ModelTier(str, Enum):
     """Tiers de modèles disponibles"""
-    SLM = "slm"          # Small Language Model (local ou léger)
+
+    SLM = "slm"  # Small Language Model (local ou léger)
     LLM_LIGHT = "llm_light"  # LLM léger (GPT-3.5, Claude Haiku)
     LLM_HEAVY = "llm_heavy"  # LLM lourd (GPT-4, Claude Sonnet/Opus)
 
@@ -36,6 +38,7 @@ class ModelTier(str, Enum):
 @dataclass
 class RoutingDecision:
     """Décision de routing pour une requête agent"""
+
     tier: ModelTier
     reason: str
     confidence: Optional[float] = None
@@ -127,9 +130,11 @@ class RoutePolicy:
 # 2️⃣ BudgetGuard - Limite tokens/jour par agent
 # ============================================================
 
+
 @dataclass
 class AgentBudget:
     """Budget quotidien pour un agent"""
+
     agent_id: str
     max_tokens_per_day: int
     used_tokens_today: int = 0
@@ -264,9 +269,11 @@ class BudgetGuard:
 # 3️⃣ ToolCircuitBreaker - Timeout + Backoff exponentiel
 # ============================================================
 
+
 @dataclass
 class CircuitState:
     """État du circuit breaker pour un outil"""
+
     tool_name: str
     failures: int = 0
     last_failure: Optional[datetime] = None
@@ -323,7 +330,7 @@ class ToolCircuitBreaker:
 
     def _calculate_backoff(self, failures: int) -> float:
         """Calcule le délai de backoff exponentiel"""
-        delay = self.backoff_base * (2 ** failures)
+        delay = self.backoff_base * (2**failures)
         return cast(float, min(delay, self.backoff_max))
 
     async def execute(
@@ -353,14 +360,14 @@ class ToolCircuitBreaker:
         # Check 1: Circuit ouvert?
         if circuit.is_open:
             assert circuit.backoff_until is not None  # Garanti par is_open()
-            wait_seconds = (circuit.backoff_until - datetime.now(timezone.utc)).total_seconds()
+            wait_seconds = (
+                circuit.backoff_until - datetime.now(timezone.utc)
+            ).total_seconds()
             logger.warning(
                 f"[ToolCircuitBreaker] Circuit OUVERT pour {tool_name} "
                 f"(attend {wait_seconds:.1f}s avant retry)"
             )
-            raise RuntimeError(
-                f"circuit_open:{tool_name}:wait_{wait_seconds:.1f}s"
-            )
+            raise RuntimeError(f"circuit_open:{tool_name}:wait_{wait_seconds:.1f}s")
 
         # Check 2: Reset si pas d'échec récent
         if circuit.last_failure:
@@ -415,9 +422,7 @@ class ToolCircuitBreaker:
                     f"(backoff {backoff}s)"
                 )
 
-            raise TimeoutError(
-                f"{tool_name} timeout après {self.timeout_seconds}s"
-            )
+            raise TimeoutError(f"{tool_name} timeout après {self.timeout_seconds}s")
 
         except Exception as e:
             # Autre erreur
@@ -458,8 +463,12 @@ class ToolCircuitBreaker:
             "total_calls": circuit.total_calls,
             "total_failures": circuit.total_failures,
             "success_rate": round(
-                ((circuit.total_calls - circuit.total_failures) / circuit.total_calls) * 100, 1
-            ) if circuit.total_calls > 0 else 100.0,
+                ((circuit.total_calls - circuit.total_failures) / circuit.total_calls)
+                * 100,
+                1,
+            )
+            if circuit.total_calls > 0
+            else 100.0,
         }
 
         if circuit.last_failure:

@@ -2,6 +2,7 @@
 Test script pour vérifier la configuration email avec emergence.app.ch@gmail.com
 Quick test pour valider SMTP Gmail avec app password
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ from pathlib import Path
 # Fix Windows console encoding
 if sys.platform == "win32":
     import codecs
+
     sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 
 # Add src to path for imports
@@ -17,9 +19,13 @@ sys.path.insert(0, str(root_dir / "src"))
 
 # Load .env file
 from dotenv import load_dotenv
+
 load_dotenv(root_dir / ".env")
 
-from backend.features.auth.email_service import EmailService, build_email_config_from_env
+from backend.features.auth.email_service import (
+    EmailService,
+    build_email_config_from_env,
+)
 
 
 async def test_email_config():
@@ -93,7 +99,7 @@ async def test_email_config():
 
         ---
         ÉMERGENCE V8 - Système Email
-        """
+        """,
     )
 
     print()

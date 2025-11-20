@@ -40,7 +40,7 @@ class HandshakeHandler:
         agent_id: str,
         model: str,
         provider: str,
-        user_id: str
+        user_id: str,
     ) -> None:
         """
         Envoie un message HELLO au client pour annoncer le contexte agent.
@@ -56,25 +56,18 @@ class HandshakeHandler:
         try:
             # Créer ou récupérer le contexte agent
             context = self.memory_sync.create_agent_context(
-                agent_id=agent_id,
-                user_id=user_id,
-                session_id=session_id
+                agent_id=agent_id, user_id=user_id, session_id=session_id
             )
 
             # Construire le payload HELLO
             hello_payload = self.memory_sync.build_hello_payload(
-                context=context,
-                model=model,
-                provider=provider
+                context=context, model=model, provider=provider
             )
 
             # Envoyer via WebSocket
             await connection_manager.send_to_session(
                 session_id=session_id,
-                message={
-                    "type": "ws:handshake_hello",
-                    "payload": hello_payload
-                }
+                message={"type": "ws:handshake_hello", "payload": hello_payload},
             )
 
             logger.debug(
@@ -86,9 +79,7 @@ class HandshakeHandler:
             logger.error(f"[Handshake] Error sending HELLO: {e}", exc_info=True)
 
     async def handle_ack(
-        self,
-        session_id: str,
-        payload: Dict[str, Any]
+        self, session_id: str, payload: Dict[str, Any]
     ) -> Optional[str]:
         """
         Traite un message ACK du client.
@@ -137,7 +128,7 @@ class HandshakeHandler:
         session_id: str,
         agent_id: str,
         user_id: str,
-        sync_status: str
+        sync_status: str,
     ) -> None:
         """
         Envoie un message SYNC si le client est désynchronisé.
@@ -166,20 +157,14 @@ class HandshakeHandler:
                 "agent_id": context.agent_id,
                 "context_id": context.context_id,
                 "context_rev": context.context_rev,
-                "memory_stats": {
-                    "stm": context.stm_count,
-                    "ltm": context.ltm_count
-                },
+                "memory_stats": {"stm": context.stm_count, "ltm": context.ltm_count},
                 "status": sync_status,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             await connection_manager.send_to_session(
                 session_id=session_id,
-                message={
-                    "type": "ws:handshake_sync",
-                    "payload": sync_payload
-                }
+                message={"type": "ws:handshake_sync", "payload": sync_payload},
             )
 
             logger.info(
@@ -191,10 +176,7 @@ class HandshakeHandler:
             logger.error(f"[Handshake] Error sending SYNC: {e}", exc_info=True)
 
     async def handle_client_hello(
-        self,
-        connection_manager: Any,
-        session_id: str,
-        payload: Dict[str, Any]
+        self, connection_manager: Any, session_id: str, payload: Dict[str, Any]
     ) -> None:
         """
         Traite un HELLO venant du client (rare, mais possible).
@@ -218,26 +200,22 @@ class HandshakeHandler:
             if not context:
                 # Créer un nouveau contexte
                 context = self.memory_sync.create_agent_context(
-                    agent_id=agent_id,
-                    user_id=user_id,
-                    session_id=session_id
+                    agent_id=agent_id, user_id=user_id, session_id=session_id
                 )
 
             # Envoyer ACK
             ack_payload = self.memory_sync.build_ack_payload(
-                context=context,
-                sync_status="ok"
+                context=context, sync_status="ok"
             )
 
             await connection_manager.send_to_session(
                 session_id=session_id,
-                message={
-                    "type": "ws:handshake_ack",
-                    "payload": ack_payload
-                }
+                message={"type": "ws:handshake_ack", "payload": ack_payload},
             )
 
-            logger.debug(f"[Handshake] ACK sent in response to client HELLO: {agent_id}")
+            logger.debug(
+                f"[Handshake] ACK sent in response to client HELLO: {agent_id}"
+            )
 
         except Exception as e:
             logger.error(f"[Handshake] Error handling client HELLO: {e}", exc_info=True)

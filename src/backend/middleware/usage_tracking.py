@@ -122,7 +122,9 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
         )
         return any(path.startswith(prefix) for prefix in skip_prefixes)
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Any]
+    ) -> Response:
         """Intercepte toutes les requêtes pour tracking"""
         # Skip health/metrics endpoints
         if self._should_skip_endpoint(request.url.path):

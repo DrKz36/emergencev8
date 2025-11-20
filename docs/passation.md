@@ -1,5 +1,33 @@
 # 📝 Journal de Passation Inter-Agents
 
+## ✅ [2025-11-02 10:45 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `tests/backend/features/chat/test_consolidated_memory_cache.py`
+- `tests/backend/features/test_threads_delete.py`
+
+### Contexte
+- Redémarrage après deux semaines : la branche `feat/rag-phase4-exhaustive-queries` est supprimée côté remote, `main` avait 21 commits d'avance.
+- `scripts/sync-workdir.ps1` reste obligatoire mais son run échoue si les crédentials smoke (allowlist email/password) ne sont pas fournis au helper `tests/run_all.ps1`.
+- Les tests `consolidated_memory_cache` et `delete_thread` ne reflétaient plus les refactors récents (nouveau module Settings + soft-delete par défaut).
+
+### Travail réalisé
+1. `git checkout main && git pull --rebase` puis lancement `scripts/sync-workdir.ps1` (arrêt contrôlé car `tests/run_all.ps1` n'a pas d'identifiants).
+2. Mise à jour des imports `Settings` dans `test_consolidated_memory_cache` → `backend.shared.app_settings.Settings`.
+3. Adaptation de `tests/backend/features/test_threads_delete.py` au soft-delete (`archived=1`, `archival_reason='user_deleted'`, vérification que `get_threads(..., include_archived=False)` n'affiche plus le thread).
+
+### Tests
+- `pytest tests/backend/features/chat/test_consolidated_memory_cache.py -q`
+- `pytest tests/backend/features/test_threads_delete.py -q`
+
+### Blocages / Risques
+- `scripts/sync-workdir.ps1` échoue tant que `EMERGENCE_SMOKE_EMAIL` / `EMERGENCE_SMOKE_PASSWORD` (ou équivalent `-SmokeEmail/-SmokePassword`) ne sont pas configurés.
+
+### Prochaines actions recommandées
+1. Fournir les crédentials smoke et relancer `scripts/sync-workdir.ps1` pour exécuter `tests/run_all.ps1`.
+2. Lancer `pytest tests/backend` complet une fois les creds configurés pour s'assurer que le reste de la suite est vert.
+3. Reporter la décision soft-delete (archival_reason=user_deleted) dans `docs/architecture`/`docs/Memoire.md` si besoin pour éviter des incompréhensions côté QA.
+
 ## 🚀 [2025-10-29 07:03 CET] - Agent: Codex GPT
 
 ### Fichiers modifiés

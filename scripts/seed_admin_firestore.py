@@ -2,6 +2,7 @@
 Script pour créer un compte admin directement dans Firestore.
 Usage: python scripts/seed_admin_firestore.py
 """
+
 import asyncio
 import os
 import sys
@@ -24,7 +25,7 @@ DEFAULT_ROLE = "admin"
 
 def hash_password(password: str) -> str:
     """Hash password using bcrypt (match backend logic)."""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 async def seed_admin_firestore():
@@ -61,11 +62,13 @@ async def seed_admin_firestore():
     doc_ref = db.collection("auth_allowlist").document(email)
     await doc_ref.set(user_doc, merge=True)
 
-    print(f"[seed-admin-firestore] Admin account created/updated:")
+    print("[seed-admin-firestore] Admin account created/updated:")
     print(f"  - Email: {email}")
     print(f"  - Role: {role}")
     print(f"  - Password hash: {password_hash[:16]}...")
-    print(f"[seed-admin-firestore] You can now login at https://emergence-app-486095406755.europe-west1.run.app/")
+    print(
+        "[seed-admin-firestore] You can now login at https://emergence-app-486095406755.europe-west1.run.app/"
+    )
 
 
 if __name__ == "__main__":

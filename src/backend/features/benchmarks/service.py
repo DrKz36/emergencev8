@@ -64,9 +64,9 @@ class BenchmarksService:
             matrix_id=matrix_id,
             scenario_id=scenario.id,
         )
-        sinks: list[
-            SQLiteBenchmarkResultSink | FirestoreBenchmarkResultSink
-        ] = [sqlite_sink]
+        sinks: list[SQLiteBenchmarkResultSink | FirestoreBenchmarkResultSink] = [
+            sqlite_sink
+        ]
         if self._firestore_client is not None:
             sinks.append(
                 FirestoreBenchmarkResultSink(
@@ -179,8 +179,7 @@ class BenchmarksService:
         path = Path(path_hint)
         if not path.exists():
             logger.warning(
-                "Scenario index path %s not found. "
-                "Falling back to built-in catalogue.",
+                "Scenario index path %s not found. Falling back to built-in catalogue.",
                 path,
             )
             return dict(SCENARIO_DEFINITIONS)
@@ -226,8 +225,7 @@ class BenchmarksService:
         except KeyError as exc:
             supported = ", ".join(sorted(self._scenarios.keys()))
             raise ValueError(
-                f"Scenario '{scenario_id}' not supported. "
-                f"Supported: {supported}"
+                f"Scenario '{scenario_id}' not supported. Supported: {supported}"
             ) from exc
 
 

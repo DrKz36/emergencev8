@@ -7,13 +7,14 @@ Script de test pour vérifier l'installation du système d'orchestration automat
 import sys
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 
 # Fix encoding pour Windows
-if sys.platform == 'win32':
+if sys.platform == "win32":
     import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, "strict")
+    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, "strict")
 
 # Configuration
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
@@ -50,15 +51,21 @@ def main():
 
     # 1. Scripts principaux
     print("📁 Scripts principaux:")
-    checks.append(check_file(SCRIPTS_DIR / "auto_orchestrator.py", "Orchestrateur automatique"))
-    checks.append(check_file(SCRIPTS_DIR / "auto_update_docs.py", "Agent de mise à jour doc"))
+    checks.append(
+        check_file(SCRIPTS_DIR / "auto_orchestrator.py", "Orchestrateur automatique")
+    )
+    checks.append(
+        check_file(SCRIPTS_DIR / "auto_update_docs.py", "Agent de mise à jour doc")
+    )
     checks.append(check_file(SCRIPTS_DIR / "scheduler.py", "Planificateur"))
     print()
 
     # 2. Scripts agents existants
     print("📁 Scripts agents:")
     checks.append(check_file(SCRIPTS_DIR / "scan_docs.py", "Anima (DocKeeper)"))
-    checks.append(check_file(SCRIPTS_DIR / "check_integrity.py", "Neo (IntegrityWatcher)"))
+    checks.append(
+        check_file(SCRIPTS_DIR / "check_integrity.py", "Neo (IntegrityWatcher)")
+    )
     checks.append(check_file(SCRIPTS_DIR / "check_prod_logs.py", "ProdGuardian"))
     checks.append(check_file(SCRIPTS_DIR / "generate_report.py", "Nexus (Coordinator)"))
     checks.append(check_file(SCRIPTS_DIR / "merge_reports.py", "Merge Reports"))
@@ -74,9 +81,13 @@ def main():
     print("📁 Commandes slash Claude:")
     checks.append(check_file(CLAUDE_COMMANDS / "auto_sync.md", "/auto_sync"))
     checks.append(check_file(CLAUDE_COMMANDS / "check_docs.md", "/check_docs"))
-    checks.append(check_file(CLAUDE_COMMANDS / "check_integrity.md", "/check_integrity"))
+    checks.append(
+        check_file(CLAUDE_COMMANDS / "check_integrity.md", "/check_integrity")
+    )
     checks.append(check_file(CLAUDE_COMMANDS / "check_prod.md", "/check_prod"))
-    checks.append(check_file(CLAUDE_COMMANDS / "guardian_report.md", "/guardian_report"))
+    checks.append(
+        check_file(CLAUDE_COMMANDS / "guardian_report.md", "/guardian_report")
+    )
     checks.append(check_file(CLAUDE_COMMANDS / "sync_all.md", "/sync_all"))
     print()
 
@@ -85,7 +96,9 @@ def main():
     checks.append(check_file(PLUGIN_DIR / "README.md", "README principal"))
     checks.append(check_file(PLUGIN_DIR / "QUICKSTART_AUTO.md", "Guide de démarrage"))
     checks.append(check_file(PLUGIN_DIR / "AUTO_ORCHESTRATION.md", "Doc complète"))
-    checks.append(check_file(PLUGIN_DIR / "SUMMARY_AUTO_SETUP.md", "Résumé installation"))
+    checks.append(
+        check_file(PLUGIN_DIR / "SUMMARY_AUTO_SETUP.md", "Résumé installation")
+    )
     print()
 
     # 6. Dossiers
@@ -100,11 +113,15 @@ def main():
 
     # 7. Variables d'environnement (info seulement)
     print("📋 Variables d'environnement (configuration):")
-    auto_update_docs = os.environ.get('AUTO_UPDATE_DOCS', '0')
-    auto_apply = os.environ.get('AUTO_APPLY', '0')
+    auto_update_docs = os.environ.get("AUTO_UPDATE_DOCS", "0")
+    auto_apply = os.environ.get("AUTO_APPLY", "0")
 
-    print(f"   AUTO_UPDATE_DOCS: {auto_update_docs} {'✅ (activé)' if auto_update_docs == '1' else '⚠️ (désactivé)'}")
-    print(f"   AUTO_APPLY: {auto_apply} {'✅ (activé)' if auto_apply == '1' else '⚠️ (désactivé - mode analyse)'}")
+    print(
+        f"   AUTO_UPDATE_DOCS: {auto_update_docs} {'✅ (activé)' if auto_update_docs == '1' else '⚠️ (désactivé)'}"
+    )
+    print(
+        f"   AUTO_APPLY: {auto_apply} {'✅ (activé)' if auto_apply == '1' else '⚠️ (désactivé - mode analyse)'}"
+    )
     print()
 
     # Résumé
@@ -126,7 +143,9 @@ def main():
         print()
         print("💡 Prochaines étapes:")
         print("   1. Tester l'orchestration:")
-        print("      python claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py")
+        print(
+            "      python claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py"
+        )
         print()
         print("   2. Activer le hook post-commit (optionnel):")
         print("      export AUTO_UPDATE_DOCS=1")

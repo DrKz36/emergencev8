@@ -485,7 +485,9 @@ class MemoryGardener:
         return value or None
 
     @staticmethod
-    def _filter_history_for_agent(history: Optional[List[Dict[str, Any]]], agent_id: Optional[str]) -> List[Dict[str, Any]]:
+    def _filter_history_for_agent(
+        history: Optional[List[Dict[str, Any]]], agent_id: Optional[str]
+    ) -> List[Dict[str, Any]]:
         if not history:
             return []
         normalized = MemoryGardener._normalize_agent_id(agent_id)
@@ -497,7 +499,9 @@ class MemoryGardener:
                 continue  # type: ignore[unreachable]
             role = str(item.get("role") or "").strip().lower()
             if role == "assistant":
-                agent_value = MemoryGardener._normalize_agent_id(item.get("agent_id") or item.get("agent"))
+                agent_value = MemoryGardener._normalize_agent_id(
+                    item.get("agent_id") or item.get("agent")
+                )
                 if agent_value == normalized:
                     filtered.append(item)
             else:
@@ -528,7 +532,9 @@ class MemoryGardener:
         if session_id:
             session_row = await self._fetch_session_by_id(session_id)
             if not session_row:
-                logger.info(f"Session {session_id} introuvable pour la consolidation ciblée.")
+                logger.info(
+                    f"Session {session_id} introuvable pour la consolidation ciblée."
+                )
                 return {
                     "status": "success",
                     "message": "Aucune session à traiter.",
@@ -572,8 +578,16 @@ class MemoryGardener:
             # 📊 Notification progression
             try:
                 chat_service = getattr(self.analyzer, "chat_service", None)
-                session_manager = getattr(chat_service, "session_manager", None) if chat_service else None
-                conn = getattr(session_manager, "connection_manager", None) if session_manager else None
+                session_manager = (
+                    getattr(chat_service, "session_manager", None)
+                    if chat_service
+                    else None
+                )
+                conn = (
+                    getattr(session_manager, "connection_manager", None)
+                    if session_manager
+                    else None
+                )
                 if conn and sid:
                     await conn.send_personal_message(
                         {
@@ -583,10 +597,10 @@ class MemoryGardener:
                                 "current": idx + 1,
                                 "total": total_sessions,
                                 "phase": "extracting_concepts",
-                                "status": "in_progress"
-                            }
+                                "status": "in_progress",
+                            },
                         },
-                        sid
+                        sid,
                     )
             except Exception:
                 pass  # Ne pas bloquer sur erreur notification
@@ -673,8 +687,16 @@ class MemoryGardener:
             try:
                 sid = sessions[0]["id"]  # Session primaire pour notification
                 chat_service = getattr(self.analyzer, "chat_service", None)
-                session_manager = getattr(chat_service, "session_manager", None) if chat_service else None
-                conn = getattr(session_manager, "connection_manager", None) if session_manager else None
+                session_manager = (
+                    getattr(chat_service, "session_manager", None)
+                    if chat_service
+                    else None
+                )
+                conn = (
+                    getattr(session_manager, "connection_manager", None)
+                    if session_manager
+                    else None
+                )
                 if conn:
                     await conn.send_personal_message(
                         {
@@ -686,10 +708,10 @@ class MemoryGardener:
                                 "phase": "completed",
                                 "status": "completed",
                                 "consolidated_sessions": len(processed_ids),
-                                "new_items": new_items_count
-                            }
+                                "new_items": new_items_count,
+                            },
                         },
-                        sid
+                        sid,
                     )
             except Exception:
                 pass
@@ -812,11 +834,17 @@ class MemoryGardener:
                         "user_id": uid,
                         "thread_id": tid,
                         "themes": [],
-                        "first_message_at": first_msg_ts.isoformat() if first_msg_ts else _now_iso(),
-                        "last_message_at": last_msg_ts.isoformat() if last_msg_ts else _now_iso(),
+                        "first_message_at": first_msg_ts.isoformat()
+                        if first_msg_ts
+                        else _now_iso(),
+                        "last_message_at": last_msg_ts.isoformat()
+                        if last_msg_ts
+                        else _now_iso(),
                     }
                     await self._record_facts_in_sql(facts_to_add, session_stub, uid)
-                    await self._vectorize_facts(facts_to_add, session_stub, uid, agent_id=normalized_agent)
+                    await self._vectorize_facts(
+                        facts_to_add, session_stub, uid, agent_id=normalized_agent
+                    )
                     new_items_count += len(facts_to_add)
                     added_any = True
 
@@ -833,11 +861,17 @@ class MemoryGardener:
                     "user_id": uid,
                     "thread_id": tid,
                     "themes": [],
-                    "first_message_at": first_msg_ts.isoformat() if first_msg_ts else _now_iso(),
-                    "last_message_at": last_msg_ts.isoformat() if last_msg_ts else _now_iso(),
+                    "first_message_at": first_msg_ts.isoformat()
+                    if first_msg_ts
+                    else _now_iso(),
+                    "last_message_at": last_msg_ts.isoformat()
+                    if last_msg_ts
+                    else _now_iso(),
                 }
                 await self._record_concepts_in_sql(all_concepts, concept_stub, uid)
-                await self._vectorize_concepts(all_concepts, concept_stub, uid, agent_id=normalized_agent)
+                await self._vectorize_concepts(
+                    all_concepts, concept_stub, uid, agent_id=normalized_agent
+                )
                 new_items_count += len(all_concepts)
                 added_any = True
 
@@ -849,11 +883,13 @@ class MemoryGardener:
                     await self.db.execute(
                         "UPDATE threads SET consolidated_at = ? WHERE id = ?",
                         (_now_iso(), tid),
-                        commit=True
+                        commit=True,
                     )
                     logger.info(f"[Gardener] Thread {tid} marked as consolidated")
                 except Exception as e:
-                    logger.warning(f"[Gardener] Failed to mark thread {tid} as consolidated: {e}")
+                    logger.warning(
+                        f"[Gardener] Failed to mark thread {tid} as consolidated: {e}"
+                    )
 
             msg = (
                 "Consolidation thread OK."
@@ -892,7 +928,9 @@ class MemoryGardener:
         )
         return dict(row) if row else None
 
-    async def _fetch_recent_sessions(self, limit: int, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def _fetch_recent_sessions(
+        self, limit: int, user_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         base_query = """
             SELECT id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities
             FROM sessions
@@ -1293,7 +1331,7 @@ class MemoryGardener:
             result = await asyncio.to_thread(
                 self.preference_collection.get,
                 ids=preference_ids,
-                include=["metadatas", "documents"]
+                include=["metadatas", "documents"],
             )
         except Exception as e:
             logger.warning(f"[Gardener] Erreur batch fetch préférences: {e}")
@@ -1321,7 +1359,7 @@ class MemoryGardener:
             existing[pref_id] = {
                 "id": pref_id,
                 "metadata": metadatas[i] if i < len(metadatas) else {},
-                "document": documents[i] if i < len(documents) else ""
+                "document": documents[i] if i < len(documents) else "",
             }
 
         # Remplir les IDs manquants avec None
@@ -1637,7 +1675,11 @@ class MemoryGardener:
                 )
 
     async def _vectorize_concepts(
-        self, concepts: List[str], session: Dict[str, Any], user_id: Optional[str], agent_id: Optional[str] = None
+        self,
+        concepts: List[str],
+        session: Dict[str, Any],
+        user_id: Optional[str],
+        agent_id: Optional[str] = None,
     ) -> None:
         payload = []
         now_iso = _now_iso()
@@ -1687,7 +1729,9 @@ class MemoryGardener:
                 await asyncio.to_thread(
                     self.vector_service.add_items, self.knowledge_collection, payload
                 )
-                logger.info(f"{len(payload)} concepts vectorisés avec métadonnées enrichies.")
+                logger.info(
+                    f"{len(payload)} concepts vectorisés avec métadonnées enrichies."
+                )
             except Exception as exc:
                 logger.error(
                     f"Vectorisation des concepts pour la session {session.get('id') if isinstance(session, dict) else session}: {exc}",
@@ -1782,12 +1826,13 @@ class MemoryGardener:
         while True:
             try:
                 snapshot = self.knowledge_collection.get(
-                    include=["metadatas"],
-                    limit=PAGE_SIZE,
-                    offset=offset
+                    include=["metadatas"], limit=PAGE_SIZE, offset=offset
                 )
             except Exception as e:
-                logger.warning(f"[decay] collection read failed at offset {offset}: {e}", exc_info=True)
+                logger.warning(
+                    f"[decay] collection read failed at offset {offset}: {e}",
+                    exc_info=True,
+                )
                 break
 
             raw_ids = snapshot.get("ids") if isinstance(snapshot, dict) else []
@@ -1807,7 +1852,9 @@ class MemoryGardener:
             if isinstance(raw_metas, list):
                 for chunk in raw_metas:
                     if isinstance(chunk, list):
-                        page_metadatas.extend([m if isinstance(m, dict) else {} for m in chunk])
+                        page_metadatas.extend(
+                            [m if isinstance(m, dict) else {} for m in chunk]
+                        )
                     elif isinstance(chunk, dict):
                         page_metadatas.append(chunk)
 
@@ -1820,7 +1867,9 @@ class MemoryGardener:
                 break
 
             offset += PAGE_SIZE
-            logger.debug(f"[decay] Loaded {len(all_ids)} total vectors (page size={PAGE_SIZE}, offset={offset})")
+            logger.debug(
+                f"[decay] Loaded {len(all_ids)} total vectors (page size={PAGE_SIZE}, offset={offset})"
+            )
 
         ids = all_ids
         metadatas = all_metadatas
@@ -1950,7 +1999,9 @@ class MemoryGardener:
             "protected": protected_count,  # 🆕 Phase 1.3: Compteur éléments protégés
             "retained_ratio": round(len(updates_ids) / len(ids), 4) if ids else 0.0,
             "deleted_ratio": round(len(delete_ids) / len(ids), 4) if ids else 0.0,
-            "protected_ratio": round(protected_count / len(ids), 4) if ids else 0.0,  # 🆕
+            "protected_ratio": round(protected_count / len(ids), 4)
+            if ids
+            else 0.0,  # 🆕
             "base_decay": self.base_decay,
             "stale_threshold_days": self.stale_threshold_days,
             "stale_decay": self.stale_decay,

@@ -2,16 +2,17 @@
 Test script for the new member emails system
 Tests both the backend email service and the new endpoints
 """
+
 import asyncio
-import os
 import sys
 from src.backend.features.auth.email_service import EmailService
 
 # Force UTF-8 encoding for console output
-if sys.platform == 'win32':
+if sys.platform == "win32":
     import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 
 async def test_email_service():
@@ -65,10 +66,14 @@ async def test_email_service():
     print()
 
     # Ask if user wants to send a test email
-    response = input("Do you want to send a TEST authentication issue notification? (y/n): ")
+    response = input(
+        "Do you want to send a TEST authentication issue notification? (y/n): "
+    )
 
-    if response.lower() == 'y':
-        test_email = input(f"Enter test email address (default: {test_email}): ").strip()
+    if response.lower() == "y":
+        test_email = input(
+            f"Enter test email address (default: {test_email}): "
+        ).strip()
         if not test_email:
             test_email = "test@example.com"
 
@@ -77,8 +82,7 @@ async def test_email_service():
 
         try:
             success = await email_service.send_auth_issue_notification_email(
-                test_email,
-                base_url
+                test_email, base_url
             )
 
             if success:

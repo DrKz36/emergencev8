@@ -60,7 +60,9 @@ class RecordingVectorService:
         assert collection is self.collection
         self.add_calls.append(list(items))
 
-    def delete_vectors(self, *, collection, where_filter):  # pragma: no cover - not used here
+    def delete_vectors(
+        self, *, collection, where_filter
+    ):  # pragma: no cover - not used here
         self.deleted_filters.append(dict(where_filter))
 
 
@@ -191,7 +193,10 @@ async def test_process_upload_with_massive_line_count(tmp_path: Path) -> None:
     assert result["vectorized"] is True
     assert result["total_chunks"] <= service.MAX_TOTAL_CHUNKS_ALLOWED
     assert result["indexed_chunks"] == result["total_chunks"]
-    assert sum(len(batch) for batch in vector_service.add_calls) == result["indexed_chunks"]
+    assert (
+        sum(len(batch) for batch in vector_service.add_calls)
+        == result["indexed_chunks"]
+    )
 
     documents = await db_queries.get_all_documents(
         manager,

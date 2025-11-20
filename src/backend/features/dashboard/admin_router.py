@@ -3,6 +3,7 @@
 Admin Dashboard Router - Endpoints for global statistics
 V1.0 - Admin-only access to global data
 """
+
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Any, Dict
@@ -18,8 +19,7 @@ async def verify_admin_role(user_role: str = Depends(deps.get_user_role)) -> boo
     """Dependency to verify user has admin role."""
     if user_role != "admin":
         raise HTTPException(
-            status_code=403,
-            detail="Access denied. Admin role required."
+            status_code=403, detail="Access denied. Admin role required."
         )
     return True
 
@@ -162,9 +162,13 @@ async def send_member_emails(
             success = False
 
             if email_type == "beta_invitation":
-                success = await email_service.send_beta_invitation_email(email, base_url)
+                success = await email_service.send_beta_invitation_email(
+                    email, base_url
+                )
             elif email_type == "auth_issue":
-                success = await email_service.send_auth_issue_notification_email(email, base_url)
+                success = await email_service.send_auth_issue_notification_email(
+                    email, base_url
+                )
             elif email_type == "custom":
                 # For custom emails, expect subject and body in request
                 subject = request.get("subject", "")
@@ -174,7 +178,7 @@ async def send_member_emails(
                 if not subject or not html_body or not text_body:
                     raise HTTPException(
                         status_code=400,
-                        detail="Custom emails require subject, html_body, and text_body"
+                        detail="Custom emails require subject, html_body, and text_body",
                     )
 
                 success = await email_service.send_custom_email(
@@ -182,8 +186,7 @@ async def send_member_emails(
                 )
             else:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Unknown email type: {email_type}"
+                    status_code=400, detail=f"Unknown email type: {email_type}"
                 )
 
             if success:
@@ -193,13 +196,17 @@ async def send_member_emails(
             else:
                 results["failed"] += 1
                 results["failed_emails"].append(email)
-                logger.warning(f"[Admin] Failed to send email ({email_type}) to {email}")
+                logger.warning(
+                    f"[Admin] Failed to send email ({email_type}) to {email}"
+                )
         except Exception as e:
             results["failed"] += 1
             results["failed_emails"].append(email)
             logger.error(f"[Admin] Error sending email ({email_type}) to {email}: {e}")
 
-    logger.info(f"[Admin] Emails sent: {results['sent']}/{results['total']} (type: {email_type})")
+    logger.info(
+        f"[Admin] Emails sent: {results['sent']}/{results['total']} (type: {email_type})"
+    )
 
     return results
 
@@ -232,8 +239,8 @@ async def send_beta_invitations(
     tags=["Admin Dashboard"],
     summary="Get all active threads (admin only)",
     description="Returns all active conversation threads with details for monitoring and management. "
-                "Note: This endpoint returns THREADS (conversations), not authentication sessions. "
-                "For authentication sessions, use /api/auth/admin/sessions instead.",
+    "Note: This endpoint returns THREADS (conversations), not authentication sessions. "
+    "For authentication sessions, use /api/auth/admin/sessions instead.",
 )
 async def get_active_threads(
     _admin_verified: bool = Depends(verify_admin_role),
@@ -321,5 +328,7 @@ async def get_detailed_costs_breakdown(
     """
     logger.info("[Admin] Fetching detailed costs breakdown")
     breakdown = await admin_service.get_detailed_costs_breakdown()
-    logger.info(f"[Admin] Detailed costs breakdown retrieved: {breakdown.get('total_users', 0)} users")
+    logger.info(
+        f"[Admin] Detailed costs breakdown retrieved: {breakdown.get('total_users', 0)} users"
+    )
     return breakdown

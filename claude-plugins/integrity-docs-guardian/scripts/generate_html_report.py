@@ -8,20 +8,26 @@ Optimized for Codex GPT to receive actionable debugging context
 import json
 import sys
 import os
-from datetime import datetime
 
 # Fix encoding for Windows
-if sys.platform == 'win32':
+if sys.platform == "win32":
     import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 
 def escape_html(text):
     """Escape HTML special characters"""
     if not text:
         return ""
-    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 def generate_html_report(report):
@@ -31,11 +37,7 @@ def generate_html_report(report):
     """
 
     # Status colors
-    status_colors = {
-        "OK": "#44ff44",
-        "DEGRADED": "#ffaa00",
-        "CRITICAL": "#ff4444"
-    }
+    status_colors = {"OK": "#44ff44", "DEGRADED": "#ffaa00", "CRITICAL": "#ff4444"}
     status_color = status_colors.get(report["status"], "#4a9eff")
 
     # Build HTML
@@ -261,29 +263,29 @@ def generate_html_report(report):
     <div class="container">
         <h1>🛡️ Guardian Report - EMERGENCE V8</h1>
 
-        <div class="status-badge">{report['status']}</div>
+        <div class="status-badge">{report["status"]}</div>
 
         <div class="summary-box">
             <h3 style="margin-top: 0;">📊 Summary</h3>
-            <p><strong>Service:</strong> {report['service']} ({report['region']})</p>
-            <p><strong>Timestamp:</strong> <span class="timestamp">{report['timestamp']}</span></p>
-            <p><strong>Logs analyzed:</strong> {report['logs_analyzed']} (last {report['freshness']})</p>
+            <p><strong>Service:</strong> {report["service"]} ({report["region"]})</p>
+            <p><strong>Timestamp:</strong> <span class="timestamp">{report["timestamp"]}</span></p>
+            <p><strong>Logs analyzed:</strong> {report["logs_analyzed"]} (last {report["freshness"]})</p>
 
             <div class="summary-grid">
                 <div class="summary-item">
-                    <div class="number">{report['summary']['errors']}</div>
+                    <div class="number">{report["summary"]["errors"]}</div>
                     <div class="label">Errors</div>
                 </div>
                 <div class="summary-item">
-                    <div class="number">{report['summary']['warnings']}</div>
+                    <div class="number">{report["summary"]["warnings"]}</div>
                     <div class="label">Warnings</div>
                 </div>
                 <div class="summary-item">
-                    <div class="number">{report['summary']['critical_signals']}</div>
+                    <div class="number">{report["summary"]["critical_signals"]}</div>
                     <div class="label">Critical Signals</div>
                 </div>
                 <div class="summary-item">
-                    <div class="number">{report['summary']['latency_issues']}</div>
+                    <div class="number">{report["summary"]["latency_issues"]}</div>
                     <div class="label">Latency Issues</div>
                 </div>
             </div>
@@ -293,7 +295,11 @@ def generate_html_report(report):
     # Error Patterns Analysis
     if report.get("error_patterns"):
         patterns = report["error_patterns"]
-        if patterns.get("by_endpoint") or patterns.get("by_error_type") or patterns.get("by_file"):
+        if (
+            patterns.get("by_endpoint")
+            or patterns.get("by_error_type")
+            or patterns.get("by_file")
+        ):
             html += """
         <div class="section">
             <h2 class="section-title">🔍 Error Patterns Analysis</h2>
@@ -305,7 +311,9 @@ def generate_html_report(report):
                 <div class="pattern-box">
                     <h4>🌐 By Endpoint</h4>
 """
-                for endpoint, count in list(patterns["by_endpoint"].items())[:5]:  # Top 5
+                for endpoint, count in list(patterns["by_endpoint"].items())[
+                    :5
+                ]:  # Top 5
                     html += f"""
                     <div class="pattern-item">
                         <span class="endpoint-tag">{escape_html(endpoint)}</span>
@@ -321,7 +329,9 @@ def generate_html_report(report):
                 <div class="pattern-box">
                     <h4>⚠️ By Error Type</h4>
 """
-                for error_type, count in list(patterns["by_error_type"].items())[:5]:  # Top 5
+                for error_type, count in list(patterns["by_error_type"].items())[
+                    :5
+                ]:  # Top 5
                     html += f"""
                     <div class="pattern-item">
                         <span class="error-type-tag">{escape_html(error_type)}</span>
@@ -357,7 +367,7 @@ def generate_html_report(report):
     if report.get("errors_detailed"):
         html += f"""
         <div class="section">
-            <h2 class="section-title">❌ Detailed Errors (Top {len(report['errors_detailed'])})</h2>
+            <h2 class="section-title">❌ Detailed Errors (Top {len(report["errors_detailed"])})</h2>
 """
 
         for error in report["errors_detailed"]:
@@ -365,31 +375,31 @@ def generate_html_report(report):
             <div class="error-card">
 """
             html += f"""
-                <p><strong>⏰ Time:</strong> <span class="timestamp">{escape_html(error.get('timestamp', ''))}</span></p>
-                <p><strong>🔴 Severity:</strong> {escape_html(error.get('severity', 'UNKNOWN'))}</p>
+                <p><strong>⏰ Time:</strong> <span class="timestamp">{escape_html(error.get("timestamp", ""))}</span></p>
+                <p><strong>🔴 Severity:</strong> {escape_html(error.get("severity", "UNKNOWN"))}</p>
 """
 
             if error.get("endpoint"):
                 method = error.get("http_method", "")
                 html += f"""
-                <p><strong>🌐 Endpoint:</strong> <span class="endpoint-tag">{escape_html(method)} {escape_html(error['endpoint'])}</span></p>
+                <p><strong>🌐 Endpoint:</strong> <span class="endpoint-tag">{escape_html(method)} {escape_html(error["endpoint"])}</span></p>
 """
 
             if error.get("error_type"):
                 html += f"""
-                <p><strong>⚠️ Type:</strong> <span class="error-type-tag">{escape_html(error['error_type'])}</span></p>
+                <p><strong>⚠️ Type:</strong> <span class="error-type-tag">{escape_html(error["error_type"])}</span></p>
 """
 
             if error.get("file_path"):
                 line = error.get("line_number", "")
                 html += f"""
-                <p><strong>📁 File:</strong> <span class="file-tag">{escape_html(error['file_path'])}:{line}</span></p>
+                <p><strong>📁 File:</strong> <span class="file-tag">{escape_html(error["file_path"])}:{line}</span></p>
 """
 
             html += f"""
                 <p><strong>💬 Message:</strong></p>
                 <div class="code-block">
-                    <pre>{escape_html(error.get('message', ''))}</pre>
+                    <pre>{escape_html(error.get("message", ""))}</pre>
                 </div>
 """
 
@@ -397,13 +407,13 @@ def generate_html_report(report):
                 html += f"""
                 <p><strong>📚 Stack Trace:</strong></p>
                 <div class="code-block">
-                    <pre>{escape_html(error['stack_trace'])}</pre>
+                    <pre>{escape_html(error["stack_trace"])}</pre>
                 </div>
 """
 
             if error.get("request_id"):
                 html += f"""
-                <p><strong>🔍 Request ID:</strong> <code>{escape_html(error['request_id'])}</code> (for tracing)</p>
+                <p><strong>🔍 Request ID:</strong> <code>{escape_html(error["request_id"])}</code> (for tracing)</p>
 """
 
             html += """
@@ -425,10 +435,10 @@ def generate_html_report(report):
             error_count = snippet.get("error_count", 0)
             html += f"""
             <div class="pattern-box">
-                <h4>📁 {escape_html(snippet['file'])} <span style="color: #ff4444;">({error_count} errors)</span></h4>
-                <p style="font-size: 12px; color: #a0a0a0;">Line {snippet['line']} (showing lines {snippet['start_line']}-{snippet['end_line']})</p>
+                <h4>📁 {escape_html(snippet["file"])} <span style="color: #ff4444;">({error_count} errors)</span></h4>
+                <p style="font-size: 12px; color: #a0a0a0;">Line {snippet["line"]} (showing lines {snippet["start_line"]}-{snippet["end_line"]})</p>
                 <div class="code-block">
-                    <pre>{escape_html(snippet['code_snippet'])}</pre>
+                    <pre>{escape_html(snippet["code_snippet"])}</pre>
                 </div>
             </div>
 """
@@ -447,8 +457,8 @@ def generate_html_report(report):
         for commit in report["recent_commits"]:
             html += f"""
             <div class="commit">
-                <span class="hash">{escape_html(commit['hash'])}</span> by <span class="author">{escape_html(commit['author'])}</span> <span class="timestamp">({escape_html(commit['time'])})</span>
-                <p style="margin: 5px 0 0 0;">{escape_html(commit['message'])}</p>
+                <span class="hash">{escape_html(commit["hash"])}</span> by <span class="author">{escape_html(commit["author"])}</span> <span class="timestamp">({escape_html(commit["time"])})</span>
+                <p style="margin: 5px 0 0 0;">{escape_html(commit["message"])}</p>
             </div>
 """
 
@@ -468,25 +478,25 @@ def generate_html_report(report):
             priority_class = priority.lower()
             html += f"""
             <div class="recommendation {priority_class}">
-                <p><strong>🚨 [{escape_html(priority)}] {escape_html(rec.get('action', ''))}</strong></p>
-                <p>{escape_html(rec.get('details', ''))}</p>
+                <p><strong>🚨 [{escape_html(priority)}] {escape_html(rec.get("action", ""))}</strong></p>
+                <p>{escape_html(rec.get("details", ""))}</p>
 """
 
             if rec.get("command"):
                 html += f"""
                 <p><strong>Command:</strong></p>
-                <div class="command">{escape_html(rec['command'])}</div>
+                <div class="command">{escape_html(rec["command"])}</div>
 """
 
             if rec.get("rollback_command"):
                 html += f"""
                 <p><strong>Rollback Command:</strong></p>
-                <div class="command">{escape_html(rec['rollback_command'])}</div>
+                <div class="command">{escape_html(rec["rollback_command"])}</div>
 """
 
             if rec.get("suggested_fix"):
                 html += f"""
-                <p><strong>Suggested Fix:</strong> {escape_html(rec['suggested_fix'])}</p>
+                <p><strong>Suggested Fix:</strong> {escape_html(rec["suggested_fix"])}</p>
 """
 
             if rec.get("affected_endpoints"):
@@ -532,7 +542,7 @@ def generate_html_report(report):
     html += f"""
         <div class="footer">
             <p>🤖 Guardian System 3.0.0 - Automated Production Monitoring</p>
-            <p>ÉMERGENCE V8 Production Monitoring | Generated {report['timestamp']}</p>
+            <p>ÉMERGENCE V8 Production Monitoring | Generated {report["timestamp"]}</p>
             <p style="margin-top: 10px; font-size: 11px;">
                 This report is optimized for Codex GPT to take actionable debugging steps.<br>
                 All context (stack traces, code snippets, patterns) is included for autonomous troubleshooting.
@@ -549,7 +559,10 @@ def generate_html_report(report):
 def main():
     """Main execution"""
     if len(sys.argv) < 2:
-        print("Usage: python generate_html_report.py <path_to_json_report>", file=sys.stderr)
+        print(
+            "Usage: python generate_html_report.py <path_to_json_report>",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     json_path = sys.argv[1]

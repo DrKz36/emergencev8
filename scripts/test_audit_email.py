@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Test rapide d'envoi email audit sans emojis (compatible Windows)"""
+
 import asyncio
 import os
 from datetime import datetime
@@ -8,11 +9,13 @@ from pathlib import Path
 
 # Charger le .env
 from dotenv import load_dotenv
-env_path = Path(__file__).parent.parent / '.env'
+
+env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
 # Ajouter le chemin du backend
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src', 'backend'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "backend"))
+
 
 async def test_email():
     from features.auth.email_service import EmailService
@@ -21,7 +24,8 @@ async def test_email():
     print(f"Timestamp: {datetime.now().isoformat()}")
 
     # HTML stylisé
-    html_body = """
+    html_body = (
+        """
 <!DOCTYPE html>
 <html>
 <head>
@@ -82,7 +86,9 @@ async def test_email():
         <div class="header">
             <h1>Audit Cloud EMERGENCE V8 - TEST</h1>
             <div class="status-badge">Statut: OK</div>
-            <p style="color: #94a3b8; font-size: 14px;">Test rapide - """ + datetime.now().strftime("%d/%m/%Y à %H:%M:%S") + """</p>
+            <p style="color: #94a3b8; font-size: 14px;">Test rapide - """
+        + datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
+        + """</p>
         </div>
 
         <div class="metric">
@@ -116,6 +122,7 @@ async def test_email():
 </body>
 </html>
 """
+    )
 
     text_body = f"""
 AUDIT CLOUD ÉMERGENCE V8 - TEST
@@ -145,13 +152,15 @@ Contact: gonzalefernando@gmail.com
         return False
 
     print("Envoi de l'email...")
-    subject = f"[TEST] Audit Cloud ÉMERGENCE - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    subject = (
+        f"[TEST] Audit Cloud ÉMERGENCE - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    )
 
     success = await email_service.send_custom_email(
         to_email="gonzalefernando@gmail.com",
         subject=subject,
         html_body=html_body,
-        text_body=text_body
+        text_body=text_body,
     )
 
     if success:
@@ -161,6 +170,7 @@ Contact: gonzalefernando@gmail.com
     else:
         print("Échec envoi email")
         return False
+
 
 if __name__ == "__main__":
     result = asyncio.run(test_email())

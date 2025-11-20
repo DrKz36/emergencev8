@@ -4,14 +4,16 @@
 Migration script to add password_must_reset column to auth_allowlist table
 and set it to False for admin users, True for others
 """
+
 import sqlite3
 import sys
 import io
 from pathlib import Path
 
 # Fix Windows console encoding
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
 
 def migrate_password_must_reset(db_path: str = "./data/emergence.db"):
     """Add password_must_reset column and configure it properly"""
@@ -43,7 +45,7 @@ def migrate_password_must_reset(db_path: str = "./data/emergence.db"):
         columns = cursor.fetchall()
         column_names = [col[1] for col in columns]
 
-        if 'password_must_reset' in column_names:
+        if "password_must_reset" in column_names:
             print("⚠️  Column 'password_must_reset' already exists")
         else:
             print("➕ Adding column 'password_must_reset' to auth_allowlist table...")
@@ -109,9 +111,9 @@ def migrate_password_must_reset(db_path: str = "./data/emergence.db"):
             status = "🔒 MUST RESET" if must_reset else "✅ NO RESET"
             print(f"  {emoji} {email:<40} {role:<10} {status}")
 
-        print(f"\n✅ Migration completed successfully!")
+        print("\n✅ Migration completed successfully!")
         print(f"   - {admin_count} admin user(s) set to NOT require password reset")
-        print(f"   - Admin users can now login without forced password change")
+        print("   - Admin users can now login without forced password change")
 
         return True
 

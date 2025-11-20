@@ -1,6 +1,7 @@
 """
 Webhooks models - Pydantic schemas for webhook subscriptions
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -12,6 +13,7 @@ from pydantic import BaseModel, HttpUrl
 
 class WebhookEvent(str, Enum):
     """Available webhook events"""
+
     THREAD_CREATED = "thread.created"
     MESSAGE_SENT = "message.sent"
     ANALYSIS_COMPLETED = "analysis.completed"
@@ -24,6 +26,7 @@ class WebhookEvent(str, Enum):
 
 class WebhookCreatePayload(BaseModel):
     """Payload for creating a new webhook"""
+
     url: HttpUrl
     events: list[WebhookEvent]
     description: Optional[str] = None
@@ -32,6 +35,7 @@ class WebhookCreatePayload(BaseModel):
 
 class WebhookUpdatePayload(BaseModel):
     """Payload for updating an existing webhook"""
+
     url: Optional[HttpUrl] = None
     events: Optional[list[WebhookEvent]] = None
     description: Optional[str] = None
@@ -40,6 +44,7 @@ class WebhookUpdatePayload(BaseModel):
 
 class WebhookResponse(BaseModel):
     """Webhook object returned by API"""
+
     id: str
     user_id: str
     url: str
@@ -60,12 +65,14 @@ class WebhookResponse(BaseModel):
 
 class WebhookListResponse(BaseModel):
     """Response for listing webhooks"""
+
     items: list[WebhookResponse]
     total: int
 
 
 class WebhookDeliveryStatus(str, Enum):
     """Delivery status for webhook deliveries"""
+
     SUCCESS = "success"
     FAILED = "failed"
     RETRYING = "retrying"
@@ -76,6 +83,7 @@ class WebhookDeliveryStatus(str, Enum):
 
 class WebhookDeliveryResponse(BaseModel):
     """Webhook delivery log"""
+
     id: str
     webhook_id: str
     event_type: str
@@ -92,12 +100,14 @@ class WebhookDeliveryResponse(BaseModel):
 
 class WebhookDeliveryListResponse(BaseModel):
     """Response for listing webhook deliveries"""
+
     items: list[WebhookDeliveryResponse]
     total: int
 
 
 class WebhookEventPayload(BaseModel):
     """Generic webhook event payload sent to external URLs"""
+
     event: str
     timestamp: datetime
     data: dict[str, Any]
@@ -112,6 +122,7 @@ class WebhookEventPayload(BaseModel):
 
 class WebhookStatsResponse(BaseModel):
     """Webhook statistics"""
+
     webhook_id: str
     total_deliveries: int
     successful_deliveries: int

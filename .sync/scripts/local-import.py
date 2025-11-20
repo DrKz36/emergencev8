@@ -178,7 +178,9 @@ class LocalImporter:
             return True
 
         # Essayer git apply
-        returncode, _, _ = self.run_git_command("apply", "--check", str(self.patch_path))
+        returncode, _, _ = self.run_git_command(
+            "apply", "--check", str(self.patch_path)
+        )
         if returncode == 0:
             self.run_git_command("apply", str(self.patch_path), check=True)
             self.patch_applied = True
@@ -197,7 +199,9 @@ class LocalImporter:
 
         # Essayer git apply --3way
         self.log_info("Essai de réparation...")
-        returncode, _, stderr = self.run_git_command("apply", "--3way", str(self.patch_path))
+        returncode, _, stderr = self.run_git_command(
+            "apply", "--3way", str(self.patch_path)
+        )
         if returncode == 0:
             self.patch_applied = True
             self.patch_method = "git apply --3way"
@@ -277,7 +281,9 @@ class LocalImporter:
             self.run_git_command("push", "origin", current_branch, check=True)
             self.log_success("Modifications pushées vers GitHub")
         else:
-            self.log_info("Push annulé (vous pouvez le faire manuellement avec: git push)")
+            self.log_info(
+                "Push annulé (vous pouvez le faire manuellement avec: git push)"
+            )
 
     def _generate_commit_message(self, num_modified: int) -> str:
         """Génère le message de commit"""
@@ -286,10 +292,10 @@ class LocalImporter:
                 metadata = json.loads(self.metadata_path.read_text(encoding="utf-8"))
                 return f"""sync: intégration modifications GPT Codex Cloud
 
-Export: {metadata['export_timestamp']}
-Type: {metadata['patch']['type']}
-Fichiers: {metadata['patch']['modified_files']}
-Branche source: {metadata['git']['branch']}
+Export: {metadata["export_timestamp"]}
+Type: {metadata["patch"]["type"]}
+Fichiers: {metadata["patch"]["modified_files"]}
+Branche source: {metadata["git"]["branch"]}
 
 🤖 Synchronisation automatique Cloud → Local → GitHub"""
             except Exception:
@@ -316,7 +322,7 @@ Fichiers modifiés: {num_modified}
 Date: {datetime.now()}
 Agent: Claude Code (Local)
 Patch: {self.patch_name}
-Méthode: {self.patch_method or 'N/A'}
+Méthode: {self.patch_method or "N/A"}
 Fichiers modifiés: {num_modified}
 Branche: {current_branch.strip()}
 Backup: {self.backup_branch}
@@ -429,6 +435,7 @@ def main():
     except Exception as e:
         print(f"\n❌ ERREUR: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

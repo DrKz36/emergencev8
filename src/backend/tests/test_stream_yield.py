@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
+
 def test_stream_cleanup():
     app = FastAPI()
     flag: dict[str, list[str]] = {"exit_order": []}
@@ -17,6 +18,7 @@ def test_stream_cleanup():
             for i in range(3):
                 yield f"chunk-{i}\n"
                 await asyncio.sleep(0.01)
+
         return StreamingResponse(generator(), media_type="text/plain")
 
     client = TestClient(app)

@@ -2,6 +2,7 @@
 """
 Script manuel pour consolider les threads archivés dans ChromaDB
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -22,13 +23,12 @@ async def main():
     print()
 
     # Init services
-    db_manager = DatabaseManager('backend/data/db/emergence_v7.db')
+    db_manager = DatabaseManager("backend/data/db/emergence_v7.db")
     await db_manager.connect()
 
     # Utiliser le même chemin que le backend (depuis src/)
     vector_service = VectorService(
-        persist_directory='./data/vector_store',
-        embed_model_name='all-MiniLM-L6-v2'
+        persist_directory="./data/vector_store", embed_model_name="all-MiniLM-L6-v2"
     )
 
     # Activer le mode offline pour permettre l'analyse sans ChatService
@@ -38,7 +38,7 @@ async def main():
     gardener = MemoryGardener(
         db_manager=db_manager,
         vector_service=vector_service,
-        memory_analyzer=memory_analyzer
+        memory_analyzer=memory_analyzer,
     )
 
     # Récupérer les threads archivés
@@ -56,7 +56,7 @@ async def main():
         thread_id = thread[0]
         user_id = thread[1]
         session_id = thread[2]
-        title = thread[3] or 'Sans titre'
+        title = thread[3] or "Sans titre"
         msg_count = thread[4]
 
         print(f"[{i}/{len(threads)}] Consolidation: '{title[:40]}' ({msg_count} msgs)")
@@ -65,11 +65,9 @@ async def main():
         try:
             # Consolider le thread
             await gardener._tend_single_thread(
-                thread_id=thread_id,
-                session_id=session_id,
-                user_id=user_id
+                thread_id=thread_id, session_id=session_id, user_id=user_id
             )
-            print(f"            [OK] Consolide!")
+            print("            [OK] Consolide!")
 
         except Exception as e:
             print(f"            [ERREUR] {e}")
@@ -82,7 +80,7 @@ async def main():
     print()
 
     # Vérifier combien de concepts ont été créés
-    collection = vector_service.get_or_create_collection('emergence_knowledge')
+    collection = vector_service.get_or_create_collection("emergence_knowledge")
     concept_count = collection.count()
     print(f"Total concepts dans ChromaDB: {concept_count}")
     print()

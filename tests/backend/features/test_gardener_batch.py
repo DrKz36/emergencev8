@@ -41,12 +41,17 @@ def mock_preference_collection():
 
 
 @pytest.fixture
-def gardener(mock_db_manager, mock_vector_service, mock_memory_analyzer, mock_preference_collection):
+def gardener(
+    mock_db_manager,
+    mock_vector_service,
+    mock_memory_analyzer,
+    mock_preference_collection,
+):
     """Instance de MemoryGardener pour les tests."""
     instance = MemoryGardener(
         db_manager=mock_db_manager,
         vector_service=mock_vector_service,
-        memory_analyzer=mock_memory_analyzer
+        memory_analyzer=mock_memory_analyzer,
     )
     instance.preference_collection = mock_preference_collection
     return instance
@@ -62,14 +67,18 @@ class TestBatchPreferenceFetch:
         assert result == {}
 
     @pytest.mark.asyncio
-    async def test_batch_fetch_single_existing(self, gardener, mock_preference_collection):
+    async def test_batch_fetch_single_existing(
+        self, gardener, mock_preference_collection
+    ):
         """Test batch fetch avec 1 préférence existante."""
         # Mock réponse ChromaDB
-        mock_preference_collection.get = Mock(return_value={
-            "ids": ["pref_1"],
-            "metadatas": [{"confidence": 0.8, "occurrences": 2}],
-            "documents": ["Aime le café"]
-        })
+        mock_preference_collection.get = Mock(
+            return_value={
+                "ids": ["pref_1"],
+                "metadatas": [{"confidence": 0.8, "occurrences": 2}],
+                "documents": ["Aime le café"],
+            }
+        )
 
         result = await gardener._get_existing_preferences_batch(["pref_1"])
 
@@ -79,20 +88,26 @@ class TestBatchPreferenceFetch:
         assert result["pref_1"]["document"] == "Aime le café"
 
     @pytest.mark.asyncio
-    async def test_batch_fetch_multiple_existing(self, gardener, mock_preference_collection):
+    async def test_batch_fetch_multiple_existing(
+        self, gardener, mock_preference_collection
+    ):
         """Test batch fetch avec plusieurs préférences existantes."""
         # Mock réponse ChromaDB avec 3 préférences
-        mock_preference_collection.get = Mock(return_value={
-            "ids": ["pref_1", "pref_2", "pref_3"],
-            "metadatas": [
-                {"confidence": 0.8, "occurrences": 2},
-                {"confidence": 0.9, "occurrences": 5},
-                {"confidence": 0.7, "occurrences": 1}
-            ],
-            "documents": ["Aime le café", "N'aime pas le thé", "Préfère le matin"]
-        })
+        mock_preference_collection.get = Mock(
+            return_value={
+                "ids": ["pref_1", "pref_2", "pref_3"],
+                "metadatas": [
+                    {"confidence": 0.8, "occurrences": 2},
+                    {"confidence": 0.9, "occurrences": 5},
+                    {"confidence": 0.7, "occurrences": 1},
+                ],
+                "documents": ["Aime le café", "N'aime pas le thé", "Préfère le matin"],
+            }
+        )
 
-        result = await gardener._get_existing_preferences_batch(["pref_1", "pref_2", "pref_3"])
+        result = await gardener._get_existing_preferences_batch(
+            ["pref_1", "pref_2", "pref_3"]
+        )
 
         assert len(result) == 3
         assert all(pid in result for pid in ["pref_1", "pref_2", "pref_3"])
@@ -101,19 +116,22 @@ class TestBatchPreferenceFetch:
         assert result["pref_3"]["document"] == "Préfère le matin"
 
     @pytest.mark.asyncio
-    async def test_batch_fetch_partial_missing(self, gardener, mock_preference_collection):
+    async def test_batch_fetch_partial_missing(
+        self, gardener, mock_preference_collection
+    ):
         """Test batch fetch avec certaines préférences manquantes."""
         # Demander 3 préférences, mais seulement 2 existent
-        mock_preference_collection.get = Mock(return_value={
-            "ids": ["pref_1", "pref_3"],  # pref_2 manquant
-            "metadatas": [
-                {"confidence": 0.8},
-                {"confidence": 0.7}
-            ],
-            "documents": ["Aime le café", "Préfère le matin"]
-        })
+        mock_preference_collection.get = Mock(
+            return_value={
+                "ids": ["pref_1", "pref_3"],  # pref_2 manquant
+                "metadatas": [{"confidence": 0.8}, {"confidence": 0.7}],
+                "documents": ["Aime le café", "Préfère le matin"],
+            }
+        )
 
-        result = await gardener._get_existing_preferences_batch(["pref_1", "pref_2", "pref_3"])
+        result = await gardener._get_existing_preferences_batch(
+            ["pref_1", "pref_2", "pref_3"]
+        )
 
         assert len(result) == 3
         assert result["pref_1"] is not None
@@ -123,11 +141,9 @@ class TestBatchPreferenceFetch:
     @pytest.mark.asyncio
     async def test_batch_fetch_all_missing(self, gardener, mock_preference_collection):
         """Test batch fetch avec aucune préférence existante."""
-        mock_preference_collection.get = Mock(return_value={
-            "ids": [],
-            "metadatas": [],
-            "documents": []
-        })
+        mock_preference_collection.get = Mock(
+            return_value={"ids": [], "metadatas": [], "documents": []}
+        )
 
         result = await gardener._get_existing_preferences_batch(["pref_1", "pref_2"])
 
@@ -136,7 +152,9 @@ class TestBatchPreferenceFetch:
         assert result["pref_2"] is None
 
     @pytest.mark.asyncio
-    async def test_batch_fetch_handles_exceptions(self, gardener, mock_preference_collection):
+    async def test_batch_fetch_handles_exceptions(
+        self, gardener, mock_preference_collection
+    ):
         """Test que les exceptions sont gérées gracieusement."""
         mock_preference_collection.get = Mock(side_effect=Exception("ChromaDB error"))
 
@@ -148,14 +166,18 @@ class TestBatchPreferenceFetch:
         assert result["pref_2"] is None
 
     @pytest.mark.asyncio
-    async def test_batch_fetch_unwraps_nested_results(self, gardener, mock_preference_collection):
+    async def test_batch_fetch_unwraps_nested_results(
+        self, gardener, mock_preference_collection
+    ):
         """Test que les résultats nested sont unwrapped correctement."""
         # Certaines versions ChromaDB retournent [[ids]], [[metadatas]]
-        mock_preference_collection.get = Mock(return_value={
-            "ids": [["pref_1", "pref_2"]],  # Nested
-            "metadatas": [[{"confidence": 0.8}, {"confidence": 0.9}]],  # Nested
-            "documents": [["Doc1", "Doc2"]]  # Nested
-        })
+        mock_preference_collection.get = Mock(
+            return_value={
+                "ids": [["pref_1", "pref_2"]],  # Nested
+                "metadatas": [[{"confidence": 0.8}, {"confidence": 0.9}]],  # Nested
+                "documents": [["Doc1", "Doc2"]],  # Nested
+            }
+        )
 
         result = await gardener._get_existing_preferences_batch(["pref_1", "pref_2"])
 
@@ -170,6 +192,7 @@ class TestStorePreferenceRecordsOptimization:
     @pytest.mark.asyncio
     async def test_batch_fetch_called_once(self, gardener, mock_preference_collection):
         """Test que le batch fetch est appelé une seule fois pour plusieurs préférences."""
+
         # Mock synchrone compatible
         def mock_get(*args, **kwargs):
             return {"ids": [], "metadatas": [], "documents": []}
@@ -188,19 +211,19 @@ class TestStorePreferenceRecordsOptimization:
         assert call_args[1]["ids"] == preference_ids
 
     @pytest.mark.asyncio
-    async def test_batch_fetch_handles_existing(self, gardener, mock_preference_collection):
+    async def test_batch_fetch_handles_existing(
+        self, gardener, mock_preference_collection
+    ):
         """Test que le batch fetch gère correctement les préférences existantes."""
+
         # Mock avec pref_1 existant
         def mock_get(*args, **kwargs):
             ids = kwargs.get("ids", [])
             if "pref_1" in ids:
                 return {
                     "ids": ["pref_1"],
-                    "metadatas": [{
-                        "confidence": 0.9,
-                        "occurrences": 3
-                    }],
-                    "documents": ["Aime le café"]
+                    "metadatas": [{"confidence": 0.9, "occurrences": 3}],
+                    "documents": ["Aime le café"],
                 }
             return {"ids": [], "metadatas": [], "documents": []}
 
@@ -220,7 +243,9 @@ class TestBatchFetchPerformance:
     """Tests de performance comparant batch fetch vs N+1."""
 
     @pytest.mark.asyncio
-    async def test_batch_single_call_vs_multiple_calls(self, gardener, mock_preference_collection):
+    async def test_batch_single_call_vs_multiple_calls(
+        self, gardener, mock_preference_collection
+    ):
         """Test que le batch fetch fait 1 seul appel au lieu de N appels."""
         num_prefs = 20
 
@@ -230,7 +255,7 @@ class TestBatchFetchPerformance:
             return {
                 "ids": ids,
                 "metadatas": [{} for _ in ids],
-                "documents": ["" for _ in ids]
+                "documents": ["" for _ in ids],
             }
 
         mock_preference_collection.get = Mock(side_effect=mock_get)
@@ -248,17 +273,20 @@ class TestBatchFetchPerformance:
         assert len(call_args[1]["ids"]) == num_prefs
 
     @pytest.mark.asyncio
-    async def test_batch_returns_correct_count(self, gardener, mock_preference_collection):
+    async def test_batch_returns_correct_count(
+        self, gardener, mock_preference_collection
+    ):
         """Test que le batch fetch retourne le bon nombre de résultats."""
         test_sizes = [1, 5, 10, 50]
 
         for size in test_sizes:
+
             def mock_get(*args, **kwargs):
                 ids = kwargs.get("ids", [])
                 return {
                     "ids": ids,
                     "metadatas": [{} for _ in ids],
-                    "documents": ["" for _ in ids]
+                    "documents": ["" for _ in ids],
                 }
 
             mock_preference_collection.get = Mock(side_effect=mock_get)

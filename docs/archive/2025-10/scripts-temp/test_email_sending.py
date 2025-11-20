@@ -4,9 +4,9 @@ Quick test script to verify email sending configuration
 
 This script will send a test email to verify your SMTP configuration is working.
 """
+
 import asyncio
 import sys
-import os
 from pathlib import Path
 
 # Add src/backend to Python path
@@ -19,9 +19,9 @@ from features.auth.email_service import EmailService, build_email_config_from_en
 async def test_email():
     """Test email configuration"""
 
-    print("="*60)
+    print("=" * 60)
     print("EMERGENCE EMAIL SERVICE - TEST")
-    print("="*60)
+    print("=" * 60)
     print()
 
     # Build email service
@@ -34,7 +34,9 @@ async def test_email():
     print(f"  SMTP Host: {config.smtp_host}")
     print(f"  SMTP Port: {config.smtp_port}")
     print(f"  SMTP User: {config.smtp_user}")
-    print(f"  SMTP Password: {'*' * len(config.smtp_password) if config.smtp_password else 'NOT SET'}")
+    print(
+        f"  SMTP Password: {'*' * len(config.smtp_password) if config.smtp_password else 'NOT SET'}"
+    )
     print(f"  From Email: {config.from_email}")
     print(f"  From Name: {config.from_name}")
     print(f"  Use TLS: {config.use_tls}")
@@ -60,7 +62,9 @@ async def test_email():
     print()
 
     # Ask for test email
-    test_email_address = input("Enter your email to receive a test invitation (or press Enter to skip): ").strip()
+    test_email_address = input(
+        "Enter your email to receive a test invitation (or press Enter to skip): "
+    ).strip()
 
     if not test_email_address:
         print("Test skipped.")
@@ -70,8 +74,7 @@ async def test_email():
 
     try:
         success = await email_service.send_beta_invitation_email(
-            to_email=test_email_address,
-            base_url="https://emergence-app.ch"
+            to_email=test_email_address, base_url="https://emergence-app.ch"
         )
 
         if success:
@@ -86,6 +89,7 @@ async def test_email():
     except Exception as e:
         print(f"❌ Error sending test email: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -95,7 +99,7 @@ def main():
     success = asyncio.run(test_email())
 
     print()
-    print("="*60)
+    print("=" * 60)
 
     if success:
         print("✅ All tests passed!")
@@ -105,7 +109,7 @@ def main():
     else:
         print("❌ Tests failed. Please check your configuration.")
 
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,28 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+## ✅ Session COMPLÉTÉE (2025-11-02 10:45 CET) - Agent : Codex GPT
+
+### Fichiers modifiés
+- `tests/backend/features/chat/test_consolidated_memory_cache.py`
+- `tests/backend/features/test_threads_delete.py`
+
+### Actions réalisées
+- `git checkout main && git pull --rebase` pour revenir sur la branche de référence après la suppression de `feat/rag-phase4-exhaustive-queries`.
+- Lancement `scripts/sync-workdir.ps1` → échec contrôlé (login smoke manquant pour `tests/run_all.ps1`, cf. message `Provide valid credentials via -SmokeEmail/-SmokePassword`).
+- Correctifs tests backend : import `Settings` redirigé vers `backend.shared.app_settings` et alignement des tests `delete_thread` avec le comportement soft-delete (archived=1 + conservation messages/docs).
+
+### Tests
+- `pytest tests/backend/features/chat/test_consolidated_memory_cache.py -q`
+- `pytest tests/backend/features/test_threads_delete.py -q`
+
+### Prochaines actions recommandées
+1. Fournir `EMERGENCE_SMOKE_EMAIL` / `EMERGENCE_SMOKE_PASSWORD` (ou utiliser les paramètres `-SmokeEmail/-SmokePassword`) pour que `tests/run_all.ps1` puisse se lancer depuis `scripts/sync-workdir.ps1`.
+2. Relancer `scripts/sync-workdir.ps1` après configuration des credos puis exécuter `pytest tests/backend` complet pour vérifier qu'il n'y a pas d'autres régressions.
+3. Reporter la décision soft-delete (archived=1) dans les docs architecture/mémoire si besoin pour éviter les confusions côté QA.
+
+### Blocages
+- Tests smoke bloqués (login API) tant que les identifiants ne sont pas fournis.
+
 ## 🚀 Session COMPLETÉE (2025-10-29 07:03 CET) - Agent : Codex GPT
 
 ### Fichiers modifiés

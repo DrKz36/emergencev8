@@ -5,6 +5,7 @@ Replaces the old standalone scripts (guardian_email_report.py, send_guardian_rep
 
 UPDATED 2025-10-20: Now uses Cloud Storage for report persistence (Cloud Run stateless fix)
 """
+
 import os
 from pathlib import Path
 from typing import Dict, Optional, Any
@@ -31,12 +32,16 @@ class GuardianEmailService:
 
         # Keep old reports_dir for backward compat (fallback only)
         if reports_dir is None:
-            self.reports_dir = Path(__file__).parent.parent.parent.parent.parent / "reports"
+            self.reports_dir = (
+                Path(__file__).parent.parent.parent.parent.parent / "reports"
+            )
         else:
             self.reports_dir = reports_dir
 
         self.email_service = EmailService()
-        logger.info(f"GuardianEmailService initialized with Cloud Storage (fallback: {self.reports_dir})")
+        logger.info(
+            f"GuardianEmailService initialized with Cloud Storage (fallback: {self.reports_dir})"
+        )
 
     def load_report(self, report_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -59,13 +64,13 @@ class GuardianEmailService:
             Dictionary mapping report filenames to their data
         """
         report_files = [
-            'global_report.json',
-            'prod_report.json',
-            'integrity_report.json',
-            'docs_report.json',
-            'unified_report.json',
-            'orchestration_report.json',
-            'usage_report.json',  # Phase 2 - Usage tracking
+            "global_report.json",
+            "prod_report.json",
+            "integrity_report.json",
+            "docs_report.json",
+            "unified_report.json",
+            "orchestration_report.json",
+            "usage_report.json",  # Phase 2 - Usage tracking
         ]
 
         reports = {}
@@ -101,10 +106,10 @@ class GuardianEmailService:
             return False
 
         # Extract usage_report for special handling in email template
-        usage_stats = reports.get('usage_report.json')
+        usage_stats = reports.get("usage_report.json")
         if usage_stats:
             # Pass usage_stats separately for clearer template context
-            reports['usage_stats'] = usage_stats
+            reports["usage_stats"] = usage_stats
             logger.info("Usage stats loaded successfully for email")
 
         # Determine recipient

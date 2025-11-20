@@ -45,18 +45,15 @@ class IntentTracker:
         ),
         (
             r"dans (\d+) jours?",
-            lambda m: datetime.now(timezone.utc)
-            + timedelta(days=int(m.group(1))),
+            lambda m: datetime.now(timezone.utc) + timedelta(days=int(m.group(1))),
         ),
         (
             r"dans (\d+) semaines?",
-            lambda m: datetime.now(timezone.utc)
-            + timedelta(weeks=int(m.group(1))),
+            lambda m: datetime.now(timezone.utc) + timedelta(weeks=int(m.group(1))),
         ),
         (
             r"dans (\d+) mois",
-            lambda m: datetime.now(timezone.utc)
-            + timedelta(days=30 * int(m.group(1))),
+            lambda m: datetime.now(timezone.utc) + timedelta(days=30 * int(m.group(1))),
         ),
     ]
 
@@ -93,9 +90,7 @@ class IntentTracker:
                         else:
                             return cast(datetime | None, resolver())
                 except Exception as e:
-                    logger.debug(
-                        f"Erreur résolution timeframe pour '{pattern}': {e}"
-                    )
+                    logger.debug(f"Erreur résolution timeframe pour '{pattern}': {e}")
                     continue
 
         return None
@@ -167,7 +162,9 @@ class IntentTracker:
                 # Check if approaching deadline
                 if now <= intent_deadline <= deadline:
                     intent_id = ids[i] if i < len(ids) else ""
-                    reminder_count = self.reminder_counts.get(intent_id, 0) if intent_id else 0
+                    reminder_count = (
+                        self.reminder_counts.get(intent_id, 0) if intent_id else 0
+                    )
 
                     expiring.append(
                         {
@@ -243,9 +240,7 @@ class IntentTracker:
                     )
 
                 except Exception as e:
-                    logger.warning(
-                        f"Erreur envoi rappel intention {intent['id']}: {e}"
-                    )
+                    logger.warning(f"Erreur envoi rappel intention {intent['id']}: {e}")
 
         return sent_count
 
@@ -268,7 +263,9 @@ class IntentTracker:
             # Find intents to purge (thread-safe copy)
             async with self._reminder_lock:
                 intents_to_purge = [
-                    intent_id for intent_id, count in self.reminder_counts.items() if count >= 3
+                    intent_id
+                    for intent_id, count in self.reminder_counts.items()
+                    if count >= 3
                 ]
 
             # Purge intents (outside lock to avoid long hold)

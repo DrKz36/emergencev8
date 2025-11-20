@@ -2,13 +2,14 @@
 Preview the authentication issue email template
 Shows both HTML and text versions
 """
+
 import sys
 import io
 
 # Force UTF-8 encoding for console output
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # Email variables
 to_email = "gonzalefernando@gmail.com"
@@ -22,7 +23,7 @@ print("=" * 80)
 print("APERÇU DE L'EMAIL - NOTIFICATION PROBLÈME D'AUTHENTIFICATION")
 print("=" * 80)
 print()
-print(f"📧 DE : ÉMERGENCE <gonzalefernando@gmail.com>")
+print("📧 DE : ÉMERGENCE <gonzalefernando@gmail.com>")
 print(f"📧 À : {to_email}")
 print(f"📋 SUJET : {subject}")
 print()

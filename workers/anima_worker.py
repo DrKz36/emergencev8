@@ -2,11 +2,10 @@
 Anima Worker - Cloud Run Service (Pub/Sub Push subscriber)
 Agent Anthropic Claude exécuté de manière asynchrone
 """
-import asyncio
+
 import logging
 import json
 import os
-from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, Request, HTTPException, Header
 from anthropic import AsyncAnthropic
@@ -33,7 +32,7 @@ db = PostgreSQLManager(
     user=os.getenv("CLOUD_SQL_USER", "emergence-app"),
     password=os.getenv("DB_PASSWORD"),
     min_size=1,
-    max_size=5
+    max_size=5,
 )
 
 # Anthropic client
@@ -68,14 +67,13 @@ async def health():
     return {
         "status": "healthy" if db_healthy else "unhealthy",
         "database": "ok" if db_healthy else "error",
-        "worker": "anima"
+        "worker": "anima",
     }
 
 
 @app.post("/process")
 async def process_message(
-    request: Request,
-    authorization: Optional[str] = Header(None)
+    request: Request, authorization: Optional[str] = Header(None)
 ):
     """
     Endpoint appelé par Pub/Sub (push subscription).
@@ -100,6 +98,7 @@ async def process_message(
 
         # Decode base64 data
         import base64
+
         data_b64 = message.get("data", "")
         data_json = base64.b64decode(data_b64).decode("utf-8")
         task_data = json.loads(data_json)
@@ -113,7 +112,7 @@ async def process_message(
         return {
             "status": "processed",
             "message_id": task_data.get("message_id"),
-            "result_id": result.get("result_id")
+            "result_id": result.get("result_id"),
         }
 
     except Exception as e:
@@ -157,7 +156,7 @@ async def process_agent_task(task_data: Dict[str, Any]) -> Dict[str, Any]:
             max_tokens=max_tokens,
             temperature=temperature,
             system=system_prompt if system_prompt else None,
-            messages=messages
+            messages=messages,
         )
 
         # Extract response
@@ -180,10 +179,12 @@ async def process_agent_task(task_data: Dict[str, Any]) -> Dict[str, Any]:
             tokens_input=tokens_input,
             tokens_output=tokens_output,
             cost_usd=cost_usd,
-            metadata=task_data.get("metadata", {})
+            metadata=task_data.get("metadata", {}),
         )
 
-        logger.info(f"Anima response stored: result_id={result_id}, cost=${cost_usd:.4f}")
+        logger.info(
+            f"Anima response stored: result_id={result_id}, cost=${cost_usd:.4f}"
+        )
 
         # TODO: Notify orchestrator via callback (WebSocket ou autre mécanisme)
         await notify_orchestrator(session_id, result_id, assistant_text)
@@ -192,7 +193,7 @@ async def process_agent_task(task_data: Dict[str, Any]) -> Dict[str, Any]:
             "result_id": result_id,
             "tokens_input": tokens_input,
             "tokens_output": tokens_output,
-            "cost_usd": cost_usd
+            "cost_usd": cost_usd,
         }
 
     except Exception as e:
@@ -235,7 +236,7 @@ async def store_agent_response(
     tokens_input: int,
     tokens_output: int,
     cost_usd: float,
-    metadata: Dict[str, Any]
+    metadata: Dict[str, Any],
 ) -> str:
     """Stocke réponse agent dans PostgreSQL"""
     # Insert message
@@ -256,7 +257,7 @@ async def store_agent_response(
         tokens_input,
         tokens_output,
         cost_usd,
-        json.dumps(metadata)
+        json.dumps(metadata),
     )
 
     # Insert cost tracking
@@ -275,7 +276,7 @@ async def store_agent_response(
         model,
         tokens_input,
         tokens_output,
-        cost_usd
+        cost_usd,
     )
 
     return str(result_id)
@@ -294,7 +295,7 @@ async def store_agent_error(message_id: str, session_id: str, error: str):
         "error",
         f"Agent error: {error}",
         "anima",
-        json.dumps({"error": error, "original_message_id": message_id})
+        json.dumps({"error": error, "original_message_id": message_id}),
     )
 
 

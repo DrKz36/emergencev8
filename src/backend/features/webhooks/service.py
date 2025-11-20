@@ -1,6 +1,7 @@
 """
 Webhooks service - CRUD operations for webhook subscriptions
 """
+
 from __future__ import annotations
 
 import json
@@ -39,9 +40,7 @@ class WebhookService:
         self.db = db
 
     async def create_webhook(
-        self,
-        user_id: str,
-        payload: WebhookCreatePayload
+        self, user_id: str, payload: WebhookCreatePayload
     ) -> WebhookResponse:
         """Create a new webhook subscription"""
         webhook_id = str(uuid.uuid4())
@@ -66,9 +65,9 @@ class WebhookService:
                 payload.active,
                 payload.description,
                 now,
-                now
+                now,
             ),
-            commit=True
+            commit=True,
         )
 
         logger.info(f"Created webhook {webhook_id} for user {user_id}")
@@ -102,16 +101,10 @@ class WebhookService:
 
         webhooks = [self._webhook_from_row(dict(row)) for row in rows]
 
-        return WebhookListResponse(
-            items=webhooks,
-            total=len(webhooks)
-        )
+        return WebhookListResponse(items=webhooks, total=len(webhooks))
 
     async def update_webhook(
-        self,
-        webhook_id: str,
-        user_id: str,
-        payload: WebhookUpdatePayload
+        self, webhook_id: str, user_id: str, payload: WebhookUpdatePayload
     ) -> WebhookResponse:
         """Update an existing webhook"""
         # Check webhook exists
@@ -148,7 +141,7 @@ class WebhookService:
 
         query = f"""
             UPDATE webhooks
-            SET {', '.join(updates)}
+            SET {", ".join(updates)}
             WHERE id = ? AND user_id = ?
         """
         await self.db.execute(query, tuple(params), commit=True)
@@ -171,10 +164,7 @@ class WebhookService:
         logger.info(f"Deleted webhook {webhook_id}")
 
     async def get_webhook_deliveries(
-        self,
-        webhook_id: str,
-        user_id: str,
-        limit: int = 50
+        self, webhook_id: str, user_id: str, limit: int = 50
     ) -> WebhookDeliveryListResponse:
         """Get delivery logs for a webhook"""
         # Check webhook exists
@@ -191,20 +181,18 @@ class WebhookService:
 
         deliveries = [self._delivery_from_row(dict(row)) for row in rows]
 
-        return WebhookDeliveryListResponse(
-            items=deliveries,
-            total=len(deliveries)
-        )
+        return WebhookDeliveryListResponse(items=deliveries, total=len(deliveries))
 
-    async def get_webhook_stats(self, webhook_id: str, user_id: str) -> WebhookStatsResponse:
+    async def get_webhook_stats(
+        self, webhook_id: str, user_id: str
+    ) -> WebhookStatsResponse:
         """Get statistics for a webhook"""
         webhook = await self.get_webhook(webhook_id, user_id)
 
         success_rate = 0.0
         if webhook.total_deliveries > 0:
             success_rate = round(
-                (webhook.successful_deliveries / webhook.total_deliveries) * 100,
-                2
+                (webhook.successful_deliveries / webhook.total_deliveries) * 100, 2
             )
 
         return WebhookStatsResponse(
@@ -213,7 +201,7 @@ class WebhookService:
             successful_deliveries=webhook.successful_deliveries,
             failed_deliveries=webhook.failed_deliveries,
             success_rate=success_rate,
-            last_triggered_at=webhook.last_triggered_at
+            last_triggered_at=webhook.last_triggered_at,
         )
 
     def _generate_secret(self) -> str:
@@ -234,7 +222,7 @@ class WebhookService:
             last_triggered_at=row.get("last_triggered_at"),
             total_deliveries=row.get("total_deliveries", 0),
             successful_deliveries=row.get("successful_deliveries", 0),
-            failed_deliveries=row.get("failed_deliveries", 0)
+            failed_deliveries=row.get("failed_deliveries", 0),
         )
 
     def _delivery_from_row(self, row: dict[str, Any]) -> WebhookDeliveryResponse:
@@ -247,5 +235,5 @@ class WebhookService:
             response_body=row.get("response_body"),
             error=row.get("error"),
             attempt=row["attempt"],
-            created_at=row["created_at"]
+            created_at=row["created_at"],
         )

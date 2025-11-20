@@ -1,29 +1,27 @@
-﻿# src/backend/core/dispatcher.py
+# src/backend/core/dispatcher.py
 import json
 import logging
-from typing import Any
-from fastapi import WebSocket
-
-from backend.features.chat.service import ChatService
-from backend.features.debate.service import DebateService, DebateConfig as DebateServiceConfig
-from backend.features.debate.models import DebateConfig as DebateConfigModel
-from backend.shared.models import ChatMessage
+from typing import Any, Callable, Awaitable, Dict
 
 logger = logging.getLogger(__name__)
 
+HandlerType = Callable[[str, Dict[str, Any]], Awaitable[None]]
+
 
 class WebSocketDispatcher:
-    def __init__(self, chat_service: ChatService, debate_service: DebateService):
-        """Initialise le dispatcher avec les instances des services necessaires."""
-        self.chat_service = chat_service
-        self.debate_service = debate_service
-        self._routes = {
-            "chat:message": self._handle_chat_message,
-            "debate:create": self._handle_debate_create,
-        }
-        logger.info("WebSocketDispatcher V1.0 initialise avec les routes : chat, debate.")
+    def __init__(self):
+        """Initialise le dispatcher sans dépendances directes."""
+        self._routes: Dict[str, HandlerType] = {}
+        logger.info("WebSocketDispatcher V2.0 (Generic) initialisé.")
 
-    async def dispatch(self, websocket: WebSocket, session_id: str, raw_data: str) -> None:
+    def register_handler(self, message_type: str, handler: HandlerType) -> None:
+        """Enregistre un handler pour un type de message donné."""
+        self._routes[message_type] = handler
+        logger.debug(f"Handler enregistré pour '{message_type}'")
+
+    async def dispatch(
+        self, session_id: str, raw_data: str
+    ) -> None:
         """Point d'entree : route les evenements recus sur la connexion WS."""
         try:
             data = json.loads(raw_data)
@@ -37,15 +35,15 @@ class WebSocketDispatcher:
                 )
                 return
 
-            handler = self._routes.get(message_type)
-            if handler:
-                logger.info("Dispatch de l'evenement '%s' vers son handler.", message_type)
-                await handler(session_id, payload)
-            else:
-                logger.warning("Aucun handler trouve pour le message de type '%s'.", message_type)
+            # Normalisation basique si nécessaire (peut être fait en amont)
+            # Ici on suppose que message_type correspond exactement à la clé enregistrée
+
+            await self.dispatch_payload(session_id, message_type, payload)
 
         except json.JSONDecodeError:
-            logger.error("Erreur de decodage JSON pour le message WebSocket: %s", raw_data)
+            logger.error(
+                "Erreur de decodage JSON pour le message WebSocket: %s", raw_data
+            )
         except Exception as exc:
             logger.error(
                 "Erreur inattendue dans le dispatcher WebSocket: %s",
@@ -53,39 +51,17 @@ class WebSocketDispatcher:
                 exc_info=True,
             )
 
-    async def _handle_chat_message(self, session_id: str, payload: dict[str, Any]) -> None:
-        """Gere les messages destines au service de chat."""
-        try:
-            chat_request = ChatMessage(**payload)
-            self.chat_service.process_user_message_for_agents(
-                session_id=session_id,
-                chat_request=chat_request,
+    async def dispatch_payload(
+        self, session_id: str, message_type: str, payload: Dict[str, Any]
+    ) -> None:
+        """Dispatche un payload déjà décodé vers le bon handler."""
+        handler = self._routes.get(message_type)
+        if handler:
+            logger.debug(
+                "Dispatch de l'evenement '%s' vers son handler.", message_type
             )
-        except Exception as exc:
-            logger.error(
-                "Erreur lors du traitement du message de chat: %s, payload: %s",
-                exc,
-                payload,
-            )
-
-    async def _handle_debate_create(self, session_id: str, payload: dict[str, Any]) -> None:
-        """Gere les demandes de creation de debat."""
-        try:
-            debate_config_model = DebateConfigModel(**payload)
-            service_config = DebateServiceConfig(
-                topic=debate_config_model.topic,
-                rounds=debate_config_model.rounds,
-                agent_order=list(debate_config_model.agent_order),
-                use_rag=debate_config_model.use_rag,
-                doc_ids=None,
-            )
-            await self.debate_service.run(
-                session_id=session_id,
-                config=service_config,
-            )
-        except Exception as exc:
-            logger.error(
-                "Erreur lors de la creation du debat: %s, payload: %s",
-                exc,
-                payload,
+            await handler(session_id, payload)
+        else:
+            logger.warning(
+                "Aucun handler trouve pour le message de type '%s'.", message_type
             )

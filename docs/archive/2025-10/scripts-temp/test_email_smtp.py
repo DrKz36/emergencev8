@@ -2,8 +2,8 @@
 Test script for email sending functionality
 Tests the SMTP configuration and email service
 """
+
 import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -51,7 +51,9 @@ async def test_email_service():
     print()
 
     # Prompt for test email
-    test_email = input("Entrez l'adresse email pour le test (ou appuyez sur Entrée pour utiliser gonzalefernando@gmail.com): ").strip()
+    test_email = input(
+        "Entrez l'adresse email pour le test (ou appuyez sur Entrée pour utiliser gonzalefernando@gmail.com): "
+    ).strip()
     if not test_email:
         test_email = "gonzalefernando@gmail.com"
 
@@ -72,8 +74,7 @@ async def test_email_service():
             # Test beta invitation email
             print("Envoi de l'email d'invitation beta...")
             success = await email_service.send_beta_invitation_email(
-                to_email=test_email,
-                base_url="https://emergence-app.ch"
+                to_email=test_email, base_url="https://emergence-app.ch"
             )
         else:
             # Test password reset email (default)
@@ -81,7 +82,7 @@ async def test_email_service():
             success = await email_service.send_password_reset_email(
                 to_email=test_email,
                 reset_token="test_token_123456789",
-                base_url="http://localhost:5173"
+                base_url="http://localhost:5173",
             )
 
         if success:
@@ -133,6 +134,7 @@ async def main():
 if __name__ == "__main__":
     # Load environment variables
     from dotenv import load_dotenv
+
     load_dotenv()
 
     # Run test

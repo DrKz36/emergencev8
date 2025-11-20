@@ -16,9 +16,9 @@ Environment variables required:
     SMTP_PASSWORD=your_app_password
     SMTP_FROM_EMAIL=your_email@gmail.com
 """
+
 import asyncio
 import sys
-import os
 from pathlib import Path
 
 # Add src/backend to Python path
@@ -28,7 +28,9 @@ sys.path.insert(0, str(backend_path))
 from features.auth.email_service import EmailService, build_email_config_from_env
 
 
-async def send_invitations(emails: list[str], base_url: str = "https://emergence-app.ch"):
+async def send_invitations(
+    emails: list[str], base_url: str = "https://emergence-app.ch"
+):
     """Send beta invitations to a list of emails"""
 
     # Build email service
@@ -48,18 +50,14 @@ async def send_invitations(emails: list[str], base_url: str = "https://emergence
 
     print(f"📧 Sending beta invitations to {len(emails)} email(s)...\n")
 
-    results = {
-        "sent": [],
-        "failed": []
-    }
+    results = {"sent": [], "failed": []}
 
     for i, email in enumerate(emails, 1):
         print(f"[{i}/{len(emails)}] Sending to {email}... ", end="", flush=True)
 
         try:
             success = await email_service.send_beta_invitation_email(
-                to_email=email,
-                base_url=base_url
+                to_email=email, base_url=base_url
             )
 
             if success:
@@ -74,20 +72,20 @@ async def send_invitations(emails: list[str], base_url: str = "https://emergence
             print(f"❌ Failed: {e}")
 
     # Print summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"Total: {len(emails)}")
     print(f"✅ Sent: {len(results['sent'])}")
     print(f"❌ Failed: {len(results['failed'])}")
 
     if results["sent"]:
-        print(f"\n✅ Successfully sent to:")
+        print("\n✅ Successfully sent to:")
         for email in results["sent"]:
             print(f"  - {email}")
 
     if results["failed"]:
-        print(f"\n❌ Failed to send to:")
+        print("\n❌ Failed to send to:")
         for email in results["failed"]:
             print(f"  - {email}")
 
@@ -109,20 +107,18 @@ Examples:
 
   # Use custom base URL
   python send_beta_invitations.py --base-url https://my-app.com user@example.com
-        """
+        """,
     )
 
     parser.add_argument(
-        "emails",
-        nargs="*",
-        help="Email addresses to send invitations to"
+        "emails", nargs="*", help="Email addresses to send invitations to"
     )
 
     parser.add_argument(
         "--from-file",
         "-f",
         type=str,
-        help="Read email addresses from a file (one per line)"
+        help="Read email addresses from a file (one per line)",
     )
 
     parser.add_argument(
@@ -130,7 +126,7 @@ Examples:
         "-u",
         type=str,
         default="https://emergence-app.ch",
-        help="Base URL of the application (default: https://emergence-app.ch)"
+        help="Base URL of the application (default: https://emergence-app.ch)",
     )
 
     args = parser.parse_args()
@@ -142,7 +138,11 @@ Examples:
         # Read from file
         try:
             with open(args.from_file, "r", encoding="utf-8") as f:
-                file_emails = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+                file_emails = [
+                    line.strip()
+                    for line in f
+                    if line.strip() and not line.startswith("#")
+                ]
                 emails.extend(file_emails)
             print(f"📄 Loaded {len(file_emails)} email(s) from {args.from_file}")
         except FileNotFoundError:

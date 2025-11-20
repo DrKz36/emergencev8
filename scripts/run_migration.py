@@ -3,6 +3,7 @@ import aiosqlite
 import sys
 from pathlib import Path
 
+
 async def run_migration(db_path: str, mig_path: str):
     db_file = Path(db_path)
     mig_file = Path(mig_path)
@@ -20,6 +21,7 @@ async def run_migration(db_path: str, mig_path: str):
         await db.commit()
 
     print(f"[OK] Migration exécutée depuis {mig_file} → {db_file}")
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

@@ -224,7 +224,9 @@ class TestGuardianEmailE2E:
             badge = format_status_badge(status)
             # Vérifier présence HTML minimal
             assert "style=" in badge
-            assert "background:" in badge  # Fix: shorthand CSS "background:" not "background-color:"
+            assert (
+                "background:" in badge
+            )  # Fix: shorthand CSS "background:" not "background-color:"
             # Fix: accept both "background:" and "background-color:"
             assert "background:" in badge or "background-color:" in badge
             # Vérifier emoji présent

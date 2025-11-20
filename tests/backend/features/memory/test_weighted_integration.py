@@ -11,11 +11,12 @@
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock
 import json
 
 
 # ---------- Tests ConceptRecallTracker avec query_weighted ----------
+
 
 @pytest.mark.asyncio
 async def test_concept_recall_uses_weighted_query():
@@ -42,9 +43,9 @@ async def test_concept_recall_uses_weighted_query():
                 "thread_ids_json": json.dumps(["thread_old"]),
                 "first_mentioned_at": "2025-10-01T10:00:00+00:00",
                 "last_mentioned_at": "2025-10-10T10:00:00+00:00",
-                "mention_count": 2
+                "mention_count": 2,
             },
-            "weighted_score": 0.85
+            "weighted_score": 0.85,
         }
     ]
 
@@ -53,9 +54,7 @@ async def test_concept_recall_uses_weighted_query():
 
     # Initialiser tracker
     tracker = ConceptRecallTracker(
-        db_manager=mock_db,
-        vector_service=mock_vector_service,
-        connection_manager=None
+        db_manager=mock_db, vector_service=mock_vector_service, connection_manager=None
     )
 
     # Appeler detect_recurring_concepts
@@ -64,7 +63,7 @@ async def test_concept_recall_uses_weighted_query():
         user_id="user123",
         thread_id="thread_new",
         message_id="msg_1",
-        session_id="session_1"
+        session_id="session_1",
     )
 
     # Vérifier que query_weighted() a été appelé (pas query())
@@ -99,9 +98,9 @@ async def test_concept_recall_query_history_uses_weighted_query():
                 "concept_text": "Docker containerisation",
                 "first_mentioned_at": "2025-09-28T10:15:00+00:00",
                 "thread_ids_json": json.dumps(["thread_abc", "thread_def"]),
-                "mention_count": 2
+                "mention_count": 2,
             },
-            "weighted_score": 0.75
+            "weighted_score": 0.75,
         }
     ]
 
@@ -110,16 +109,12 @@ async def test_concept_recall_query_history_uses_weighted_query():
 
     # Initialiser tracker
     tracker = ConceptRecallTracker(
-        db_manager=mock_db,
-        vector_service=mock_vector_service,
-        connection_manager=None
+        db_manager=mock_db, vector_service=mock_vector_service, connection_manager=None
     )
 
     # Appeler query_concept_history
     history = await tracker.query_concept_history(
-        concept_text="containerisation",
-        user_id="user123",
-        limit=10
+        concept_text="containerisation", user_id="user123", limit=10
     )
 
     # Vérifier que query_weighted() a été appelé
@@ -132,6 +127,7 @@ async def test_concept_recall_query_history_uses_weighted_query():
 
 
 # ---------- Tests MemoryQueryTool avec query_weighted ----------
+
 
 @pytest.mark.asyncio
 async def test_memory_query_tool_get_topic_details_uses_weighted_query():
@@ -158,9 +154,9 @@ async def test_memory_query_tool_get_topic_details_uses_weighted_query():
                 "mention_count": 3,
                 "thread_ids_json": json.dumps(["abc", "def"]),
                 "summary": "Automatisation déploiement GitHub Actions",
-                "vitality": 0.8
+                "vitality": 0.8,
             },
-            "weighted_score": 0.87
+            "weighted_score": 0.87,
         }
     ]
 
@@ -169,9 +165,7 @@ async def test_memory_query_tool_get_topic_details_uses_weighted_query():
 
     # Appeler get_topic_details
     details = await tool.get_topic_details(
-        user_id="user123",
-        topic_query="CI/CD",
-        limit=5
+        user_id="user123", topic_query="CI/CD", limit=5
     )
 
     # Vérifier que query_weighted() a été appelé
@@ -185,6 +179,7 @@ async def test_memory_query_tool_get_topic_details_uses_weighted_query():
 
 
 # ---------- Tests UnifiedRetriever avec query_weighted ----------
+
 
 @pytest.mark.asyncio
 async def test_unified_retriever_uses_weighted_query():
@@ -205,22 +200,14 @@ async def test_unified_retriever_uses_weighted_query():
 
     # Mock query_weighted() pour concepts
     mock_vector_service.query_weighted.return_value = [
-        {
-            "text": "Concept 1",
-            "metadata": {},
-            "weighted_score": 0.85
-        },
-        {
-            "text": "Concept 2",
-            "metadata": {},
-            "weighted_score": 0.75
-        }
+        {"text": "Concept 1", "metadata": {}, "weighted_score": 0.85},
+        {"text": "Concept 2", "metadata": {}, "weighted_score": 0.75},
     ]
 
     # Mock collection.get() pour préférences
     mock_collection.get.return_value = {
         "documents": ["Préférence 1"],
-        "metadatas": [{"confidence": 0.8, "topic": "general"}]
+        "metadatas": [{"confidence": 0.8, "topic": "general"}],
     }
 
     # Mock DB
@@ -230,7 +217,7 @@ async def test_unified_retriever_uses_weighted_query():
     retriever = UnifiedMemoryRetriever(
         session_manager=mock_session_manager,
         vector_service=mock_vector_service,
-        db_manager=mock_db
+        db_manager=mock_db,
     )
 
     # Appeler retrieve_context
@@ -242,7 +229,7 @@ async def test_unified_retriever_uses_weighted_query():
         include_stm=True,
         include_ltm=True,
         include_archives=False,
-        top_k_concepts=5
+        top_k_concepts=5,
     )
 
     # Vérifier que query_weighted() a été appelé
@@ -254,6 +241,7 @@ async def test_unified_retriever_uses_weighted_query():
 
 
 # ---------- Tests MemoryGarbageCollector ----------
+
 
 @pytest.mark.asyncio
 async def test_memory_gc_archive_inactive_entries():
@@ -286,22 +274,18 @@ async def test_memory_gc_archive_inactive_entries():
         "documents": ["Old concept", "Recent concept"],
         "metadatas": [
             {"last_used_at": old_date, "use_count": 1},
-            {"last_used_at": recent_date, "use_count": 5}
+            {"last_used_at": recent_date, "use_count": 5},
         ],
-        "embeddings": [[0.1, 0.2], [0.3, 0.4]]
+        "embeddings": [[0.1, 0.2], [0.3, 0.4]],
     }
 
     # Initialiser GC
     gc = MemoryGarbageCollector(
-        vector_service=mock_vector_service,
-        gc_inactive_days=180
+        vector_service=mock_vector_service, gc_inactive_days=180
     )
 
     # Run GC
-    stats = await gc.run_gc(
-        collection_name="emergence_knowledge",
-        dry_run=False
-    )
+    stats = await gc.run_gc(collection_name="emergence_knowledge", dry_run=False)
 
     # Vérifier statistiques
     assert stats["candidates_found"] == 1  # Seulement entry_old
@@ -334,20 +318,16 @@ async def test_memory_gc_dry_run():
         "ids": ["entry_old"],
         "documents": ["Old concept"],
         "metadatas": [{"last_used_at": old_date}],
-        "embeddings": [[0.1, 0.2]]
+        "embeddings": [[0.1, 0.2]],
     }
 
     # Initialiser GC
     gc = MemoryGarbageCollector(
-        vector_service=mock_vector_service,
-        gc_inactive_days=180
+        vector_service=mock_vector_service, gc_inactive_days=180
     )
 
     # Run GC en dry_run
-    stats = await gc.run_gc(
-        collection_name="emergence_knowledge",
-        dry_run=True
-    )
+    stats = await gc.run_gc(collection_name="emergence_knowledge", dry_run=True)
 
     # Vérifier statistiques
     assert stats["candidates_found"] == 1
@@ -360,6 +340,7 @@ async def test_memory_gc_dry_run():
 
 
 # ---------- Tests ScoreCache ----------
+
 
 def test_score_cache_hit():
     """
@@ -461,11 +442,14 @@ def test_score_cache_lru_eviction():
 
 # ---------- Tests Métriques Prometheus ----------
 
+
 def test_weighted_retrieval_metrics():
     """
     Vérifie que les métriques Prometheus sont enregistrées.
     """
-    from backend.features.memory.weighted_retrieval_metrics import WeightedRetrievalMetrics
+    from backend.features.memory.weighted_retrieval_metrics import (
+        WeightedRetrievalMetrics,
+    )
 
     metrics = WeightedRetrievalMetrics()
 

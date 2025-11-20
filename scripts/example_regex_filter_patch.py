@@ -10,6 +10,7 @@ Usage:
     2. Manually apply changes to src/backend/features/memory/hybrid_retriever.py
     3. Test with examples below
 """
+
 import re
 import logging
 from typing import List, Dict, Any, Optional
@@ -22,7 +23,7 @@ def regex_filter_results(
     results: List[Dict[str, Any]],
     field_path: str,
     pattern: str,
-    flags: int = re.IGNORECASE
+    flags: int = re.IGNORECASE,
 ) -> List[Dict[str, Any]]:
     """
     Apply regex filter to query results (post-query filtering).
@@ -79,14 +80,14 @@ def regex_filter_results(
 
 # ===== USAGE EXAMPLES =====
 
+
 def example_1_email_domain_filter():
     """Example: Filter memory entries by email domain."""
     # Simulated vector_service and collection
     from backend.features.memory.vector_service import VectorService
 
     service = VectorService(
-        persist_directory="./data/vector_store",
-        embed_model_name="all-MiniLM-L6-v2"
+        persist_directory="./data/vector_store", embed_model_name="all-MiniLM-L6-v2"
     )
     collection = service.get_or_create_collection("emergence_ltm")
 
@@ -100,9 +101,7 @@ def example_1_email_domain_filter():
 
     # Apply regex filter for specific email domain
     example_users = regex_filter_results(
-        results,
-        field_path="metadata.email",
-        pattern=r".*@example\.(com|org)"
+        results, field_path="metadata.email", pattern=r".*@example\.(com|org)"
     )
 
     print(f"Found {len(example_users)} users from example.com/org")
@@ -114,8 +113,7 @@ def example_2_phone_number_extraction():
     from backend.features.memory.vector_service import VectorService
 
     service = VectorService(
-        persist_directory="./data/vector_store",
-        embed_model_name="all-MiniLM-L6-v2"
+        persist_directory="./data/vector_store", embed_model_name="all-MiniLM-L6-v2"
     )
     collection = service.get_or_create_collection("emergence_documents")
 
@@ -128,9 +126,7 @@ def example_2_phone_number_extraction():
 
     # Filter for US phone numbers
     phone_results = regex_filter_results(
-        results,
-        field_path="text",
-        pattern=r"\d{3}[-.]?\d{3}[-.]?\d{4}"
+        results, field_path="text", pattern=r"\d{3}[-.]?\d{3}[-.]?\d{4}"
     )
 
     print(f"Found {len(phone_results)} documents with phone numbers")
@@ -142,8 +138,7 @@ def example_3_advanced_user_id_filter():
     from backend.features.memory.vector_service import VectorService
 
     service = VectorService(
-        persist_directory="./data/vector_store",
-        embed_model_name="all-MiniLM-L6-v2"
+        persist_directory="./data/vector_store", embed_model_name="all-MiniLM-L6-v2"
     )
     collection = service.get_or_create_collection("emergence_knowledge")
 
@@ -156,9 +151,7 @@ def example_3_advanced_user_id_filter():
 
     # Filter for test users (user_test_*)
     test_users = regex_filter_results(
-        results,
-        field_path="metadata.user_id",
-        pattern=r"^user_test_\d{3,}$"
+        results, field_path="metadata.user_id", pattern=r"^user_test_\d{3,}$"
     )
 
     print(f"Found {len(test_users)} entries from test users")
@@ -166,6 +159,7 @@ def example_3_advanced_user_id_filter():
 
 
 # ===== INTEGRATION EXAMPLE: MemoryAnalyzer =====
+
 
 class MemoryAnalyzerRegexPatch:
     """
@@ -229,28 +223,30 @@ class MemoryAnalyzerRegexPatch:
 
 # ===== PERFORMANCE TESTING =====
 
+
 def benchmark_regex_filter_performance():
     """Benchmark regex filtering performance."""
     import time
     from backend.features.memory.vector_service import VectorService
 
     service = VectorService(
-        persist_directory="./data/vector_store",
-        embed_model_name="all-MiniLM-L6-v2"
+        persist_directory="./data/vector_store", embed_model_name="all-MiniLM-L6-v2"
     )
     collection = service.get_or_create_collection("bench_regex_perf")
 
     # Generate test data
     test_data = []
     for i in range(1000):
-        test_data.append({
-            "id": f"doc_{i}",
-            "text": f"Document {i} content",
-            "metadata": {
-                "email": f"user{i}@{'example' if i % 2 == 0 else 'test'}.com",
-                "user_id": f"user_{i}",
+        test_data.append(
+            {
+                "id": f"doc_{i}",
+                "text": f"Document {i} content",
+                "metadata": {
+                    "email": f"user{i}@{'example' if i % 2 == 0 else 'test'}.com",
+                    "user_id": f"user_{i}",
+                },
             }
-        })
+        )
 
     service.add_items(collection, test_data, item_text_key="text")
 
@@ -272,21 +268,23 @@ def benchmark_regex_filter_performance():
         print(f"{desc}:")
         print(f"  Pattern: {pattern}")
         print(f"  Results: {len(results)} → {len(filtered)}")
-        print(f"  Duration: {duration*1000:.2f}ms")
+        print(f"  Duration: {duration * 1000:.2f}ms")
         print()
 
 
 # ===== MAIN =====
 
 if __name__ == "__main__":
-    print("="*60)
+    print("=" * 60)
     print("Regex Filter Patch Examples")
-    print("="*60)
+    print("=" * 60)
 
     print("\n📝 Usage Instructions:")
     print("1. Review the regex_filter_results() function above")
     print("2. Add to src/backend/features/memory/hybrid_retriever.py")
-    print("3. Import in MemoryAnalyzer: from .hybrid_retriever import regex_filter_results")
+    print(
+        "3. Import in MemoryAnalyzer: from .hybrid_retriever import regex_filter_results"
+    )
     print("4. Use in search methods as shown in examples")
 
     print("\n📊 Running benchmark...")

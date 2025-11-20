@@ -4,14 +4,16 @@
 Script to fix admin role for current user
 Updates the role to 'admin' in auth_allowlist table
 """
+
 import sqlite3
 import sys
 import io
 from pathlib import Path
 
 # Fix Windows console encoding
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
 
 def fix_admin_role(db_path: str = "./data/emergence.db", email: str = None):
     """Set admin role for specified email or all users"""
@@ -19,7 +21,7 @@ def fix_admin_role(db_path: str = "./data/emergence.db", email: str = None):
     db_file = Path(db_path)
     if not db_file.exists():
         print(f"❌ Database not found at: {db_path}")
-        print(f"Looking for alternatives...")
+        print("Looking for alternatives...")
 
         # Try alternate locations
         alternatives = [
@@ -51,7 +53,7 @@ def fix_admin_role(db_path: str = "./data/emergence.db", email: str = None):
             print("❌ No users found in auth_allowlist table")
             return False
 
-        print(f"\n📋 Current users in database:")
+        print("\n📋 Current users in database:")
         for user_email, role in users:
             print(f"  - {user_email}: {role}")
 
@@ -60,7 +62,7 @@ def fix_admin_role(db_path: str = "./data/emergence.db", email: str = None):
             # Update specific email
             cursor.execute(
                 "UPDATE auth_allowlist SET role = 'admin' WHERE email = ?",
-                (email.lower().strip(),)
+                (email.lower().strip(),),
             )
             if cursor.rowcount == 0:
                 print(f"\n❌ Email '{email}' not found in database")
@@ -77,13 +79,15 @@ def fix_admin_role(db_path: str = "./data/emergence.db", email: str = None):
         cursor.execute("SELECT email, role FROM auth_allowlist ORDER BY email")
         updated_users = cursor.fetchall()
 
-        print(f"\n📋 Updated users:")
+        print("\n📋 Updated users:")
         for user_email, role in updated_users:
             emoji = "👑" if role == "admin" else "👤"
             print(f"  {emoji} {user_email}: {role}")
 
-        print(f"\n✅ Success! You need to log out and log back in for changes to take effect.")
-        print(f"   The new JWT token will include the 'admin' role.")
+        print(
+            "\n✅ Success! You need to log out and log back in for changes to take effect."
+        )
+        print("   The new JWT token will include the 'admin' role.")
 
         return True
 

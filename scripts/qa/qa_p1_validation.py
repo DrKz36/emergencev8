@@ -53,8 +53,8 @@ P1_TEST_MESSAGES = [
 
 # Expected metrics after extraction
 P1_METRICS_EXPECTED = {
-    "memory_preferences_extracted_total{type=\"preference\"}": 3.0,
-    "memory_preferences_extracted_total{type=\"intent\"}": 2.0,
+    'memory_preferences_extracted_total{type="preference"}': 3.0,
+    'memory_preferences_extracted_total{type="intent"}': 2.0,
     "memory_preferences_confidence_count": 5.0,
     "memory_preferences_extraction_duration_seconds_count": 1.0,
 }
@@ -486,19 +486,25 @@ def main():
     print(f"Thread ID:    {report.thread_id or 'N/A'}")
     print(f"User Sub:     {report.user_sub or 'N/A'}")
     print(f"Messages:     {report.messages_sent}")
-    print(f"Consolidation: {'Triggered' if report.consolidation_triggered else 'Skipped'}")
+    print(
+        f"Consolidation: {'Triggered' if report.consolidation_triggered else 'Skipped'}"
+    )
     print(f"\nStatus:       {'[OK] SUCCESS' if report.success else '[FAILED] FAILED'}")
     print("\nMetrics Delta:")
     print(f"  Preferences:  {report.metrics_delta.extracted_preference:+.0f}")
     print(f"  Intents:      {report.metrics_delta.extracted_intent:+.0f}")
     print(f"  Constraints:  {report.metrics_delta.extracted_constraint:+.0f}")
     print(
-        f"  Avg Confidence: {report.metrics_delta.average_confidence:.2f}" if report.metrics_delta.confidence_count > 0 else "  Avg Confidence: N/A"
+        f"  Avg Confidence: {report.metrics_delta.average_confidence:.2f}"
+        if report.metrics_delta.confidence_count > 0
+        else "  Avg Confidence: N/A"
     )
     print(
-        f"  Avg Duration: {report.metrics_delta.average_extraction_duration:.3f}s" if report.metrics_delta.extraction_count > 0 else "  Avg Duration: N/A"
+        f"  Avg Duration: {report.metrics_delta.average_extraction_duration:.3f}s"
+        if report.metrics_delta.extraction_count > 0
+        else "  Avg Duration: N/A"
     )
-    print(f"  Filtering Rate: {report.metrics_delta.filtering_rate*100:.1f}%")
+    print(f"  Filtering Rate: {report.metrics_delta.filtering_rate * 100:.1f}%")
     print(f"  LLM Calls:    {report.metrics_delta.llm_calls:+.0f}")
 
     if report.errors:

@@ -271,7 +271,7 @@ TABLE_DEFINITIONS = [
         event_details TEXT,
         timestamp TEXT NOT NULL
     );
-    """
+    """,
 ]
 
 INDEX_DEFINITIONS = {
@@ -381,8 +381,6 @@ async def _log_index_dump(db: DatabaseManager, tables: Iterable[str]) -> None:
         logger.info("[DDL] index_list(%s) -> %s", table, payload)
 
 
-
-
 # ---------------------- Helpers rétro-compatibilité ---------------------- #
 async def _get_columns(db: DatabaseManager, table: str) -> set[str]:
     try:
@@ -391,11 +389,17 @@ async def _get_columns(db: DatabaseManager, table: str) -> set[str]:
     except Exception:
         return set()
 
-async def _add_column_if_missing(db: DatabaseManager, table: str, col_name: str, col_def: str) -> None:
+
+async def _add_column_if_missing(
+    db: DatabaseManager, table: str, col_name: str, col_def: str
+) -> None:
     cols = await _get_columns(db, table)
     if col_name not in cols:
-        await db.execute(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_def}", commit=True)
+        await db.execute(
+            f"ALTER TABLE {table} ADD COLUMN {col_name} {col_def}", commit=True
+        )
         logger.info(f"[DDL] Colonne ajoutée: {table}.{col_name} {col_def}")
+
 
 async def _ensure_messages_backward_compat(db: DatabaseManager) -> None:
     """
@@ -418,10 +422,13 @@ async def _ensure_messages_backward_compat(db: DatabaseManager) -> None:
 
     # Index après rattrapage
     try:
-        await db.execute("""
+        await db.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_messages_thread_created
             ON messages(thread_id, created_at)
-        """, commit=True)
+        """,
+            commit=True,
+        )
     except Exception as e:
         logger.warning(f"[DDL] Index idx_messages_thread_created non créé: {e}")
 
@@ -434,25 +441,36 @@ async def _ensure_allowlist_password_columns(db: DatabaseManager) -> None:
 
     await _add_column_if_missing(db, "auth_allowlist", "password_hash", "TEXT")
     await _add_column_if_missing(db, "auth_allowlist", "password_updated_at", "TEXT")
-    await _add_column_if_missing(db, "auth_allowlist", "password_must_reset", "INTEGER DEFAULT 1")
+    await _add_column_if_missing(
+        db, "auth_allowlist", "password_must_reset", "INTEGER DEFAULT 1"
+    )
 
     try:
-        await db.execute("""
+        await db.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_auth_allowlist_password_updated
             ON auth_allowlist(password_updated_at DESC)
-        """, commit=True)
+        """,
+            commit=True,
+        )
     except Exception as e:
         logger.warning(f"[DDL] Index idx_auth_allowlist_password_updated non cree: {e}")
 
     # Set password_must_reset to 0 for existing users who already have a password
     try:
-        await db.execute("""
+        await db.execute(
+            """
             UPDATE auth_allowlist
             SET password_must_reset = 0
             WHERE password_hash IS NOT NULL AND password_hash != '' AND password_must_reset IS NULL
-        """, commit=True)
+        """,
+            commit=True,
+        )
     except Exception as e:
-        logger.warning(f"[DDL] Could not update password_must_reset for existing users: {e}")
+        logger.warning(
+            f"[DDL] Could not update password_must_reset for existing users: {e}"
+        )
+
 
 async def _ensure_session_isolation_columns(db: DatabaseManager) -> None:
     await _add_column_if_missing(db, "threads", "session_id", "TEXT")
@@ -477,7 +495,10 @@ async def _ensure_session_isolation_columns(db: DatabaseManager) -> None:
     if index_errors:
         logger.debug("[DDL] Index creation issues: %s", index_errors)
     await _log_index_dump(db, INDEX_DEFINITIONS.keys())
+
+
 # ------------------------------------------------------------------------ #
+
 
 async def _ensure_costs_enriched_columns(db: DatabaseManager) -> None:
     """Garantit la présence des colonnes session_id / user_id pour la table des coûts."""
@@ -485,10 +506,15 @@ async def _ensure_costs_enriched_columns(db: DatabaseManager) -> None:
         await _add_column_if_missing(db, "costs", "session_id", "TEXT")
         await _add_column_if_missing(db, "costs", "user_id", "TEXT")
     except Exception as e:
-        logger.error(f"[DDL] Impossible d'ajouter les colonnes session_id/user_id sur costs: {e}", exc_info=True)
+        logger.error(
+            f"[DDL] Impossible d'ajouter les colonnes session_id/user_id sur costs: {e}",
+            exc_info=True,
+        )
         raise
 
+
 # ------------------------------------------------------------------------ #
+
 
 async def _ensure_threads_enriched_columns(db: DatabaseManager) -> None:
     """Ajoute les colonnes d'enrichissement threads (conversation_id, consolidated_at, last_message_at, message_count, archival_reason)."""
@@ -499,34 +525,52 @@ async def _ensure_threads_enriched_columns(db: DatabaseManager) -> None:
 
     # Colonnes Sprint 1 & 2
     if "conversation_id" not in cols:
-        await db.execute("ALTER TABLE threads ADD COLUMN conversation_id TEXT", commit=True)
+        await db.execute(
+            "ALTER TABLE threads ADD COLUMN conversation_id TEXT", commit=True
+        )
         logger.info("[DDL] Colonne ajoutée: threads.conversation_id TEXT")
 
     if "consolidated_at" not in cols:
-        await db.execute("ALTER TABLE threads ADD COLUMN consolidated_at TEXT", commit=True)
+        await db.execute(
+            "ALTER TABLE threads ADD COLUMN consolidated_at TEXT", commit=True
+        )
         logger.info("[DDL] Colonne ajoutée: threads.consolidated_at TEXT")
 
     # Colonnes existantes
     if "archival_reason" not in cols:
-        await db.execute("ALTER TABLE threads ADD COLUMN archival_reason TEXT", commit=True)
+        await db.execute(
+            "ALTER TABLE threads ADD COLUMN archival_reason TEXT", commit=True
+        )
         logger.info("[DDL] Colonne ajoutée: threads.archival_reason TEXT")
     if "archived_at" not in cols:
         await db.execute("ALTER TABLE threads ADD COLUMN archived_at TEXT", commit=True)
         logger.info("[DDL] Colonne ajoutée: threads.archived_at TEXT")
     if "last_message_at" not in cols:
-        await db.execute("ALTER TABLE threads ADD COLUMN last_message_at TEXT", commit=True)
+        await db.execute(
+            "ALTER TABLE threads ADD COLUMN last_message_at TEXT", commit=True
+        )
         logger.info("[DDL] Colonne ajoutée: threads.last_message_at TEXT")
     if "message_count" not in cols:
-        await db.execute("ALTER TABLE threads ADD COLUMN message_count INTEGER DEFAULT 0", commit=True)
+        await db.execute(
+            "ALTER TABLE threads ADD COLUMN message_count INTEGER DEFAULT 0",
+            commit=True,
+        )
         logger.info("[DDL] Colonne ajoutée: threads.message_count INTEGER DEFAULT 0")
         added_message_count = True
     if added_message_count:
         try:
-            await db.execute("UPDATE threads SET message_count = 0 WHERE message_count IS NULL", commit=True)
+            await db.execute(
+                "UPDATE threads SET message_count = 0 WHERE message_count IS NULL",
+                commit=True,
+            )
         except Exception as exc:
-            logger.warning(f"[DDL] Impossible d'initialiser threads.message_count: {exc}")
+            logger.warning(
+                f"[DDL] Impossible d'initialiser threads.message_count: {exc}"
+            )
+
 
 # ------------------------------------------------------------------------ #
+
 
 async def create_tables(db_manager: DatabaseManager) -> None:
     logger.info("Vérification et création des tables de la base de données...")
@@ -573,34 +617,46 @@ async def create_tables(db_manager: DatabaseManager) -> None:
     try:
         await _ensure_threads_enriched_columns(db_manager)
     except Exception as e:
-        logger.error(f"[DDL] echec backcompat 'threads enriched columns': {e}", exc_info=True)
+        logger.error(
+            f"[DDL] echec backcompat 'threads enriched columns': {e}", exc_info=True
+        )
         raise
 
-    logger.info("Toutes les tables/index requis sont en place (avec backcompat au besoin).")
+    logger.info(
+        "Toutes les tables/index requis sont en place (avec backcompat au besoin)."
+    )
+
 
 async def run_migrations(db_manager: DatabaseManager, migrations_dir: str) -> None:
     logger.info("Démarrage du processus de migration de la base de données...")
     if not db_manager.is_connected():
         await db_manager.connect()
-    await db_manager.execute("""
+    await db_manager.execute(
+        """
         CREATE TABLE IF NOT EXISTS migrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             filename TEXT UNIQUE NOT NULL,
             applied_at TEXT NOT NULL
         );
-    """, commit=True)
+    """,
+        commit=True,
+    )
     res = await db_manager.fetch_all("SELECT filename FROM migrations")
-    applied_migrations = {row['filename'] for row in res}
+    applied_migrations = {row["filename"] for row in res}
     if not os.path.exists(migrations_dir):
-        logger.warning(f"Le répertoire des migrations '{migrations_dir}' n'existe pas. Aucune migration à appliquer.")
+        logger.warning(
+            f"Le répertoire des migrations '{migrations_dir}' n'existe pas. Aucune migration à appliquer."
+        )
         return
-    migration_files = sorted([f for f in os.listdir(migrations_dir) if f.endswith('.sql')])
+    migration_files = sorted(
+        [f for f in os.listdir(migrations_dir) if f.endswith(".sql")]
+    )
     for filename in migration_files:
         if filename not in applied_migrations:
             logger.info(f"Application de la migration: {filename}")
             try:
                 filepath = os.path.join(migrations_dir, filename)
-                with open(filepath, 'r', encoding='utf-8') as f:
+                with open(filepath, "r", encoding="utf-8") as f:
                     sql_script = f.read()
                 if sql_script.strip():
                     # Utiliser executescript pour supporter les triggers SQLite (BEGIN...END)
@@ -611,17 +667,24 @@ async def run_migrations(db_manager: DatabaseManager, migrations_dir: str) -> No
                     except Exception as script_err:
                         # Pour compatibilité: essayer statement par statement si executescript échoue
                         if "duplicate column" in str(script_err).lower():
-                            logger.debug(f"[Migration] Colonnes déjà existantes, ignorées: {script_err}")
+                            logger.debug(
+                                f"[Migration] Colonnes déjà existantes, ignorées: {script_err}"
+                            )
                         else:
                             # Fallback: exécuter statement par statement (anciennes migrations)
-                            for statement in sql_script.split(';'):
+                            for statement in sql_script.split(";"):
                                 stmt = statement.strip()
                                 if stmt:
                                     try:
                                         await db_manager.execute(stmt, commit=True)
                                     except Exception as stmt_err:
-                                        if "duplicate column" in str(stmt_err).lower() and "alter table" in stmt.lower():
-                                            logger.debug(f"[Migration] Colonne déjà existante, ignorée: {stmt_err}")
+                                        if (
+                                            "duplicate column" in str(stmt_err).lower()
+                                            and "alter table" in stmt.lower()
+                                        ):
+                                            logger.debug(
+                                                f"[Migration] Colonne déjà existante, ignorée: {stmt_err}"
+                                            )
                                         else:
                                             raise
                 await db_manager.execute(
@@ -631,11 +694,15 @@ async def run_migrations(db_manager: DatabaseManager, migrations_dir: str) -> No
                 )
                 logger.info(f"Migration {filename} appliquée avec succès.")
             except Exception as e:
-                logger.error(f"Échec de l'application de la migration {filename}: {e}", exc_info=True)
+                logger.error(
+                    f"Échec de l'application de la migration {filename}: {e}",
+                    exc_info=True,
+                )
                 raise
         else:
             logger.debug(f"Migration {filename} déjà appliquée, ignorée.")
     logger.info("Processus de migration terminé.")
+
 
 async def initialize_database(db_manager: DatabaseManager, migrations_dir: str) -> None:
     await db_manager.connect()

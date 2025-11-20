@@ -22,12 +22,16 @@ from pathlib import Path
 from typing import Any
 
 # Fix encoding Windows
-if sys.platform == 'win32':
+if sys.platform == "win32":
     try:
-        if hasattr(sys.stdout, 'buffer'):
-            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-        if hasattr(sys.stderr, 'buffer'):
-            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+        if hasattr(sys.stdout, "buffer"):
+            sys.stdout = io.TextIOWrapper(
+                sys.stdout.buffer, encoding="utf-8", errors="replace"
+            )
+        if hasattr(sys.stderr, "buffer"):
+            sys.stderr = io.TextIOWrapper(
+                sys.stderr.buffer, encoding="utf-8", errors="replace"
+            )
     except (AttributeError, ValueError):
         pass
 
@@ -73,7 +77,11 @@ def create_notification_channel(email: str, dry_run: bool = False) -> str | None
 
     # Vérifier si le canal existe déjà
     cmd_list = [
-        "gcloud", "alpha", "monitoring", "channels", "list",
+        "gcloud",
+        "alpha",
+        "monitoring",
+        "channels",
+        "list",
         f"--project={PROJECT_ID}",
         "--format=json",
     ]
@@ -81,7 +89,9 @@ def create_notification_channel(email: str, dry_run: bool = False) -> str | None
 
     if isinstance(result, dict) and "error" not in result and isinstance(result, list):
         for channel in result:
-            if channel.get("type") == "email" and email in str(channel.get("labels", {})):
+            if channel.get("type") == "email" and email in str(
+                channel.get("labels", {})
+            ):
                 channel_id = channel.get("name", "").split("/")[-1]
                 print(f"✅ Canal existant trouvé: {channel_id}")
                 return channel_id
@@ -101,7 +111,11 @@ def create_notification_channel(email: str, dry_run: bool = False) -> str | None
         config_file.write_text(json.dumps(channel_config, indent=2))
 
     cmd_create = [
-        "gcloud", "alpha", "monitoring", "channels", "create",
+        "gcloud",
+        "alpha",
+        "monitoring",
+        "channels",
+        "create",
         f"--project={PROJECT_ID}",
         f"--channel-content-from-file={config_file}",
         "--format=json",
@@ -128,18 +142,18 @@ def create_memory_alert_policy(
     dry_run: bool = False,
 ) -> bool:
     """Crée une politique d'alerte pour l'utilisation mémoire."""
-    print(f"\n🔔 Création politique d'alerte mémoire > {MEMORY_THRESHOLD*100}%")
+    print(f"\n🔔 Création politique d'alerte mémoire > {MEMORY_THRESHOLD * 100}%")
 
     # Configuration de la politique d'alerte
     alert_policy = {
-        "displayName": f"Emergence Cloud Run - Memory > {MEMORY_THRESHOLD*100}%",
+        "displayName": f"Emergence Cloud Run - Memory > {MEMORY_THRESHOLD * 100}%",
         "documentation": {
             "content": f"""
 # Alerte Mémoire Cloud Run
 
 **Service:** {SERVICE_NAME}
 **Région:** {REGION}
-**Seuil:** {MEMORY_THRESHOLD*100}% de {MEMORY_LIMIT_GB}Gi ({MEMORY_LIMIT_GB * MEMORY_THRESHOLD:.1f}Gi)
+**Seuil:** {MEMORY_THRESHOLD * 100}% de {MEMORY_LIMIT_GB}Gi ({MEMORY_LIMIT_GB * MEMORY_THRESHOLD:.1f}Gi)
 
 ## Actions recommandées
 
@@ -172,7 +186,7 @@ Limite actuelle: 2Gi (upgrade depuis 1Gi après crashs).
         },
         "conditions": [
             {
-                "displayName": f"Memory utilization > {MEMORY_THRESHOLD*100}%",
+                "displayName": f"Memory utilization > {MEMORY_THRESHOLD * 100}%",
                 "conditionThreshold": {
                     "filter": f'resource.type="cloud_run_revision" AND resource.labels.service_name="{SERVICE_NAME}" AND metric.type="run.googleapis.com/container/memory/utilizations"',
                     "comparison": "COMPARISON_GT",
@@ -205,7 +219,11 @@ Limite actuelle: 2Gi (upgrade depuis 1Gi après crashs).
         policy_file.write_text(json.dumps(alert_policy, indent=2))
 
     cmd_create = [
-        "gcloud", "alpha", "monitoring", "policies", "create",
+        "gcloud",
+        "alpha",
+        "monitoring",
+        "policies",
+        "create",
         f"--project={PROJECT_ID}",
         f"--policy-from-file={policy_file}",
         "--format=json",
@@ -233,7 +251,11 @@ def verify_alert_setup(dry_run: bool = False) -> None:
 
     # Lister les politiques d'alerte
     cmd_list = [
-        "gcloud", "alpha", "monitoring", "policies", "list",
+        "gcloud",
+        "alpha",
+        "monitoring",
+        "policies",
+        "list",
         f"--project={PROJECT_ID}",
         "--format=json",
     ]
@@ -241,7 +263,8 @@ def verify_alert_setup(dry_run: bool = False) -> None:
 
     if isinstance(result, list):
         memory_alerts = [
-            p for p in result
+            p
+            for p in result
             if "Memory" in p.get("displayName", "")
             and SERVICE_NAME in str(p.get("conditions", []))
         ]
@@ -249,7 +272,9 @@ def verify_alert_setup(dry_run: bool = False) -> None:
 
         for alert in memory_alerts:
             print(f"   - {alert.get('displayName')}")
-            print(f"     État: {'✅ Activée' if alert.get('enabled') else '❌ Désactivée'}")
+            print(
+                f"     État: {'✅ Activée' if alert.get('enabled') else '❌ Désactivée'}"
+            )
     else:
         print("⚠️  Impossible de vérifier les alertes")
 
@@ -277,7 +302,7 @@ def main() -> None:
     print(f"Projet: {PROJECT_ID}")
     print(f"Service: {SERVICE_NAME}")
     print(f"Région: {REGION}")
-    print(f"Seuil: {MEMORY_THRESHOLD*100}% de {MEMORY_LIMIT_GB}Gi")
+    print(f"Seuil: {MEMORY_THRESHOLD * 100}% de {MEMORY_LIMIT_GB}Gi")
     print(f"Email: {args.email}")
     print(f"Mode: {'🧪 DRY-RUN' if args.dry_run else '🚀 PRODUCTION'}")
     print("=" * 60)
@@ -306,8 +331,10 @@ def main() -> None:
         print("✅ Alertes GCP configurées avec succès")
         print("\nProchaines étapes:")
         print("1. Vérifier réception email test (peut prendre quelques minutes)")
-        print("2. Consulter alertes: https://console.cloud.google.com/monitoring/alerting")
-        print(f"3. Tester: Pousser memory > {MEMORY_THRESHOLD*100}% pendant 5 min")
+        print(
+            "2. Consulter alertes: https://console.cloud.google.com/monitoring/alerting"
+        )
+        print(f"3. Tester: Pousser memory > {MEMORY_THRESHOLD * 100}% pendant 5 min")
     print("=" * 60)
 
 

@@ -12,8 +12,10 @@ from backend.shared.dependencies import get_session_context, SessionContext
 router = APIRouter(tags=["Threads"])  # ← plus de prefix ici (monté par main.py)
 logger = logging.getLogger(__name__)
 
+
 def get_db(request: Request) -> DatabaseManager:
     return cast(DatabaseManager, request.app.state.service_container.db_manager())
+
 
 # ---------- Schemas ----------
 class ThreadCreate(BaseModel):
@@ -22,11 +24,13 @@ class ThreadCreate(BaseModel):
     agent_id: Optional[str] = None
     meta: Optional[dict[str, Any]] = None
 
+
 class ThreadUpdate(BaseModel):
     title: Optional[str] = None
     agent_id: Optional[str] = None
     archived: Optional[bool] = None
     meta: Optional[dict[str, Any]] = None
+
 
 class MessageCreate(BaseModel):
     role: str = Field(pattern="^(user|assistant|system|note)$")
@@ -35,10 +39,12 @@ class MessageCreate(BaseModel):
     tokens: Optional[int] = None
     meta: Optional[dict[str, Any]] = None
 
+
 class DocsSet(BaseModel):
     doc_ids: List[int]
     mode: str = Field(default="replace", pattern="^(replace|append)$")
     weight: Optional[float] = 1.0
+
 
 # ---------- Routes ----------
 @router.get("/")
@@ -46,7 +52,9 @@ async def list_threads(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
     type: Optional[str] = Query(default=None, pattern="^(chat|debate)$"),
-    include_archived: bool = Query(default=False, description="Inclure les conversations archivées"),
+    include_archived: bool = Query(
+        default=False, description="Inclure les conversations archivées"
+    ),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> dict[str, Any]:
@@ -60,6 +68,7 @@ async def list_threads(
         offset=offset,
     )
     return {"items": items}
+
 
 # Miroir sans slash (évite 404/405 par oubli du '/')
 @router.get("", include_in_schema=False)
@@ -82,6 +91,7 @@ async def list_threads_no_slash(
     )
     return {"items": items}
 
+
 @router.post("/", status_code=201)
 async def create_thread(
     payload: ThreadCreate,
@@ -97,8 +107,11 @@ async def create_thread(
         agent_id=payload.agent_id,
         meta=payload.meta,
     )
-    thread = await queries.get_thread(db, tid, session.session_id, user_id=session.user_id)
+    thread = await queries.get_thread(
+        db, tid, session.session_id, user_id=session.user_id
+    )
     return {"id": tid, "thread": thread}
+
 
 # Miroir POST sans slash (corrige 405 quand le client poste sur /api/threads)
 @router.post("", status_code=201, include_in_schema=False)
@@ -116,8 +129,11 @@ async def create_thread_no_slash(
         agent_id=payload.agent_id,
         meta=payload.meta,
     )
-    thread = await queries.get_thread(db, tid, session.session_id, user_id=session.user_id)
+    thread = await queries.get_thread(
+        db, tid, session.session_id, user_id=session.user_id
+    )
     return {"id": tid, "thread": thread}
+
 
 # ---- Routes archives ----
 @router.get("/archived/list")
@@ -140,11 +156,15 @@ async def list_archived_threads(
     )
     return {"items": items}
 
+
 # ---- DEBUG caché ----
 @router.get("/_debug/{thread_id}", include_in_schema=False)
-async def _debug_get_raw(thread_id: str, db: DatabaseManager = Depends(get_db)) -> dict[str, Any]:
+async def _debug_get_raw(
+    thread_id: str, db: DatabaseManager = Depends(get_db)
+) -> dict[str, Any]:
     row = await queries.get_thread_any(db, thread_id)
     return {"raw": row}
+
 
 @router.get("/{thread_id}")
 async def get_thread(
@@ -153,15 +173,24 @@ async def get_thread(
     db: DatabaseManager = Depends(get_db),
     messages_limit: int = Query(default=50, ge=1, le=200),
 ) -> dict[str, Any]:
-    thread = await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id)
+    thread = await queries.get_thread(
+        db, thread_id, session.session_id, user_id=session.user_id
+    )
     if not thread:
         raise HTTPException(status_code=404, detail="Thread introuvable")
 
     messages = await queries.get_messages(
-        db, thread_id, session_id=session.session_id, user_id=session.user_id, limit=messages_limit
+        db,
+        thread_id,
+        session_id=session.session_id,
+        user_id=session.user_id,
+        limit=messages_limit,
     )
-    docs = await queries.get_thread_docs(db, thread_id, session.session_id, user_id=session.user_id)
+    docs = await queries.get_thread_docs(
+        db, thread_id, session.session_id, user_id=session.user_id
+    )
     return {"thread": thread, "messages": messages, "docs": docs}
+
 
 @router.patch("/{thread_id}")
 async def update_thread(
@@ -170,7 +199,9 @@ async def update_thread(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ) -> dict[str, Any]:
-    thread_before = await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id)
+    thread_before = await queries.get_thread(
+        db, thread_id, session.session_id, user_id=session.user_id
+    )
     if not thread_before:
         raise HTTPException(status_code=404, detail="Thread introuvable")
 
@@ -201,18 +232,23 @@ async def update_thread(
                     "thread_id": thread_id,
                     "session_id": session.session_id,
                     "user_id": session.user_id,
-                    "reason": "archiving"
-                }
+                    "reason": "archiving",
+                },
             )
 
-            logger.info(f"[Thread Archiving] Consolidation enqueued for thread {thread_id}")
+            logger.info(
+                f"[Thread Archiving] Consolidation enqueued for thread {thread_id}"
+            )
 
         except Exception as e:
             # Ne pas bloquer l'archivage si consolidation échoue
             logger.warning(f"[Thread Archiving] Failed to enqueue consolidation: {e}")
 
-    thread = await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id)
+    thread = await queries.get_thread(
+        db, thread_id, session.session_id, user_id=session.user_id
+    )
     return {"thread": thread}
+
 
 @router.delete("/{thread_id}", status_code=204)
 async def delete_thread(
@@ -220,7 +256,9 @@ async def delete_thread(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ) -> Response:
-    removed = await queries.delete_thread(db, thread_id, session.session_id, user_id=session.user_id)
+    removed = await queries.delete_thread(
+        db, thread_id, session.session_id, user_id=session.user_id
+    )
     if not removed:
         raise HTTPException(status_code=404, detail="Thread introuvable")
     return Response(status_code=204)
@@ -233,7 +271,9 @@ async def add_message(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ) -> dict[str, Any]:
-    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
+    if not await queries.get_thread(
+        db, thread_id, session.session_id, user_id=session.user_id
+    ):
         raise HTTPException(status_code=404, detail="Thread introuvable")
 
     res = await queries.add_message(
@@ -249,6 +289,7 @@ async def add_message(
     )
     return {"message_id": res["id"], "created_at": res["created_at"]}
 
+
 @router.get("/{thread_id}/messages")
 async def list_messages(
     thread_id: str,
@@ -257,12 +298,20 @@ async def list_messages(
     limit: int = Query(default=50, ge=1, le=200),
     before: Optional[str] = Query(default=None),
 ) -> dict[str, Any]:
-    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
+    if not await queries.get_thread(
+        db, thread_id, session.session_id, user_id=session.user_id
+    ):
         raise HTTPException(status_code=404, detail="Thread introuvable")
     items = await queries.get_messages(
-        db, thread_id, session_id=session.session_id, user_id=session.user_id, limit=limit, before=before
+        db,
+        thread_id,
+        session_id=session.session_id,
+        user_id=session.user_id,
+        limit=limit,
+        before=before,
     )
     return {"items": items}
+
 
 @router.post("/{thread_id}/docs")
 async def set_docs(
@@ -271,7 +320,9 @@ async def set_docs(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ) -> dict[str, Any]:
-    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
+    if not await queries.get_thread(
+        db, thread_id, session.session_id, user_id=session.user_id
+    ):
         raise HTTPException(status_code=404, detail="Thread introuvable")
     if payload.mode == "replace":
         await queries.set_thread_docs(
@@ -291,8 +342,11 @@ async def set_docs(
             user_id=session.user_id,
             weight=payload.weight or 1.0,
         )
-    docs = await queries.get_thread_docs(db, thread_id, session.session_id, user_id=session.user_id)
+    docs = await queries.get_thread_docs(
+        db, thread_id, session.session_id, user_id=session.user_id
+    )
     return {"docs": docs}
+
 
 @router.get("/{thread_id}/docs")
 async def get_docs(
@@ -300,10 +354,15 @@ async def get_docs(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ) -> dict[str, Any]:
-    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
+    if not await queries.get_thread(
+        db, thread_id, session.session_id, user_id=session.user_id
+    ):
         raise HTTPException(status_code=404, detail="Thread introuvable")
-    docs = await queries.get_thread_docs(db, thread_id, session.session_id, user_id=session.user_id)
+    docs = await queries.get_thread_docs(
+        db, thread_id, session.session_id, user_id=session.user_id
+    )
     return {"docs": docs}
+
 
 @router.post("/{thread_id}/export")
 async def export_thread(
@@ -311,11 +370,19 @@ async def export_thread(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ) -> dict[str, Any]:
-    thread = await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id)
+    thread = await queries.get_thread(
+        db, thread_id, session.session_id, user_id=session.user_id
+    )
     if not thread:
         raise HTTPException(status_code=404, detail="Thread introuvable")
     messages = await queries.get_messages(
-        db, thread_id, session_id=session.session_id, user_id=session.user_id, limit=1000
+        db,
+        thread_id,
+        session_id=session.session_id,
+        user_id=session.user_id,
+        limit=1000,
     )
-    docs = await queries.get_thread_docs(db, thread_id, session.session_id, user_id=session.user_id)
+    docs = await queries.get_thread_docs(
+        db, thread_id, session.session_id, user_id=session.user_id
+    )
     return {"thread": thread, "messages": messages, "docs": docs}

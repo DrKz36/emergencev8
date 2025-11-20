@@ -64,11 +64,17 @@ class CloudExporter:
 
         # Changements non commités
         returncode, stdout, _ = self.run_git_command("status", "--short")
-        info["uncommitted_changes"] = len(stdout.strip().split("\n")) if stdout.strip() else 0
+        info["uncommitted_changes"] = (
+            len(stdout.strip().split("\n")) if stdout.strip() else 0
+        )
 
         # Commits en avance
-        returncode, stdout, _ = self.run_git_command("rev-list", "--count", "@{u}..HEAD")
-        info["commits_ahead"] = int(stdout.strip()) if returncode == 0 and stdout.strip() else 0
+        returncode, stdout, _ = self.run_git_command(
+            "rev-list", "--count", "@{u}..HEAD"
+        )
+        info["commits_ahead"] = (
+            int(stdout.strip()) if returncode == 0 and stdout.strip() else 0
+        )
 
         return info
 
@@ -87,7 +93,9 @@ class CloudExporter:
                 patch_type = "error"
         elif git_info["commits_ahead"] > 0:
             # Commits non pushés
-            returncode, stdout, _ = self.run_git_command("format-patch", "@{u}", "--stdout")
+            returncode, stdout, _ = self.run_git_command(
+                "format-patch", "@{u}", "--stdout"
+            )
             if returncode == 0:
                 patch_path.write_text(stdout, encoding="utf-8")
                 patch_type = "commits"
@@ -112,14 +120,20 @@ class CloudExporter:
 
         all_files = set()
         if status_output:
-            all_files.update(line.strip() for line in status_output.split("\n") if line.strip())
+            all_files.update(
+                line.strip() for line in status_output.split("\n") if line.strip()
+            )
         if diff_output:
-            all_files.update(line.strip() for line in diff_output.split("\n") if line.strip())
+            all_files.update(
+                line.strip() for line in diff_output.split("\n") if line.strip()
+            )
 
         files_path.write_text("\n".join(sorted(all_files)), encoding="utf-8")
         return list(all_files)
 
-    def generate_metadata(self, git_info: dict, patch_type: str, patch_size: int, modified_files: list) -> None:
+    def generate_metadata(
+        self, git_info: dict, patch_type: str, patch_size: int, modified_files: list
+    ) -> None:
         """Génère le fichier de métadonnées JSON"""
         metadata = {
             "export_timestamp": self.timestamp,
@@ -142,9 +156,13 @@ class CloudExporter:
         }
 
         metadata_path = self.patch_dir / self.metadata_name
-        metadata_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+        metadata_path.write_text(
+            json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
-    def create_export_log(self, git_info: dict, patch_type: str, patch_size: int, modified_files: list) -> None:
+    def create_export_log(
+        self, git_info: dict, patch_type: str, patch_size: int, modified_files: list
+    ) -> None:
         """Crée le log d'export"""
         log_path = self.log_dir / f"export_{self.timestamp}.log"
 
@@ -170,7 +188,9 @@ Taille patch: {patch_size} bytes
 """
         log_path.write_text(log_content, encoding="utf-8")
 
-    def create_instructions(self, git_info: dict, patch_type: str, modified_files: list) -> None:
+    def create_instructions(
+        self, git_info: dict, patch_type: str, modified_files: list
+    ) -> None:
         """Crée les instructions pour l'agent local"""
         instructions_path = self.patch_dir / f"INSTRUCTIONS_{self.timestamp}.txt"
 
@@ -259,9 +279,13 @@ Résumé des modifications:
         print(f"  1. {self.patch_dir / self.patch_name}")
         print(f"  2. {self.patch_dir / self.metadata_name}")
         print()
-        print("🚀 Prochaine étape: Transférer ces fichiers et exécuter 'local-import.py' sur la machine locale")
+        print(
+            "🚀 Prochaine étape: Transférer ces fichiers et exécuter 'local-import.py' sur la machine locale"
+        )
         print()
-        print(f"📄 Instructions: {self.patch_dir / f'INSTRUCTIONS_{self.timestamp}.txt'}")
+        print(
+            f"📄 Instructions: {self.patch_dir / f'INSTRUCTIONS_{self.timestamp}.txt'}"
+        )
 
         return 0
 
@@ -279,6 +303,7 @@ def main():
     except Exception as e:
         print(f"\n❌ ERREUR: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

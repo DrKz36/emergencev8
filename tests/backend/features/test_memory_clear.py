@@ -22,6 +22,7 @@ from backend.features.auth.service import AuthService
 
 # Tests rely on AuthService-issued tokens; dev bypass headers are no longer used.
 
+
 class FakeCollection:
     """Minimal vector collection stub supporting get/delete with filters."""
 
@@ -118,7 +119,7 @@ class FakeContainer:
         vector_service: FakeVectorService,
         session_manager: FakeSessionManager,
         auth_service: AuthService,
-        memory_analyzer = None,
+        memory_analyzer=None,
     ) -> None:
         self._db = db_manager
         self._vector = vector_service
@@ -142,13 +143,15 @@ class FakeContainer:
         return self._memory_analyzer
 
 
-
-
 TEST_AUTH_EMAIL = "memory-tester@example.com"
 TEST_AUTH_PASSWORD = "MemoryPass123!"
 
 
-async def _prepare_auth_context(db: DatabaseManager, email: str = TEST_AUTH_EMAIL, password: str = TEST_AUTH_PASSWORD):
+async def _prepare_auth_context(
+    db: DatabaseManager,
+    email: str = TEST_AUTH_EMAIL,
+    password: str = TEST_AUTH_PASSWORD,
+):
     config = AuthConfig(
         secret="memory-tests-secret",
         issuer="memory-tests",
@@ -160,7 +163,9 @@ async def _prepare_auth_context(db: DatabaseManager, email: str = TEST_AUTH_EMAI
     )
     auth_service = AuthService(db_manager=db, config=config)
     await auth_service.bootstrap()
-    await auth_service.upsert_allowlist(email, role="member", note="tests", actor="tests", password=password)
+    await auth_service.upsert_allowlist(
+        email, role="member", note="tests", actor="tests", password=password
+    )
     login = await auth_service.login(
         email,
         password,
@@ -176,6 +181,7 @@ def _auth_headers(login, *, session_id: str | None = None) -> dict[str, str]:
     headers["X-User-Id"] = login.user_id
     return headers
 
+
 def test_filter_history_for_agent_preserves_target_messages():
     history = [
         {"role": "assistant", "agent_id": "anima", "content": "bonjour"},
@@ -183,10 +189,14 @@ def test_filter_history_for_agent_preserves_target_messages():
         {"role": "user", "content": "ok"},
         {"role": "system", "content": "meta"},
     ]
-    filtered = MemoryGardener._filter_history_for_agent(history, 'neo')
-    assert any((item.get('agent_id') or '').lower() == 'neo' for item in filtered)
-    assert all((item.get('role') or '').lower() != 'assistant' or (item.get('agent_id') or '').lower() == 'neo' for item in filtered)
-    assert any((item.get('role') or '').lower() == 'user' for item in filtered)
+    filtered = MemoryGardener._filter_history_for_agent(history, "neo")
+    assert any((item.get("agent_id") or "").lower() == "neo" for item in filtered)
+    assert all(
+        (item.get("role") or "").lower() != "assistant"
+        or (item.get("agent_id") or "").lower() == "neo"
+        for item in filtered
+    )
+    assert any((item.get("role") or "").lower() == "user" for item in filtered)
 
 
 def test_filter_history_for_agent_no_agent_returns_original():
@@ -230,8 +240,18 @@ async def _run_memory_clear_scenario(tmp_path):
     )
 
     collection = FakeCollection()
-    collection.add("vec-1", {"session_id": session_id, "source_session_id": session_id, "user_id": owner_id})
-    collection.add("vec-2", {"session_id": "other", "source_session_id": "other", "user_id": owner_id})
+    collection.add(
+        "vec-1",
+        {
+            "session_id": session_id,
+            "source_session_id": session_id,
+            "user_id": owner_id,
+        },
+    )
+    collection.add(
+        "vec-2",
+        {"session_id": "other", "source_session_id": "other", "user_id": owner_id},
+    )
     vector_service = FakeVectorService(collection)
     session_manager = FakeSessionManager(owner_id)
     session_manager.register(session_id, owner_id)
@@ -285,7 +305,6 @@ def test_memory_clear_resets_short_and_long_term(tmp_path):
     asyncio.run(_run_memory_clear_scenario(tmp_path))
 
 
-
 async def _run_memory_endpoints_require_auth():
     app = FastAPI()
     app.include_router(memory_router.router, prefix="/api/memory")
@@ -304,7 +323,6 @@ async def _run_memory_endpoints_require_auth():
 
 def test_memory_endpoints_require_auth():
     asyncio.run(_run_memory_endpoints_require_auth())
-
 
 
 async def _run_memory_tend_garden_post_with_agent(tmp_path):
@@ -334,17 +352,24 @@ async def _run_memory_tend_garden_post_with_agent(tmp_path):
             session_id: str | None = None,
             agent_id: str | None = None,
         ):
-            captured['limit'] = consolidation_limit
-            captured['thread_id'] = thread_id
-            captured['session_id'] = session_id
-            captured['agent_id'] = agent_id
-            return {"status": "success", "message": "OK", "consolidated_sessions": 0, "new_concepts": 0}
+            captured["limit"] = consolidation_limit
+            captured["thread_id"] = thread_id
+            captured["session_id"] = session_id
+            captured["agent_id"] = agent_id
+            return {
+                "status": "success",
+                "message": "OK",
+                "consolidated_sessions": 0,
+                "new_concepts": 0,
+            }
 
     original_getter = memory_router._get_gardener_from_request
     transport = ASGITransport(app=app)
     try:
         memory_router._get_gardener_from_request = lambda request: DummyGardener()  # type: ignore[assignment]
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             response = await client.post(
                 "/api/memory/tend-garden",
                 json={"thread_id": "thread-123", "agent_id": "Neo"},
@@ -381,7 +406,9 @@ async def _run_memory_tend_garden_get_authorized(tmp_path):
 
     transport = ASGITransport(app=app)
     try:
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             response = await client.get(
                 "/api/memory/tend-garden",
                 headers=_auth_headers(login),
@@ -399,14 +426,12 @@ async def _run_memory_tend_garden_get_authorized(tmp_path):
         await db.disconnect()
 
 
-
 def test_memory_tend_garden_post_forwards_agent(tmp_path):
     asyncio.run(_run_memory_tend_garden_post_with_agent(tmp_path))
 
 
 def test_memory_tend_garden_get_authorized(tmp_path):
     asyncio.run(_run_memory_tend_garden_get_authorized(tmp_path))
-
 
 
 async def _run_memory_tend_garden_get_with_data(tmp_path):
@@ -458,9 +483,30 @@ async def _run_memory_tend_garden_get_with_data(tmp_path):
             )
 
         collection = FakeCollection()
-        collection.add("vec-a", {"session_id": "session-old", "source_session_id": "session-old", "user_id": owner_id})
-        collection.add("vec-b", {"session_id": "session-new", "source_session_id": "session-new", "user_id": owner_id})
-        collection.add("vec-c", {"session_id": "session-new", "source_session_id": "session-new", "user_id": owner_id})
+        collection.add(
+            "vec-a",
+            {
+                "session_id": "session-old",
+                "source_session_id": "session-old",
+                "user_id": owner_id,
+            },
+        )
+        collection.add(
+            "vec-b",
+            {
+                "session_id": "session-new",
+                "source_session_id": "session-new",
+                "user_id": owner_id,
+            },
+        )
+        collection.add(
+            "vec-c",
+            {
+                "session_id": "session-new",
+                "source_session_id": "session-new",
+                "user_id": owner_id,
+            },
+        )
         vector_service = FakeVectorService(collection)
         session_manager = FakeSessionManager(owner_id)
         session_manager.register("session-old", owner_id)
@@ -472,7 +518,9 @@ async def _run_memory_tend_garden_get_with_data(tmp_path):
         app.state.service_container = container
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             response = await client.get(
                 "/api/memory/tend-garden",
                 headers=_auth_headers(login),
@@ -499,4 +547,3 @@ async def _run_memory_tend_garden_get_with_data(tmp_path):
 
 def test_memory_tend_garden_get_returns_history(tmp_path):
     asyncio.run(_run_memory_tend_garden_get_with_data(tmp_path))
-

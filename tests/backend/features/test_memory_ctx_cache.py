@@ -23,10 +23,12 @@ def mock_vector_service():
     """VectorService mocké."""
     service = Mock()
     collection = MagicMock()
-    collection.get = MagicMock(return_value={
-        "documents": ["Préférence v1"],
-        "metadatas": [{"confidence": 0.8}]
-    })
+    collection.get = MagicMock(
+        return_value={
+            "documents": ["Préférence v1"],
+            "metadatas": [{"confidence": 0.8}],
+        }
+    )
     service.get_or_create_collection = Mock(return_value=collection)
     return service
 
@@ -35,8 +37,7 @@ def mock_vector_service():
 def memory_ctx_builder(mock_session_manager, mock_vector_service):
     """Instance de MemoryContextBuilder pour les tests."""
     return MemoryContextBuilder(
-        session_manager=mock_session_manager,
-        vector_service=mock_vector_service
+        session_manager=mock_session_manager, vector_service=mock_vector_service
     )
 
 
@@ -90,45 +91,61 @@ class TestPreferencesCacheInvalidation:
         assert user2 not in memory_ctx_builder._prefs_cache
         assert user3 in memory_ctx_builder._prefs_cache
 
-    def test_cache_refresh_after_invalidation(self, memory_ctx_builder, mock_vector_service):
+    def test_cache_refresh_after_invalidation(
+        self, memory_ctx_builder, mock_vector_service
+    ):
         """Test que le cache est rechargé depuis ChromaDB après invalidation."""
         user_id = "user123"
         collection = mock_vector_service.get_or_create_collection.return_value
 
         # 1. Premier chargement (mise en cache)
-        collection.get = MagicMock(return_value={
-            "documents": ["Préférence v1"],
-            "metadatas": [{"confidence": 0.8}]
-        })
-        prefs1 = memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
+        collection.get = MagicMock(
+            return_value={
+                "documents": ["Préférence v1"],
+                "metadatas": [{"confidence": 0.8}],
+            }
+        )
+        prefs1 = memory_ctx_builder._fetch_active_preferences_cached(
+            collection, user_id
+        )
         assert "Préférence v1" in prefs1
         assert user_id in memory_ctx_builder._prefs_cache
 
         # 2. Simuler mise à jour préférences dans ChromaDB
-        collection.get = MagicMock(return_value={
-            "documents": ["Préférence v2"],
-            "metadatas": [{"confidence": 0.9}]
-        })
+        collection.get = MagicMock(
+            return_value={
+                "documents": ["Préférence v2"],
+                "metadatas": [{"confidence": 0.9}],
+            }
+        )
 
         # 3. Sans invalidation → cache stale (retourne v1)
-        prefs2 = memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
+        prefs2 = memory_ctx_builder._fetch_active_preferences_cached(
+            collection, user_id
+        )
         assert "Préférence v1" in prefs2  # Ancienne version (cache hit)
 
         # 4. Avec invalidation → rechargement depuis ChromaDB (retourne v2)
         memory_ctx_builder.invalidate_preferences_cache(user_id)
-        prefs3 = memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
+        prefs3 = memory_ctx_builder._fetch_active_preferences_cached(
+            collection, user_id
+        )
         assert "Préférence v2" in prefs3  # Nouvelle version (cache miss + refresh)
 
-    def test_cache_ttl_still_works_after_invalidation_feature(self, memory_ctx_builder, mock_vector_service):
+    def test_cache_ttl_still_works_after_invalidation_feature(
+        self, memory_ctx_builder, mock_vector_service
+    ):
         """Test que le TTL du cache continue de fonctionner normalement."""
         user_id = "user123"
         collection = mock_vector_service.get_or_create_collection.return_value
 
         # Charger dans le cache
-        collection.get = MagicMock(return_value={
-            "documents": ["Préférence v1"],
-            "metadatas": [{"confidence": 0.8}]
-        })
+        collection.get = MagicMock(
+            return_value={
+                "documents": ["Préférence v1"],
+                "metadatas": [{"confidence": 0.8}],
+            }
+        )
         memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
         assert user_id in memory_ctx_builder._prefs_cache
 
@@ -137,13 +154,17 @@ class TestPreferencesCacheInvalidation:
         memory_ctx_builder._prefs_cache[user_id] = ("Préférence v1", old_timestamp)
 
         # Changer réponse ChromaDB
-        collection.get = MagicMock(return_value={
-            "documents": ["Préférence v2"],
-            "metadatas": [{"confidence": 0.9}]
-        })
+        collection.get = MagicMock(
+            return_value={
+                "documents": ["Préférence v2"],
+                "metadatas": [{"confidence": 0.9}],
+            }
+        )
 
         # Accès après expiration TTL → devrait recharger (v2)
-        prefs2 = memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
+        prefs2 = memory_ctx_builder._fetch_active_preferences_cached(
+            collection, user_id
+        )
         assert "Préférence v2" in prefs2
 
     def test_multiple_invalidations_sequential(self, memory_ctx_builder):
@@ -174,21 +195,29 @@ class TestCacheInvalidationIntegration:
         collection = mock_vector_service.get_or_create_collection.return_value
 
         # Étape 1: Cache initial
-        collection.get = MagicMock(return_value={
-            "documents": ["Aime le café"],
-            "metadatas": [{"confidence": 0.9}]
-        })
-        prefs_v1 = memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
+        collection.get = MagicMock(
+            return_value={
+                "documents": ["Aime le café"],
+                "metadatas": [{"confidence": 0.9}],
+            }
+        )
+        prefs_v1 = memory_ctx_builder._fetch_active_preferences_cached(
+            collection, user_id
+        )
         assert "café" in prefs_v1
 
         # Étape 2: Simulation mise à jour ChromaDB (analyse mémoire)
-        collection.get = MagicMock(return_value={
-            "documents": ["Aime le café", "N'aime pas le thé"],
-            "metadatas": [{"confidence": 0.9}, {"confidence": 0.8}]
-        })
+        collection.get = MagicMock(
+            return_value={
+                "documents": ["Aime le café", "N'aime pas le thé"],
+                "metadatas": [{"confidence": 0.9}, {"confidence": 0.8}],
+            }
+        )
 
         # Étape 3: Sans invalidation → ancienne version
-        prefs_stale = memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
+        prefs_stale = memory_ctx_builder._fetch_active_preferences_cached(
+            collection, user_id
+        )
         assert "café" in prefs_stale
         assert "thé" not in prefs_stale  # Pas encore visible
 
@@ -196,7 +225,9 @@ class TestCacheInvalidationIntegration:
         memory_ctx_builder.invalidate_preferences_cache(user_id)
 
         # Étape 5: Rechargement → nouvelle version
-        prefs_fresh = memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
+        prefs_fresh = memory_ctx_builder._fetch_active_preferences_cached(
+            collection, user_id
+        )
         assert "café" in prefs_fresh
         assert "thé" in prefs_fresh  # Maintenant visible
 

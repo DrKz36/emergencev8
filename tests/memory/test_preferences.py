@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 from copy import deepcopy
 
@@ -80,7 +80,14 @@ class DummyChatService:
         self.session_manager = DummySessionManager(connection_manager)
 
 
-def build_preference_record(user_id: str, pref_type: str = "preference", topic: str = "ton", *, confidence: float, source_message_id: str):
+def build_preference_record(
+    user_id: str,
+    pref_type: str = "preference",
+    topic: str = "ton",
+    *,
+    confidence: float,
+    source_message_id: str,
+):
     topic_key = topic.lower()
     record_id = _preference_record_id(user_id, pref_type, topic_key)
     return {
@@ -105,16 +112,26 @@ def test_store_preference_records_deduplicates_existing():
         db_manager = DummyDBManager()
         vector_service = DummyVectorService()
         analyzer = DummyMemoryAnalyzer()
-        gardener = MemoryGardener(db_manager=db_manager, vector_service=vector_service, memory_analyzer=analyzer)
+        gardener = MemoryGardener(
+            db_manager=db_manager,
+            vector_service=vector_service,
+            memory_analyzer=analyzer,
+        )
 
         session_id = "thread-1"
         user_id = "user-1"
 
-        first_record = build_preference_record(user_id, confidence=0.7, source_message_id="msg-1")
-        inserted_first = await gardener._store_preference_records([first_record], session_id, user_id)
+        first_record = build_preference_record(
+            user_id, confidence=0.7, source_message_id="msg-1"
+        )
+        inserted_first = await gardener._store_preference_records(
+            [first_record], session_id, user_id
+        )
 
         assert inserted_first == 1
-        stored_item = vector_service.collections[MemoryGardener.PREFERENCE_COLLECTION_NAME].items[first_record["id"]]
+        stored_item = vector_service.collections[
+            MemoryGardener.PREFERENCE_COLLECTION_NAME
+        ].items[first_record["id"]]
         assert stored_item["metadata"]["occurrences"] == 1
         assert stored_item["metadata"]["confidence"] == pytest.approx(0.7)
 
@@ -123,12 +140,18 @@ def test_store_preference_records_deduplicates_existing():
         payload_first = json.loads(db_manager.events[0][1][1])
         assert payload_first["occurrences"] == 1
 
-        second_record = build_preference_record(user_id, confidence=0.5, source_message_id="msg-2")
-        inserted_second = await gardener._store_preference_records([second_record], session_id, user_id)
+        second_record = build_preference_record(
+            user_id, confidence=0.5, source_message_id="msg-2"
+        )
+        inserted_second = await gardener._store_preference_records(
+            [second_record], session_id, user_id
+        )
 
         assert inserted_second == 0
 
-        updated_item = vector_service.collections[MemoryGardener.PREFERENCE_COLLECTION_NAME].items[first_record["id"]]
+        updated_item = vector_service.collections[
+            MemoryGardener.PREFERENCE_COLLECTION_NAME
+        ].items[first_record["id"]]
         assert updated_item["metadata"]["occurrences"] == 2
         assert updated_item["metadata"]["confidence"] == pytest.approx(0.6, abs=1e-4)
         assert set(updated_item["metadata"]["source_message_ids"]) == {"msg-1", "msg-2"}
@@ -147,16 +170,24 @@ def test_store_preference_records_emits_banner_when_threshold_crossed():
         analyzer = DummyMemoryAnalyzer(chat_service=chat_service)
         db_manager = DummyDBManager()
         vector_service = DummyVectorService()
-        gardener = MemoryGardener(db_manager=db_manager, vector_service=vector_service, memory_analyzer=analyzer)
+        gardener = MemoryGardener(
+            db_manager=db_manager,
+            vector_service=vector_service,
+            memory_analyzer=analyzer,
+        )
 
         session_id = "thread-2"
         user_id = "user-7"
 
-        initial_record = build_preference_record(user_id, confidence=0.4, source_message_id="msg-a")
+        initial_record = build_preference_record(
+            user_id, confidence=0.4, source_message_id="msg-a"
+        )
         await gardener._store_preference_records([initial_record], session_id, user_id)
         assert connection_manager.messages == []
 
-        boost_record = build_preference_record(user_id, confidence=0.9, source_message_id="msg-b")
+        boost_record = build_preference_record(
+            user_id, confidence=0.9, source_message_id="msg-b"
+        )
         await gardener._store_preference_records([boost_record], session_id, user_id)
 
         assert len(connection_manager.messages) == 1
@@ -168,5 +199,3 @@ def test_store_preference_records_emits_banner_when_threshold_crossed():
         assert payload["payload"]["source_message_id"] == "msg-b"
 
     asyncio.run(scenario())
-
-

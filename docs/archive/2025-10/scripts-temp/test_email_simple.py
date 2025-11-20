@@ -1,8 +1,8 @@
 """
 Simple email test script without emojis for Windows compatibility
 """
+
 import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -46,7 +46,7 @@ async def test_password_reset_email():
         success = await email_service.send_password_reset_email(
             to_email=test_email,
             reset_token="test_token_abc123xyz",
-            base_url="http://localhost:5173"
+            base_url="http://localhost:5173",
         )
 
         print()
@@ -95,8 +95,7 @@ async def test_beta_invitation_email():
 
     try:
         success = await email_service.send_beta_invitation_email(
-            to_email=test_email,
-            base_url="https://emergence-app.ch"
+            to_email=test_email, base_url="https://emergence-app.ch"
         )
 
         print()
@@ -142,6 +141,7 @@ async def main():
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
 
     try:

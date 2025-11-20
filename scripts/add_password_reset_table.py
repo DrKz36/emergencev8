@@ -2,6 +2,7 @@
 Migration script to add password_reset_tokens table
 Run this to add support for password reset functionality
 """
+
 import asyncio
 import sys
 from pathlib import Path

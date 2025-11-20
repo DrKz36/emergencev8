@@ -10,7 +10,12 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Callable, cast
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse, PlainTextResponse, Response
+from fastapi.responses import (
+    JSONResponse,
+    RedirectResponse,
+    PlainTextResponse,
+    Response,
+)
 from fastapi.routing import APIRouter
 from starlette.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -68,16 +73,34 @@ MEMORY_ROUTER = _import_router("backend.features.memory.router")
 AUTH_ROUTER = _import_router("backend.features.auth.router")
 DEV_AUTH_ROUTER = _import_router("backend.features.dev_auth.router")  # optionnel
 METRICS_ROUTER = _import_router("backend.features.metrics.router")  # Prometheus metrics
-MONITORING_ROUTER = _import_router("backend.features.monitoring.router")  # Monitoring & observability
+MONITORING_ROUTER = _import_router(
+    "backend.features.monitoring.router"
+)  # Monitoring & observability
 SYNC_ROUTER = _import_router("backend.features.sync.router")  # Auto-sync inter-agents
-SETTINGS_ROUTER = _import_router("backend.features.settings.router")  # Application settings
-BETA_REPORT_ROUTER = _import_router("backend.features.beta_report.router")  # Beta feedback reports
-GUARDIAN_ROUTER = _import_router("backend.features.guardian.router")  # Guardian auto-fix
-USAGE_ROUTER = _import_router("backend.features.usage.router")  # Usage tracking (Phase 2 Guardian Cloud)
-GMAIL_ROUTER = _import_router("backend.features.gmail.router")  # Gmail API (Phase 3 Guardian Cloud)
-TRACING_ROUTER = _import_router("backend.features.tracing.router")  # Distributed tracing (Phase 3)
-WEBHOOKS_ROUTER = _import_router("backend.features.webhooks.router")  # Webhooks & external integrations (P3.11)
-VOICE_ROUTER = _import_router("backend.features.voice.router")  # Voice TTS/STT with ElevenLabs
+SETTINGS_ROUTER = _import_router(
+    "backend.features.settings.router"
+)  # Application settings
+BETA_REPORT_ROUTER = _import_router(
+    "backend.features.beta_report.router"
+)  # Beta feedback reports
+GUARDIAN_ROUTER = _import_router(
+    "backend.features.guardian.router"
+)  # Guardian auto-fix
+USAGE_ROUTER = _import_router(
+    "backend.features.usage.router"
+)  # Usage tracking (Phase 2 Guardian Cloud)
+GMAIL_ROUTER = _import_router(
+    "backend.features.gmail.router"
+)  # Gmail API (Phase 3 Guardian Cloud)
+TRACING_ROUTER = _import_router(
+    "backend.features.tracing.router"
+)  # Distributed tracing (Phase 3)
+WEBHOOKS_ROUTER = _import_router(
+    "backend.features.webhooks.router"
+)  # Webhooks & external integrations (P3.11)
+VOICE_ROUTER = _import_router(
+    "backend.features.voice.router"
+)  # Voice TTS/STT with ElevenLabs
 
 
 def _migrations_dir() -> str:
@@ -97,6 +120,7 @@ async def _startup(container: ServiceContainer) -> None:
     Ne marque ready=True que si tout est OK.
     """
     import time
+
     startup_start = time.perf_counter()
     logger.info("🚀 Démarrage backend Émergence (warm-up mode)...")
 
@@ -146,7 +170,7 @@ async def _startup(container: ServiceContainer) -> None:
     try:
         vector_service = container.vector_service()
         # Vérifier que les collections principales existent
-        if hasattr(vector_service, 'client'):
+        if hasattr(vector_service, "client"):
             if vector_service.backend == "chroma":
                 # Chroma: tenter d'accéder aux collections
                 try:
@@ -159,12 +183,15 @@ async def _startup(container: ServiceContainer) -> None:
                 # Qdrant: vérifier les collections
                 try:
                     from qdrant_client.http.exceptions import UnexpectedResponse
+
                     try:
                         vector_service.client.get_collection("documents")
                         vector_service.client.get_collection("knowledge")
                         logger.info("✅ Qdrant collections verified")
                     except UnexpectedResponse:
-                        logger.warning("⚠️ Qdrant collections not found (will be created on demand)")
+                        logger.warning(
+                            "⚠️ Qdrant collections not found (will be created on demand)"
+                        )
                 except Exception as qe:
                     logger.warning(f"⚠️ Qdrant collections check failed: {qe}")
         _warmup_ready["vector"] = True
@@ -204,7 +231,6 @@ async def _startup(container: ServiceContainer) -> None:
     except Exception as e:
         logger.warning(f"MemoryAnalyzer hook non appliqué: {e}")
 
-
     try:
         auth_service = container.auth_service()
         await auth_service.bootstrap()
@@ -215,6 +241,7 @@ async def _startup(container: ServiceContainer) -> None:
     # 🔧 Phase 2 Guardian Cloud: Initialiser tables usage tracking
     try:
         from backend.features.usage.repository import UsageRepository
+
         usage_repo = UsageRepository(db_manager)
         await usage_repo.ensure_tables()
         logger.info("Usage tracking tables initialized")
@@ -241,7 +268,9 @@ async def _startup(container: ServiceContainer) -> None:
     startup_duration_ms = int((time.perf_counter() - startup_start) * 1000)
     all_ready = all(_warmup_ready.values())
     if all_ready:
-        logger.info(f"✅ Warm-up completed in {startup_duration_ms}ms - READY for traffic")
+        logger.info(
+            f"✅ Warm-up completed in {startup_duration_ms}ms - READY for traffic"
+        )
     else:
         failed = [k for k, v in _warmup_ready.items() if not v]
         logger.warning(
@@ -257,7 +286,9 @@ class DenyListMiddleware(BaseHTTPMiddleware):
         self.enabled = enabled
         self.patterns = [(p, re.compile(p, re.IGNORECASE)) for p in patterns]
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Any]
+    ) -> Response:
         if self.enabled and request.scope.get("type") == "http":
             path = request.url.path
             for raw, rx in self.patterns:
@@ -270,18 +301,29 @@ class DenyListMiddleware(BaseHTTPMiddleware):
 
             # Vérifier que la réponse est valide
             if response is None:
-                logger.error(f"No response returned in DenyListMiddleware for {request.url.path}")
-                return PlainTextResponse("Internal server error: no response", status_code=500)
+                logger.error(
+                    f"No response returned in DenyListMiddleware for {request.url.path}"
+                )
+                return PlainTextResponse(
+                    "Internal server error: no response", status_code=500
+                )
 
             return cast(Response, response)
         except RuntimeError as exc:
             # Gérer le cas où call_next() lève "No response returned"
             if "No response returned" in str(exc):
-                logger.error(f"RuntimeError in DenyListMiddleware for {request.url.path}: {exc}")
-                return PlainTextResponse("Internal server error: no response", status_code=500)
+                logger.error(
+                    f"RuntimeError in DenyListMiddleware for {request.url.path}: {exc}"
+                )
+                return PlainTextResponse(
+                    "Internal server error: no response", status_code=500
+                )
             raise
         except Exception as exc:
-            logger.error(f"Unexpected error in DenyListMiddleware for {request.url.path}: {exc}", exc_info=True)
+            logger.error(
+                f"Unexpected error in DenyListMiddleware for {request.url.path}: {exc}",
+                exc_info=True,
+            )
             return PlainTextResponse("Internal server error", status_code=500)
 
 
@@ -303,6 +345,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 🔧 Démarrer MemoryTaskQueue (P1.1)
     try:
         from backend.features.memory.task_queue import get_memory_queue
+
         queue = get_memory_queue()
         await queue.start()
         logger.info("MemoryTaskQueue started")
@@ -312,6 +355,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 🔧 Démarrer AutoSyncService
     try:
         from backend.features.sync.auto_sync_service import get_auto_sync_service
+
         sync_service = get_auto_sync_service()
         await sync_service.start()
         logger.info("AutoSyncService started")
@@ -329,6 +373,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 🔗 Store webhook delivery service in app.state for shutdown
     try:
         from backend.features.webhooks.delivery import WebhookDeliveryService
+
         db_manager = container.db_manager()
         app.state._webhook_delivery_service = WebhookDeliveryService(db_manager)
         logger.info("Webhook delivery service stored in app.state")
@@ -345,6 +390,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 🔧 Arrêter MemoryTaskQueue
     try:
         from backend.features.memory.task_queue import get_memory_queue
+
         queue = get_memory_queue()
         await queue.stop()
         logger.info("MemoryTaskQueue stopped")
@@ -354,6 +400,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 🔧 Arrêter AutoSyncService
     try:
         from backend.features.sync.auto_sync_service import get_auto_sync_service
+
         sync_service = get_auto_sync_service()
         await sync_service.stop()
         logger.info("AutoSyncService stopped")
@@ -370,7 +417,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 🔗 Arrêter le delivery service des webhooks
     try:
-        if hasattr(app.state, '_webhook_delivery_service'):
+        if hasattr(app.state, "_webhook_delivery_service"):
             await app.state._webhook_delivery_service.close()
             logger.info("Webhook delivery service stopped")
     except Exception as e:
@@ -407,11 +454,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_app() -> FastAPI:
     container = ServiceContainer()
-    app = FastAPI(
-        title="Émergence API",
-        version="8.0",
-        lifespan=lifespan
-    )
+    app = FastAPI(title="Émergence API", version="8.0", lifespan=lifespan)
     app.state.service_container = container
 
     # 🔒 Redirige automatiquement /route ↔ /route/
@@ -424,9 +467,12 @@ def create_app() -> FastAPI:
             SecurityMiddleware,
             RateLimitMiddleware,
         )
+
         app.add_middleware(MonitoringMiddleware)
         app.add_middleware(SecurityMiddleware)
-        app.add_middleware(RateLimitMiddleware, requests_per_minute=300)  # 300 req/min global
+        app.add_middleware(
+            RateLimitMiddleware, requests_per_minute=300
+        )  # 300 req/min global
         logger.info("Monitoring middlewares activés (dont rate limiting 300/min)")
     except Exception as e:
         logger.warning(f"Monitoring middlewares non activés: {e}")
@@ -480,13 +526,10 @@ def create_app() -> FastAPI:
             return {"ok": True, "status": "ready", **_warmup_ready}
         else:
             from fastapi.responses import JSONResponse
+
             return JSONResponse(
                 status_code=503,
-                content={
-                    "ok": False,
-                    "status": "starting",
-                    **_warmup_ready
-                }
+                content={"ok": False, "status": "starting", **_warmup_ready},
             )
 
     @app.get("/ready", tags=["Health"], include_in_schema=False, response_model=None)
@@ -510,16 +553,20 @@ def create_app() -> FastAPI:
             # Check VectorService existe (SANS forcer init du modèle)
             vector_service = app.state.service_container.vector_service()
 
-            return {"ok": True, "db": "up", "vector": "lazy" if not vector_service._inited else "ready"}
+            return {
+                "ok": True,
+                "db": "up",
+                "vector": "lazy" if not vector_service._inited else "ready",
+            }
         except Exception as e:
             logger.error(f"/ready check failed: {e}")
             from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=503,
-                content={"ok": False, "error": str(e)}
-            )
 
-    @app.get("/ready/full", tags=["Health"], include_in_schema=False, response_model=None)
+            return JSONResponse(status_code=503, content={"ok": False, "error": str(e)})
+
+    @app.get(
+        "/ready/full", tags=["Health"], include_in_schema=False, response_model=None
+    )
     async def ready_check_full(request: Request) -> dict[str, Any] | JSONResponse:
         """
         Full readiness check - force le warm-up complet (DB + embedding model + vector store).
@@ -542,10 +589,8 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"/ready/full check failed: {e}")
             from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=503,
-                content={"ok": False, "error": str(e)}
-            )
+
+            return JSONResponse(status_code=503, content={"ok": False, "error": str(e)})
 
     @app.post("/api/beta-report-test", tags=["Beta"])
     async def beta_report_test():
@@ -566,11 +611,15 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"Échec du montage router {desired_prefix}: {e}")
 
-    _mount_router(BETA_REPORT_ROUTER, "/api")  # Beta report endpoints at /api/beta-report (FIRST!)
+    _mount_router(
+        BETA_REPORT_ROUTER, "/api"
+    )  # Beta report endpoints at /api/beta-report (FIRST!)
     _mount_router(DOCUMENTS_ROUTER, "/api/documents")
     _mount_router(DEBATE_ROUTER, "/api/debate")
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
-    _mount_router(ADMIN_DASHBOARD_ROUTER, "/api")  # Admin routes at /api/admin/dashboard/*
+    _mount_router(
+        ADMIN_DASHBOARD_ROUTER, "/api"
+    )  # Admin routes at /api/admin/dashboard/*
     _mount_router(BENCHMARKS_ROUTER, "/api/benchmarks")
     _mount_router(THREADS_ROUTER, "/api/threads")
     _mount_router(MEMORY_ROUTER, "/api/memory")
@@ -581,11 +630,19 @@ def create_app() -> FastAPI:
     _mount_router(SYNC_ROUTER, "/api")  # Auto-sync endpoints at /api/sync/*
     _mount_router(SETTINGS_ROUTER)  # Settings endpoints at /api/settings/*
     _mount_router(GUARDIAN_ROUTER)  # Guardian auto-fix at /api/guardian/*
-    _mount_router(USAGE_ROUTER)  # Usage tracking at /api/usage/* (Phase 2 Guardian Cloud)
-    _mount_router(GMAIL_ROUTER)  # Gmail API at /auth/gmail + /api/gmail/* (Phase 3 Guardian Cloud)
-    _mount_router(TRACING_ROUTER, "/api")  # Tracing endpoints at /api/traces/* (Phase 3)
+    _mount_router(
+        USAGE_ROUTER
+    )  # Usage tracking at /api/usage/* (Phase 2 Guardian Cloud)
+    _mount_router(
+        GMAIL_ROUTER
+    )  # Gmail API at /auth/gmail + /api/gmail/* (Phase 3 Guardian Cloud)
+    _mount_router(
+        TRACING_ROUTER, "/api"
+    )  # Tracing endpoints at /api/traces/* (Phase 3)
     _mount_router(WEBHOOKS_ROUTER)  # Webhooks at /api/webhooks/* (P3.11)
-    _mount_router(VOICE_ROUTER, "/api/voice")  # Voice TTS/STT at /api/voice/* + /api/voice/ws/{agent_name}
+    _mount_router(
+        VOICE_ROUTER, "/api/voice"
+    )  # Voice TTS/STT at /api/voice/* + /api/voice/ws/{agent_name}
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}
