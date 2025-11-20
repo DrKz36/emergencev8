@@ -1,4 +1,4 @@
-from typing import Any, Dict, Protocol, Optional
+from typing import Protocol, Dict, Any
 
 class NotificationService(Protocol):
     """Interface for sending notifications to connected clients."""
