@@ -71,6 +71,16 @@ export default defineConfig(async () => {
           changeOrigin: true,
           rewriteWsOrigin: true,
         },
+        '/ready': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/healthz': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+          secure: false,
+        },
       }
     },
 

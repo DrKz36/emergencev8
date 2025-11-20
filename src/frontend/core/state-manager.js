@@ -417,7 +417,37 @@ export class StateManager {
   }
 
   persist() {
-    try { localStorage.setItem('emergenceState-V14', JSON.stringify(this.state)); } catch (error) {
+    try {
+      const safeThreads = { ...(this.state?.threads || {}), map: {} };
+      const mapEntries = this.state?.threads?.map || {};
+      Object.keys(mapEntries).forEach((id) => {
+        const { messages, docs, documents, ...rest } = mapEntries[id] || {};
+        safeThreads.map[id] = { ...rest };
+      });
+
+      const MAX_MESSAGES_PER_AGENT = 20;
+      const rawBuckets = this.state?.chat?.messages || {};
+      const prunedBuckets = {};
+      Object.keys(rawBuckets).forEach((agentId) => {
+        const bucket = Array.isArray(rawBuckets[agentId]) ? rawBuckets[agentId] : [];
+        prunedBuckets[agentId] = bucket.slice(-MAX_MESSAGES_PER_AGENT);
+      });
+
+      const safeChat = {
+        ...(this.state?.chat || {}),
+        messages: prunedBuckets,
+        selectedDocs: Array.isArray(this.state?.chat?.selectedDocs) ? this.state.chat.selectedDocs.slice(0, 20) : [],
+        selectedDocIds: Array.isArray(this.state?.chat?.selectedDocIds) ? this.state.chat.selectedDocIds.slice(0, 20) : [],
+      };
+
+      const safeState = {
+        ...this.state,
+        threads: safeThreads,
+        chat: safeChat,
+      };
+
+      localStorage.setItem('emergenceState-V14', JSON.stringify(safeState));
+    } catch (error) {
       console.error('[StateManager] Error persisting state:', error);
     }
   }

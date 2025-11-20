@@ -1,3 +1,4 @@
+import { VERSION } from '../../version.js';
 import { EVENTS } from '../../shared/constants.js';
 import { OfflineStorage } from './offline-storage.js';
 
@@ -167,7 +168,8 @@ export class OfflineSyncManager {
     if (!('serviceWorker' in navigator)) return;
     if (!isSecureContext()) return;
     try {
-      this.registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      const swUrl = `/sw.js?v=${encodeURIComponent(VERSION || 'dev')}`;
+      this.registration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
       if (this.registration?.waiting) {
         this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }

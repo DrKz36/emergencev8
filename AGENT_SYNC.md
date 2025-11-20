@@ -1,3 +1,79 @@
+## ✅ Session COMPLETEE (2025-11-20 16:45 CET) - Agent : Codex GPT
+
+### Fichiers modifies
+- `src/frontend/core/state-manager.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Actions realisees
+- All�g� la persistance localStorage : on pr�serve seulement le m�tadata threads et on tronque les messages (20/agent) pour �viter `QuotaExceededError` sur `emergenceState-V14`.
+- Bump version `beta-3.3.37` + patch notes/changelog align�s.
+
+### Tests
+- `npm run build` (warning dynamique admin connu).
+
+### Prochaines actions recommandees
+1. Rafra�chir l'app : le StateManager persiste un �tat l�ger, plus de `QuotaExceededError` attendu.
+
+### Blocages
+- Aucun.
+
+
+## ✅ Session COMPLETEE (2025-11-20 16:25 CET) - Agent : Codex GPT
+
+### Fichiers modifies
+- `sw.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Actions realisees
+- Ajout de `rag-power-button.css` dans le precache SW + bump version `beta-3.3.36` pour forcer le nouveau cache (styles RAG/TTS sans hard refresh).
+- Patch notes/changelog alignes sur 3.3.36.
+
+### Tests
+- `npm run build` (warning existant import dynamique admin).
+
+### Prochaines actions recommandees
+1. Simple refresh du front pour que le SW 3.3.36 prenne la main; verifier les styles RAG/TTS.
+
+### Blocages
+- Quota localStorage atteint (voir logs StateManager) mais non traite sur cette iteration.
+
+
+## ✅ Session COMPLETEE (2025-11-20 16:30 CET) - Agent : Codex GPT
+
+### Fichiers modifies
+- `sw.js`
+- `src/frontend/features/pwa/sync-manager.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Actions realisees
+- Service worker enregistre avec la version (`/sw.js?v=<version>`) et caches shell/runtime nommes par version pour invalider automatiquement les CSS (boutons RAG/TTS) sans purge manuelle.
+- Version `beta-3.3.35` : patch notes synchronises (front/back, changelog) centres sur le cache SW.
+- Fix backend documents: parametre `request` place avant les depends dans `router.py` pour supprimer le SyntaxError au demarrage (non-default argument).
+- Build Vite genere (dist) ; warning connu sur l'import dynamique admin inchange.
+
+### Tests
+- `npm run build` (warning existant sur import dynamique admin)
+
+### Prochaines actions recommandees
+1. Recharger l'app pour laisser le nouveau service worker prendre la main et valider que les styles RAG/TTS s'appliquent au premier chargement.
+2. Verifier sur un poste avec cache existant que les caches `emergence-shell-<version>` / `emergence-runtime-<version>` remplacent l'ancien cache `v1`.
+
+### Blocages
+- Service AutoSync (`http://localhost:8000/api/sync/status`) injoignable lors du check initial (backend non lance).
+
+
 ## ✅ Session COMPLÉTÉE (2025-11-20 15:05 CET) - Agent : Codex GPT
 
 ### Fichiers modifiés

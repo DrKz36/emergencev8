@@ -1,7 +1,92 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-11-20 17:30 CET (Claude Code)
-**Mode:** Développement collaboratif multi-agents
+**Dernière mise à jour:** 2025-11-20 16:10 CET (Claude Code)
+**Mode:** Développement collaboratif multi-agents (3 agents)
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-11-20 16:10 CET) - Onboarding Gemini Pro dans l'équipe
+
+### 🤖 AJOUT 3ÈME AGENT - Gemini Pro intégré dans l'équipe multi-agents
+
+**Status:** ✅ COMPLÉTÉ (documentation uniquement)
+**Impact:** Gemini Pro opérationnel avec zones d'expertise GCP/performance/monitoring
+
+**Contexte:**
+Intégration de Gemini Pro comme 3ème agent dans l'équipe de développement collaboratif Emergence V8. Gemini apporte une expertise spécifique sur Google Cloud Platform, optimisation performance, monitoring, tests end-to-end et recherche.
+
+**Travail réalisé:**
+
+1. **Création `GEMINI.md`** ✅
+   - Guide complet style CLAUDE.md adapté pour Gemini
+   - Ton de communication dev direct (même que Claude/Codex)
+   - Workflow autonomie totale
+   - Zones de responsabilité suggérées (GCP, perf, monitoring, E2E tests)
+   - Checklist session complète (lecture 15 min)
+   - Versioning obligatoire
+   - Conventions de code (Python + JavaScript)
+   - Template passation
+   - Anti-patterns
+   - Ressources clés (déploiement GCP, architecture, etc.)
+
+2. **Création `AGENT_SYNC_GEMINI.md`** ✅
+   - Fichier de synchronisation personnel Gemini
+   - État tâches en cours/complétées
+   - Coordination avec Claude/Codex
+   - État roadmap actuel
+   - État production
+   - Prochaines actions recommandées
+   - Idées de tâches prioritaires (expertise Gemini)
+
+3. **Création `docs/passation_gemini.md`** ✅
+   - Journal de passation Gemini (48h max)
+   - Entrée initiale d'onboarding
+   - Context for future sessions (bienvenue + workflow)
+   - Rotation automatique >48h vers archives
+
+4. **Mise à jour `SYNC_STATUS.md`** ✅
+   - Ajout ligne Gemini dans tableau Vue d'ensemble
+   - Section "Gemini Pro" dans Dernières activités
+   - Section "Gemini Pro" dans Tâches en cours
+   - Liens vers `AGENT_SYNC_GEMINI.md` et `docs/passation_gemini.md`
+   - Mise à jour checklist (3 agents)
+   - Mise à jour temps de lecture (10-15 min pour 3 agents)
+
+**Zones d'expertise Gemini Pro:**
+- 🚀 Google Cloud Platform natif (Cloud Run, Vertex AI, GCS, Firestore, IAM, etc.)
+- 📊 Performance & optimisation (profiling, caching, load testing)
+- 🧪 Testing & quality (E2E Playwright, chaos engineering, benchmarking)
+- ☁️ DevOps & CI/CD (GitHub Actions, monitoring, alerting)
+- 🔍 Research & analysis (veille techno, sécurité, competitive analysis)
+- 🖼️ Multimodal (si activé - traitement images/PDFs)
+
+**Tâches prioritaires suggérées pour Gemini:**
+- ⏳ P3.12: Benchmarking Performance (profiling backend, load testing, optimisation)
+- ⏳ P3.13: Auto-scaling Agents (Vertex AI, GCP native)
+- ⏳ Monitoring GCP (dashboards Cloud Monitoring, alerting)
+- ⏳ Tests end-to-end manquants (Playwright, chaos engineering)
+- ⏳ Audit sécurité et dépendances (npm audit, safety, Snyk, Trivy)
+
+**Bénéfices structure 3 agents:**
+- ✅ **Zéro conflit merge** (fichiers séparés par agent)
+- ✅ **Spécialisation expertise** (backend/frontend/GCP-perf-monitoring)
+- ✅ **Coordination optimale** (chaque agent voit ce que font les autres)
+- ✅ **Rotation auto 48h** (passation légère)
+
+**Fichiers créés:**
+- `GEMINI.md`
+- `AGENT_SYNC_GEMINI.md`
+- `docs/passation_gemini.md`
+
+**Fichiers modifiés:**
+- `SYNC_STATUS.md` (ajout Gemini dans toutes les sections)
+- `AGENT_SYNC_CLAUDE.md` (cette entrée)
+
+**Prochaines actions:**
+- ⏳ Gemini lit toute la documentation (GEMINI.md + architecture + sync)
+- ⏳ Gemini configure environnement local (venv Python + Node.js)
+- ⏳ Gemini analyse état production GCP (logs, métriques, healthcheck)
+- ⏳ Gemini prend en charge P3.12 (Benchmarking) ou P3.13 (Auto-scaling)
 
 ---
 

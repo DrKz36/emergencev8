@@ -10,6 +10,39 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.37] - 2025-11-20
+
+### 🚑 Correctifs
+
+- Allègement de la persistance locale : purge des messages/docs dans l’état sauvegardé (limite 20 messages/agent, threads sans payload) pour éviter `QuotaExceededError` sur `localStorage`.
+
+### 🛠️ Technique
+
+- StateManager sérialise désormais un état réduit (threads meta + buckets tronqués) avant `localStorage.setItem`.
+
+## [beta-3.3.36] - 2025-11-20
+
+### 🚑 Correctifs
+
+- Le service worker précache désormais `rag-power-button.css` : les styles RAG/TTS se chargent sans vider le cache navigateur.
+- Version SW incrémentée pour forcer l’activation du nouveau cache sur les clients existants.
+
+### 🛠️ Technique
+
+- Toujours versionné via `/sw.js?v=<version>` et caches `emergence-shell/runtime-<version>` ; ajout du CSS RAG/TTS dans la liste pré-cache.
+
+## [beta-3.3.35] - 2025-11-20
+
+### ?? Correctifs
+
+- Service worker versionne par release (`/sw.js?v=beta-3.3.35`) pour invalider automatiquement les caches CSS : les styles RAG/TTS se chargent sans vider le cache navigateur.
+- Nettoyage automatique des caches shell/runtime obsoletes a l'activation du SW afin de servir directement les feuilles Deep Aura mises a jour.
+
+### ?? Technique
+
+- L'inscription PWA ajoute la version a l'URL du SW et nomme les caches `emergence-shell-<version>` / `emergence-runtime-<version>` pour aligner invalidation et styles.
+
+
 ## [beta-3.3.34] - 2025-11-20
 
 ### 🎨 Graphical Redesign - Deep Aura Theme

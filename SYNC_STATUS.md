@@ -10,6 +10,7 @@
 |-------|-----------------|--------|---------|-------------------|
 | **Claude Code** | 2025-10-26 15:30 | ✅ Complété | beta-3.1.0 | 8 fichiers |
 | **Codex GPT** | 2025-10-26 21:45 | ✅ Complété | beta-3.1.3 | 7 fichiers |
+| **Gemini Pro** | 2025-11-20 16:00 | ✅ Initialisé | N/A | 3 fichiers (docs) |
 
 ---
 
@@ -68,6 +69,22 @@
 **Version:** beta-3.1.1 (PATCH)
 **Impact:** Fix bug UX empêchant reprise conversation après connexion
 
+### Gemini Pro (2025-11-20 16:00)
+**Tâche:** Onboarding multi-agents + configuration initiale
+**Status:** ✅ INITIALISÉ
+**Version:** N/A (documentation uniquement)
+**Impact:** 3ème agent opérationnel, zones d'expertise GCP/performance/monitoring
+
+**Fichiers clés:**
+- `GEMINI.md` - Configuration complète Gemini Pro
+- `AGENT_SYNC_GEMINI.md` - État détaillé Gemini
+- `docs/passation_gemini.md` - Journal de passation Gemini
+
+**Prochaines actions:**
+- Analyser état production GCP (logs, métriques, monitoring)
+- Prendre en charge P3.12 (Benchmarking) ou P3.13 (Auto-scaling)
+- Mettre en place monitoring et alerting GCP native
+
 ---
 
 ## 🔧 Tâches en cours
@@ -78,6 +95,11 @@
 
 ### Codex GPT
 - ⏳ PWA Mode Hors Ligne (P3.10) - 80% fait, reste tests manuels
+
+### Gemini Pro
+- ⏳ Configuration environnement local (première session)
+- ⏳ Analyse état production GCP
+- Aucune tâche de développement en cours pour le moment
 
 **Pas de conflits détectés entre les tâches.**
 
@@ -105,10 +127,12 @@
 **Pour info complète par agent:**
 - 📄 [AGENT_SYNC_CLAUDE.md](AGENT_SYNC_CLAUDE.md) — État détaillé Claude Code
 - 📄 [AGENT_SYNC_CODEX.md](AGENT_SYNC_CODEX.md) — État détaillé Codex GPT
+- 📄 [AGENT_SYNC_GEMINI.md](AGENT_SYNC_GEMINI.md) — État détaillé Gemini Pro
 
 **Journaux de passation (48h max):**
 - 📝 [docs/passation_claude.md](docs/passation_claude.md) — Journal Claude
 - 📝 [docs/passation_codex.md](docs/passation_codex.md) — Journal Codex
+- 📝 [docs/passation_gemini.md](docs/passation_gemini.md) — Journal Gemini
 
 **Archives (>48h):**
 - 📦 [docs/archives/](docs/archives/) — Archives anciennes sessions
@@ -117,6 +141,7 @@
 - 📋 [CODEV_PROTOCOL.md](CODEV_PROTOCOL.md) — Protocole collaboration multi-agents
 - 🤖 [CLAUDE.md](CLAUDE.md) — Configuration Claude Code
 - 🤖 [CODEX_GPT_GUIDE.md](CODEX_GPT_GUIDE.md) — Guide Codex GPT
+- 🤖 [GEMINI.md](GEMINI.md) — Configuration Gemini Pro
 
 ---
 
@@ -125,13 +150,13 @@
 **Lis dans cet ordre:**
 
 1. ✅ **Ce fichier (SYNC_STATUS.md)** — Vue d'ensemble rapide
-2. ✅ **Ton fichier agent** (`AGENT_SYNC_CLAUDE.md` ou `AGENT_SYNC_CODEX.md`)
-3. ✅ **Fichier de l'autre agent** — Comprendre ce qu'il a fait
-4. ✅ **Ton journal de passation** (`docs/passation_claude.md` ou `passation_codex.md`)
-5. ✅ **Journal de l'autre agent** — Contexte croisé
+2. ✅ **Ton fichier agent** (`AGENT_SYNC_CLAUDE.md` ou `AGENT_SYNC_CODEX.md` ou `AGENT_SYNC_GEMINI.md`)
+3. ✅ **Fichiers des autres agents** — Comprendre ce qu'ils ont fait
+4. ✅ **Ton journal de passation** (`docs/passation_claude.md` ou `passation_codex.md` ou `passation_gemini.md`)
+5. ✅ **Journaux des autres agents** — Contexte croisé
 6. ✅ **`git status` + `git log --oneline -10`** — État Git
 
-**Temps de lecture:** 5-10 minutes (OBLIGATOIRE pour éviter conflits)
+**Temps de lecture:** 10-15 minutes (OBLIGATOIRE pour éviter conflits - 3 agents)
 
 ---
 
@@ -151,5 +176,5 @@
 
 ---
 
-**🔄 Dernière synchro:** 2025-10-26 18:10 CET
-**⚙️ Généré par:** Hook Git post-commit (auto)
+**🔄 Dernière synchro:** 2025-11-20 16:00 CET
+**⚙️ Généré par:** Claude Code (ajout Gemini Pro dans l'équipe)
