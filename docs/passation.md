@@ -1,3 +1,28 @@
+## ? [2025-11-20 17:47 CET] - Agent: Codex GPT
+
+### Fichiers modifies
+- `src/backend/core/session_manager.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Ruff F841 sur `load_session_from_db` (variable `threads` non utilisee par la CI Guardian).
+- Service AutoSync `http://localhost:8000/api/sync/status` injoignable au demarrage (port ferme/backend arrete).
+
+### Travail realise
+1. Supprime l'appel `get_threads` non utilise et conserve le fallback `get_thread_any` pour eviter l'assert et supprimer l'avertissement ruff.
+2. `ruff check src/backend/core/session_manager.py` pour valider le lint.
+
+### Tests
+- `ruff check src/backend/core/session_manager.py`
+
+### Prochaines actions recommandees
+1. Relancer la CI/Guardian backend (lint + pytest) pour confirmer le passage.
+2. Relancer le service AutoSync si requis avant la prochaine session.
+
+### Blocages / Risques
+- AutoSync port 8000 injoignable au demarrage (non bloquant pour ce fix).
+
 ## ? [2025-11-20 16:45 CET] - Agent: Codex GPT
 
 ### Fichiers modifies
