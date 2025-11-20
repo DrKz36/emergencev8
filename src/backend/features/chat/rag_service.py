@@ -20,7 +20,6 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 
 from backend.features.memory.vector_service import VectorService
-from backend.features.chat.rag_metrics import RAGMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -52,19 +51,19 @@ class RAGService:
         self,
         vector_service: VectorService,
         document_service: Optional[Any] = None,
-        metrics: Optional[RAGMetrics] = None
+        metrics: Optional[Any] = None
     ):
         """
         Initialize RAGService.
-        
+
         Args:
             vector_service: VectorService for embeddings & search
             document_service: Optional DocumentService for document metadata
-            metrics: Optional RAGMetrics for telemetry
+            metrics: Optional metrics instance for telemetry
         """
         self.vector_service = vector_service
         self.document_service = document_service
-        self.metrics = metrics or RAGMetrics()
+        self.metrics = metrics
         
         # Collections
         self._knowledge_collection = None
@@ -135,7 +134,7 @@ class RAGService:
                 )
             
             # Convert to standardized format
-            doc_hits = self._convert_results_to_hits(results)
+            doc_hits = self._convert_results_to_hits(results)  # type: ignore[arg-type]
             
             # Merge adjacent chunks
             merged_hits = self.merge_chunks(
@@ -412,7 +411,7 @@ class RAGService:
             + content_type_score * 0.05
         )
 
-        return final_score
+        return float(final_score)
     
     def merge_chunks(
         self,
@@ -700,7 +699,7 @@ class RAGService:
         session_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """Build a where filter for vector search."""
-        clauses = []
+        clauses: List[Dict[str, Any]] = []
         
         if doc_ids:
             # Convert to integers

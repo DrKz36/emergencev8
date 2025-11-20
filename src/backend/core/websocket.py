@@ -365,14 +365,13 @@ class ConnectionManager(NotificationService):
     async def close_session(
         self,
         session_id: str,
-        *,
         code: int = 4401,
         reason: str = "session_revoked",
-    ) -> int:
+    ) -> None:
         resolved_id = self._resolve_session_id(session_id)
         connections = self.active_connections.pop(resolved_id, [])
         if not connections:
-            return 0
+            return
         closed = 0
         notice = {
             "type": "ws:auth_required",
@@ -394,7 +393,6 @@ class ConnectionManager(NotificationService):
             closed,
             reason,
         )
-        return closed
 
 
 def _find_handler(sm: SessionManager) -> Optional[Callable[..., Any]]:
@@ -500,7 +498,7 @@ def get_websocket_router(container: Any) -> APIRouter:
         session_manager: SessionManager = container.session_manager()
         conn_manager = getattr(session_manager, "connection_manager", None)
         if conn_manager is None:
-            conn_manager = ConnectionManager(session_manager)
+            conn_manager = ConnectionManager(session_manager)  # type: ignore[abstract]
 
         alias_value = (
             requested_session_id

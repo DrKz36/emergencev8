@@ -56,9 +56,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.31',
-  name: 'Large Document Upload Resilience',
-  date: '2025-11-01',
+  version: 'beta-3.3.32',
+  name: 'ChatService Architecture - Phase 2+3 Decomposition',
+  date: '2025-11-20',
 };
 
 export const VERSION = CURRENT_RELEASE.version;

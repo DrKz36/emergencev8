@@ -2,7 +2,7 @@
 # V2.2 - Safe resolver for get_document_service + alias sans slash
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Awaitable, Callable, cast
+from typing import Any, Dict, List, Awaitable, Callable, cast, Optional
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
 from fastapi.responses import FileResponse
@@ -63,7 +63,7 @@ async def upload_document(
     file: UploadFile = File(...),
     session: deps.SessionContext = Depends(deps.get_session_context),
     service: DocumentService = Depends(_get_document_service),
-    request: Request = None,
+    request: Optional[Request] = None,
 ) -> Dict[str, Any]:
     supported_types = [".pdf", ".txt", ".docx"]
     filename = file.filename or ""

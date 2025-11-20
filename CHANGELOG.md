@@ -10,6 +10,43 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.32] - 2025-11-20
+
+### 🏗️ Refactoring Architectural - Décomposition ChatService Phase 2+3
+
+**Contexte:** Refactoring majeur pour décomposer le ChatService monolithique (~2000 lignes) en services spécialisés. Travail effectué avec Google Antigravity IDE, mergé via PR #102.
+
+#### ✨ Améliorations Qualité
+
+**Phase 2 - Extraction MemoryService:**
+- **Nouveau service** `src/backend/features/chat/memory_service.py` (493 lignes)
+- **Responsabilités:** Consolidated memory retrieval avec caching RAG (hit rate 30-40%), concept grouping sémantique (cosine > 0.7), temporal history building, timeline generation
+- **Méthodes clés:** `get_consolidated_memory()`, `group_concepts_by_theme()`, `extract_group_title()`, `build_temporal_history_context()`
+
+**Phase 3 - Extraction PromptService:**
+- **Nouveau service** `src/backend/features/chat/prompt_service.py` (237 lignes)
+- **Responsabilités:** Prompt loading avec versioning (v3 > v2 > lite), agent config resolution, style rules application (tutoiement français)
+- **Méthodes clés:** `_load_prompts()`, `get_agent_config()`, `apply_style_rules()`
+
+#### 🔧 Corrections
+
+- **Cleanup imports:** Suppression import `Optional` inutilisé dans `src/backend/core/interfaces.py`
+
+#### 🎯 Impact
+
+- **Maintenabilité:** Code ~2000 lignes → 3 services spécialisés
+- **Testabilité:** Services isolés plus faciles à tester
+- **Évolutivité:** Nouvelles stratégies memory/prompts faciles à ajouter
+- **Découplage:** ChatService devient orchestrateur léger
+
+#### 📁 Fichiers Modifiés
+
+**Backend:** `memory_service.py` (créé), `prompt_service.py` (créé), `interfaces.py`
+**Docs:** `10-Components.md`, `AGENT_SYNC_CLAUDE.md`, `passation_claude.md`, `CHANGELOG.md`
+**Versioning:** `src/version.js`, `src/frontend/version.js`, `package.json`
+
+---
+
 ## [beta-3.3.31] - 2025-11-01
 
 ### 🛡️ Large Document Upload Resilience

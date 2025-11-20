@@ -70,7 +70,6 @@ class SessionManager:
         )
         self.active_sessions: Dict[str, Session] = {}
         self._session_user_cache: Dict[str, str] = {}
-        self._session_user_cache: Dict[str, str] = {}
         # Service de notification (injecté via setter pour éviter cycle)
         self.notification_service: Optional[NotificationService] = None
         self._session_threads: Dict[str, str] = {}
@@ -201,8 +200,8 @@ class SessionManager:
                     setattr(session, "_warning_sent", True)
 
                 # Envoyer l'avertissement via WebSocket
-                if self.connection_manager:
-                    notification_payload = {  # type: ignore[unreachable]
+                if self.notification_service:
+                    notification_payload = {
                         "notification_type": "inactivity_warning",
                         "message": f"Votre session sera déconnectée dans {remaining_seconds} secondes en raison d'inactivité.",
                         "remaining_seconds": remaining_seconds,
@@ -211,8 +210,8 @@ class SessionManager:
                     logger.info(
                         f"[Notification] Envoi notification inactivité à {session_id[:8]}... payload: {notification_payload}"
                     )
-                    await self.connection_manager.send_system_message(
-                        session_id, notification_payload
+                    await self.notification_service.send_personal_message(
+                        notification_payload, session_id
                     )
                     logger.info(
                         f"[Notification] Notification inactivité envoyée avec succès à {session_id[:8]}..."
