@@ -1,0 +1,816 @@
+F841 Local variable `current_allow` is assigned to but never used
+  --> .claude-templates\apply_ultimate_config.py:39:5
+   |
+37 |     - Ajoute toutes les permissions de ultimate qui ne sont pas d├®j├á pr├®sentes
+38 |     """
+39 |     current_allow = set(current.get("permissions", {}).get("allow", []))
+   |     ^^^^^^^^^^^^^
+40 |     ultimate_allow = ultimate.get("permissions", {}).get("allow", [])
+   |
+help: Remove assignment to unused variable `current_allow`
+
+F841 Local variable `current_allow` is assigned to but never used
+  --> .claude\apply_ultimate_config.py:40:5
+   |
+38 |     - Ignore les commentaires (cl├®s commen├ºant par "_comment")
+39 |     """
+40 |     current_allow = set(current.get("permissions", {}).get("allow", []))
+   |     ^^^^^^^^^^^^^
+41 |     ultimate_allow = ultimate.get("permissions", {}).get("allow", [])
+   |
+help: Remove assignment to unused variable `current_allow`
+
+F841 Local variable `unified_report` is assigned to but never used
+   --> claude-plugins\integrity-docs-guardian\scripts\auto_update_docs.py:223:5
+    |
+221 |     docs_report = load_report("docs_report.json")
+222 |     integrity_report = load_report("integrity_report.json")
+223 |     unified_report = load_report("unified_report.json")
+    |     ^^^^^^^^^^^^^^
+224 |
+225 |     # Collecter toutes les mises ├á jour n├®cessaires
+    |
+help: Remove assignment to unused variable `unified_report`
+
+E402 Module level import not at top of file
+  --> claude-plugins\integrity-docs-guardian\scripts\master_orchestrator.py:30:1
+   |
+29 | # Setup logging (with UTF-8 encoding for Windows)
+30 | import io
+   | ^^^^^^^^^
+31 |
+32 | # Force UTF-8 for stdout/stderr on Windows
+   |
+
+E722 Do not use bare `except`
+  --> claude-plugins\integrity-docs-guardian\scripts\master_orchestrator.py:82:17
+   |
+80 |                         self.acquired = True
+81 |                         return True
+82 |                 except:
+   |                 ^^^^^^
+83 |                     # Corrupt lock file - force release
+84 |                     self.release()
+   |
+
+E402 Module level import not at top of file
+  --> claude-plugins\integrity-docs-guardian\scripts\send_guardian_reports_email.py:50:1
+   |
+48 | sys.path.insert(0, str(backend_path))
+49 |
+50 | from features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+51 |
+52 | # Configuration
+   |
+
+E402 Module level import not at top of file
+  --> claude-plugins\integrity-docs-guardian\scripts\send_prod_report_to_codex.py:49:1
+   |
+47 | sys.path.insert(0, str(backend_path))
+48 |
+49 | from features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+50 |
+51 | # Configuration
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\check_archived_threads.py:11:1
+   |
+ 9 | sys.path.insert(0, str(SRC_DIR))
+10 |
+11 | from backend.core.database.manager import DatabaseManager
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F841 Local variable `meta` is assigned to but never used
+  --> docs\archive\2025-10\scripts-temp\check_archived_threads.py:47:9
+   |
+45 |         title = t[2] or "Sans titre"
+46 |         archived_at = t[3]
+47 |         meta = t[4]
+   |         ^^^^
+48 |
+49 |         # Compter les messages du thread
+   |
+help: Remove assignment to unused variable `meta`
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\consolidate_archives_manual.py:13:1
+   |
+11 | sys.path.insert(0, str(SRC_DIR))
+12 |
+13 | from backend.core.database.manager import DatabaseManager
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+14 | from backend.features.memory.vector_service import VectorService
+15 | from backend.features.memory.analyzer import MemoryAnalyzer
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\consolidate_archives_manual.py:14:1
+   |
+13 | from backend.core.database.manager import DatabaseManager
+14 | from backend.features.memory.vector_service import VectorService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+15 | from backend.features.memory.analyzer import MemoryAnalyzer
+16 | from backend.features.memory.gardener import MemoryGardener
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\consolidate_archives_manual.py:15:1
+   |
+13 | from backend.core.database.manager import DatabaseManager
+14 | from backend.features.memory.vector_service import VectorService
+15 | from backend.features.memory.analyzer import MemoryAnalyzer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+16 | from backend.features.memory.gardener import MemoryGardener
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\consolidate_archives_manual.py:16:1
+   |
+14 | from backend.features.memory.vector_service import VectorService
+15 | from backend.features.memory.analyzer import MemoryAnalyzer
+16 | from backend.features.memory.gardener import MemoryGardener
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\fetch_allowlist_emails.py:18:1
+   |
+16 | sys.path.insert(0, str(backend_path))
+17 |
+18 | from features.auth.service import AuthService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+19 | from core.config import build_auth_config_from_env
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\fetch_allowlist_emails.py:19:1
+   |
+18 | from features.auth.service import AuthService
+19 | from core.config import build_auth_config_from_env
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\send_beta_invitations.py:28:1
+   |
+26 | sys.path.insert(0, str(backend_path))
+27 |
+28 | from features.auth.email_service import EmailService, build_email_config_from_env
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_anima_context.py:13:1
+   |
+11 | sys.path.insert(0, str(SRC_DIR))
+12 |
+13 | from backend.features.memory.memory_query_tool import MemoryQueryTool
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+14 | from backend.features.memory.vector_service import VectorService
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_anima_context.py:14:1
+   |
+13 | from backend.features.memory.memory_query_tool import MemoryQueryTool
+14 | from backend.features.memory.vector_service import VectorService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_archived_memory_fix.py:20:1
+   |
+18 | sys.path.insert(0, str(SRC_DIR))
+19 |
+20 | from backend.core.database.manager import DatabaseManager
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+21 | from backend.features.memory.vector_service import VectorService
+22 | from backend.features.memory.memory_query_tool import MemoryQueryTool
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_archived_memory_fix.py:21:1
+   |
+20 | from backend.core.database.manager import DatabaseManager
+21 | from backend.features.memory.vector_service import VectorService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 | from backend.features.memory.memory_query_tool import MemoryQueryTool
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_archived_memory_fix.py:22:1
+   |
+20 | from backend.core.database.manager import DatabaseManager
+21 | from backend.features.memory.vector_service import VectorService
+22 | from backend.features.memory.memory_query_tool import MemoryQueryTool
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_beta_invitation.py:13:1
+   |
+11 | sys.path.insert(0, str(backend_path))
+12 |
+13 | from features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_beta_invitations.py:14:1
+   |
+12 | sys.path.insert(0, str(SRC_DIR))
+13 |
+14 | from backend.features.auth.service import AuthService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+15 | from backend.features.auth.email_service import EmailService
+16 | from backend.core.database.manager import DatabaseManager
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_beta_invitations.py:15:1
+   |
+14 | from backend.features.auth.service import AuthService
+15 | from backend.features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+16 | from backend.core.database.manager import DatabaseManager
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_beta_invitations.py:16:1
+   |
+14 | from backend.features.auth.service import AuthService
+15 | from backend.features.auth.email_service import EmailService
+16 | from backend.core.database.manager import DatabaseManager
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_fix.py:31:1
+   |
+29 | sys.path.insert(0, str(Path(__file__).parent / "src"))
+30 |
+31 | from backend.core.database.manager import DatabaseManager
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+32 | from backend.features.chat.llm_stream import LLMStreamer
+33 | from backend.features.chat.pricing import MODEL_PRICING
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_fix.py:32:1
+   |
+31 | from backend.core.database.manager import DatabaseManager
+32 | from backend.features.chat.llm_stream import LLMStreamer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 | from backend.features.chat.pricing import MODEL_PRICING
+34 | from openai import AsyncOpenAI
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_fix.py:33:1
+   |
+31 | from backend.core.database.manager import DatabaseManager
+32 | from backend.features.chat.llm_stream import LLMStreamer
+33 | from backend.features.chat.pricing import MODEL_PRICING
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+34 | from openai import AsyncOpenAI
+35 | from anthropic import AsyncAnthropic
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_fix.py:34:1
+   |
+32 | from backend.features.chat.llm_stream import LLMStreamer
+33 | from backend.features.chat.pricing import MODEL_PRICING
+34 | from openai import AsyncOpenAI
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 | from anthropic import AsyncAnthropic
+36 | import google.generativeai as genai
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_fix.py:35:1
+   |
+33 | from backend.features.chat.pricing import MODEL_PRICING
+34 | from openai import AsyncOpenAI
+35 | from anthropic import AsyncAnthropic
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+36 | import google.generativeai as genai
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_fix.py:36:1
+   |
+34 | from openai import AsyncOpenAI
+35 | from anthropic import AsyncAnthropic
+36 | import google.generativeai as genai
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+37 |
+38 | # Configuration
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_simple.py:19:1
+   |
+17 | sys.path.insert(0, str(Path(__file__).parent / "src"))
+18 |
+19 | from backend.core.database.manager import DatabaseManager
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20 | from backend.features.chat.llm_stream import LLMStreamer
+21 | from backend.features.chat.pricing import MODEL_PRICING
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_simple.py:20:1
+   |
+19 | from backend.core.database.manager import DatabaseManager
+20 | from backend.features.chat.llm_stream import LLMStreamer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+21 | from backend.features.chat.pricing import MODEL_PRICING
+22 | from openai import AsyncOpenAI
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_simple.py:21:1
+   |
+19 | from backend.core.database.manager import DatabaseManager
+20 | from backend.features.chat.llm_stream import LLMStreamer
+21 | from backend.features.chat.pricing import MODEL_PRICING
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 | from openai import AsyncOpenAI
+23 | from anthropic import AsyncAnthropic
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_simple.py:22:1
+   |
+20 | from backend.features.chat.llm_stream import LLMStreamer
+21 | from backend.features.chat.pricing import MODEL_PRICING
+22 | from openai import AsyncOpenAI
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+23 | from anthropic import AsyncAnthropic
+24 | import google.generativeai as genai
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_simple.py:23:1
+   |
+21 | from backend.features.chat.pricing import MODEL_PRICING
+22 | from openai import AsyncOpenAI
+23 | from anthropic import AsyncAnthropic
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+24 | import google.generativeai as genai
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_costs_simple.py:24:1
+   |
+22 | from openai import AsyncOpenAI
+23 | from anthropic import AsyncAnthropic
+24 | import google.generativeai as genai
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+25 |
+26 | BASE_DIR = Path(__file__).parent
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_email_sending.py:16:1
+   |
+14 | sys.path.insert(0, str(backend_path))
+15 |
+16 | from features.auth.email_service import EmailService, build_email_config_from_env
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_email_simple.py:13:1
+   |
+11 | sys.path.insert(0, str(backend_path))
+12 |
+13 | from features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> docs\archive\2025-10\scripts-temp\test_email_smtp.py:14:1
+   |
+12 | sys.path.insert(0, str(backend_path))
+13 |
+14 | from features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F841 Local variable `doc` is assigned to but never used
+  --> docs\archive\2025-10\scripts-temp\test_isolation.py:39:13
+   |
+37 |         print("Test 2: get_document_by_id sans user_id")
+38 |         try:
+39 |             doc = await db_queries.get_document_by_id(db_manager, 1)
+   |             ^^^
+40 |             print("ECHEC: get_document_by_id a retourne un resultat sans user_id")
+41 |             return False
+   |
+help: Remove assignment to unused variable `doc`
+
+F841 Local variable `threads` is assigned to but never used
+  --> docs\archive\2025-10\scripts-temp\test_isolation.py:48:13
+   |
+46 |         print("Test 3: get_threads sans user_id")
+47 |         try:
+48 |             threads = await db_queries.get_threads(db_manager, session_id="test")
+   |             ^^^^^^^
+49 |             print("ECHEC: get_threads a retourne des resultats sans user_id")
+50 |             return False
+   |
+help: Remove assignment to unused variable `threads`
+
+F841 Local variable `thread` is assigned to but never used
+  --> docs\archive\2025-10\scripts-temp\test_isolation.py:57:13
+   |
+55 |         print("Test 4: get_thread sans user_id")
+56 |         try:
+57 |             thread = await db_queries.get_thread(db_manager, "test_id", "test_session")
+   |             ^^^^^^
+58 |             print("ECHEC: get_thread a retourne un resultat sans user_id")
+59 |             return False
+   |
+help: Remove assignment to unused variable `thread`
+
+F841 Local variable `docs` is assigned to but never used
+  --> docs\archive\2025-10\scripts-temp\test_isolation.py:75:13
+   |
+73 |         print("Test 6: get_thread_docs sans user_id")
+74 |         try:
+75 |             docs = await db_queries.get_thread_docs(db_manager, "test_thread")
+   |             ^^^^
+76 |             print("ECHEC: get_thread_docs a retourne des resultats sans user_id")
+77 |             return False
+   |
+help: Remove assignment to unused variable `docs`
+
+F841 Local variable `costs` is assigned to but never used
+  --> docs\archive\2025-10\scripts-temp\test_isolation.py:84:13
+   |
+82 |         print("Test 7: get_costs_summary sans user_id")
+83 |         try:
+84 |             costs = await db_queries.get_costs_summary(db_manager)
+   |             ^^^^^
+85 |             print("ECHEC: get_costs_summary a retourne des resultats sans user_id")
+86 |             return False
+   |
+help: Remove assignment to unused variable `costs`
+
+F841 Local variable `messages` is assigned to but never used
+  --> docs\archive\2025-10\scripts-temp\test_isolation.py:93:13
+   |
+91 |         print("Test 8: get_messages_by_period sans user_id")
+92 |         try:
+93 |             messages = await db_queries.get_messages_by_period(db_manager)
+   |             ^^^^^^^^
+94 |             print("ECHEC: get_messages_by_period a retourne des resultats sans user_id")
+95 |             return False
+   |
+help: Remove assignment to unused variable `messages`
+
+E722 Do not use bare `except`
+  --> scripts\analyze_guardian_structure.py:43:9
+   |
+41 |                     "status", "N/A"
+42 |                 )
+43 |         except:
+   |         ^^^^^^
+44 |             timestamp = "N/A"
+45 |             status = "N/A"
+   |
+
+E722 Do not use bare `except`
+  --> scripts\analyze_guardian_structure.py:70:9
+   |
+68 |                     "status", "N/A"
+69 |                 )
+70 |         except:
+   |         ^^^^^^
+71 |             timestamp = "N/A"
+72 |             status = "N/A"
+   |
+
+E402 Module level import not at top of file
+  --> scripts\benchmark_chroma_upgrade.py:36:1
+   |
+35 | # Import VectorService after path setup
+36 | from backend.features.memory.vector_service import VectorService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F841 Local variable `results` is assigned to but never used
+   --> scripts\benchmark_chroma_upgrade.py:133:13
+    |
+131 |                 "type": f"type_{i % 5}",
+132 |             }
+133 |             results = service.query(
+    |             ^^^^^^^
+134 |                 collection,
+135 |                 query_text=query_text,
+    |
+help: Remove assignment to unused variable `results`
+
+F401 `google.cloud.logging_v2` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> scripts\cloud_audit_job.py:90:38
+   |
+88 |         try:
+89 |             from google.cloud import run_v2
+90 |             from google.cloud import logging_v2
+   |                                      ^^^^^^^^^^
+91 |
+92 |             # Client Cloud Run
+   |
+help: Remove unused import: `google.cloud.logging_v2`
+
+F841 Local variable `email_sent` is assigned to but never used
+   --> scripts\cloud_audit_job.py:509:9
+    |
+508 |         # Envoyer l'email
+509 |         email_sent = await job.send_email_report(report)
+    |         ^^^^^^^^^^
+510 |
+511 |         # D├®terminer le code de sortie
+    |
+help: Remove assignment to unused variable `email_sent`
+
+E402 Module level import not at top of file
+  --> scripts\migrate_agent_memory.py:22:1
+   |
+20 | sys.path.insert(0, str(root_dir / "src"))
+21 |
+22 | from backend.features.memory.vector_service import VectorService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+23 |
+24 | logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+   |
+
+F841 Local variable `old_meta` is assigned to but never used
+   --> scripts\migrate_agent_memory.py:99:9
+    |
+ 97 |     for i in range(min(5, len(ids_to_update))):
+ 98 |         item_id = ids_to_update[i]
+ 99 |         old_meta = results["metadatas"][results["ids"].index(item_id)]
+    |         ^^^^^^^^
+100 |         new_meta = metadatas_to_update[i]
+101 |         logger.info(f"   - {item_id[:20]}... ÔåÆ agent_id: {new_meta['agent_id']}")
+    |
+help: Remove assignment to unused variable `old_meta`
+
+E402 Module level import not at top of file
+  --> scripts\seed_admin_firestore.py:18:1
+   |
+16 |     sys.path.insert(0, str(src_dir))
+17 |
+18 | import bcrypt  # type: ignore
+   | ^^^^^^^^^^^^^
+19 | from google.cloud import firestore  # type: ignore
+   |
+
+E402 Module level import not at top of file
+  --> scripts\seed_admin_firestore.py:19:1
+   |
+18 | import bcrypt  # type: ignore
+19 | from google.cloud import firestore  # type: ignore
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20 |
+21 | DEFAULT_EMAIL = "gonzalefernando@gmail.com"
+   |
+
+E402 Module level import not at top of file
+  --> scripts\test\send_auth_email_confirmed.py:21:1
+   |
+19 | load_dotenv(env_path)
+20 |
+21 | from src.backend.features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> scripts\test\send_auth_email_to_selected.py:21:1
+   |
+19 | load_dotenv(env_path)
+20 |
+21 | from src.backend.features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> scripts\test\send_connection_issues_email.py:23:1
+   |
+21 | load_dotenv(env_path)
+22 |
+23 | from src.backend.features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> scripts\test\send_test_auth_email.py:28:1
+   |
+26 | print()
+27 |
+28 | from src.backend.features.auth.email_service import EmailService
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E402 Module level import not at top of file
+  --> scripts\test\test_email_config.py:21:1
+   |
+20 | # Load .env file
+21 | from dotenv import load_dotenv
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 |
+23 | load_dotenv(root_dir / ".env")
+   |
+
+E402 Module level import not at top of file
+  --> scripts\test\test_email_config.py:25:1
+   |
+23 |   load_dotenv(root_dir / ".env")
+24 |
+25 | / from backend.features.auth.email_service import (
+26 | |     EmailService,
+27 | |     build_email_config_from_env,
+28 | | )
+   | |_^
+   |
+
+F841 Local variable `tracker` is assigned to but never used
+   --> tests\backend\core\test_cost_telemetry.py:193:13
+    |
+191 |             # Reset singleton
+192 |             CostTracker._instance = None
+193 |             tracker = CostTracker(db_manager=db_manager_mock)
+    |             ^^^^^^^
+194 |
+195 |             # V├®rifier log init
+    |
+help: Remove assignment to unused variable `tracker`
+
+F841 Local variable `service` is assigned to but never used
+   --> tests\backend\features\chat\test_consolidated_memory_cache.py:314:13
+    |
+312 |             return_value=mock_rag_cache,
+313 |         ):
+314 |             service = ChatService(
+    |             ^^^^^^^
+315 |                 session_manager=mock_session_manager,
+316 |                 cost_tracker=cost_tracker,
+    |
+help: Remove assignment to unused variable `service`
+
+F841 Local variable `mock_hit` is assigned to but never used
+   --> tests\backend\features\chat\test_consolidated_memory_cache.py:410:63
+    |
+408 |         from backend.features.chat import rag_metrics
+409 |
+410 |         with patch.object(rag_metrics, "record_cache_hit") as mock_hit:
+    |                                                               ^^^^^^^^
+411 |             # Simuler un cache hit via le service
+412 |             # (code d├®j├á test├® ci-dessus, on v├®rifie juste l'appel m├®trique)
+    |
+help: Remove assignment to unused variable `mock_hit`
+
+F841 Local variable `mock_miss` is assigned to but never used
+   --> tests\backend\features\chat\test_consolidated_memory_cache.py:423:64
+    |
+421 |         from backend.features.chat import rag_metrics
+422 |
+423 |         with patch.object(rag_metrics, "record_cache_miss") as mock_miss:
+    |                                                                ^^^^^^^^^
+424 |             # Simuler un cache miss
+425 |             # (code d├®j├á test├® ci-dessus)
+    |
+help: Remove assignment to unused variable `mock_miss`
+
+E712 Avoid equality comparisons to `True`; use `result:` for truth checks
+  --> tests\backend\features\chat\test_temporal_query.py:88:20
+   |
+86 |         for query in queries:
+87 |             result = self._is_temporal_query(query)
+88 |             assert result == True, f"Failed for: '{query}'"
+   |                    ^^^^^^^^^^^^^^
+89 |
+90 |     def test_empty_and_none(self):
+   |
+help: Replace with `result`
+
+E712 Avoid equality comparisons to `False`; use `not self._is_temporal_query(""):` for false checks
+  --> tests\backend\features\chat\test_temporal_query.py:92:16
+   |
+90 |     def test_empty_and_none(self):
+91 |         """Test que les entr├®es vides ne causent pas d'erreur."""
+92 |         assert self._is_temporal_query("") == False
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+93 |         assert self._is_temporal_query(None) == False
+   |
+help: Replace with `not self._is_temporal_query("")`
+
+E712 Avoid equality comparisons to `False`; use `not self._is_temporal_query(None):` for false checks
+  --> tests\backend\features\chat\test_temporal_query.py:93:16
+   |
+91 |         """Test que les entr├®es vides ne causent pas d'erreur."""
+92 |         assert self._is_temporal_query("") == False
+93 |         assert self._is_temporal_query(None) == False
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+94 |
+95 |     def test_partial_matches(self):
+   |
+help: Replace with `not self._is_temporal_query(None)`
+
+E712 Avoid equality comparisons to `True`; use `is_temporal:` for truth checks
+   --> tests\backend\features\chat\test_temporal_query.py:237:12
+    |
+235 |     is_temporal = detector._is_temporal_query(user_query)
+236 |
+237 |     assert is_temporal == True
+    |            ^^^^^^^^^^^^^^^^^^^
+238 |
+239 |     # 2. Si temporel, construction du contexte
+    |
+help: Replace with `is_temporal`
+
+F841 Local variable `multi_concept_groups` is assigned to but never used
+   --> tests\backend\features\chat\test_thematic_grouping.py:99:9
+    |
+ 98 |         # V├®rifier qu'il y a au moins un groupe avec plusieurs concepts
+ 99 |         multi_concept_groups = [g for g in groups.values() if len(g) > 1]
+    |         ^^^^^^^^^^^^^^^^^^^^
+100 |
+101 |         # Le clustering devrait cr├®er 2 groupes: [Docker, Kubernetes] et [Po├¿me]
+    |
+help: Remove assignment to unused variable `multi_concept_groups`
+
+F841 Local variable `result` is assigned to but never used
+  --> tests\backend\features\test_chat_tracing.py:58:5
+   |
+57 |     # Appeler _build_memory_context
+58 |     result = await chat_service._build_memory_context(
+   |     ^^^^^^
+59 |         session_id="test_session",
+60 |         last_user_message="test query",
+   |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `result` is assigned to but never used
+  --> tests\backend\features\test_chat_tracing.py:85:5
+   |
+84 |     # Appeler _build_memory_context (ne devrait pas crasher gr├óce au try/except)
+85 |     result = await chat_service._build_memory_context(
+   |     ^^^^^^
+86 |         session_id="test_session", last_user_message="test query", agent_id="anima"
+87 |     )
+   |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `trace_ids` is assigned to but never used
+   --> tests\backend\features\test_chat_tracing.py:167:5
+    |
+166 |     assert len(exports) >= 2
+167 |     trace_ids = {s["trace_id"] for s in exports}
+    |     ^^^^^^^^^
+168 |     # Tous les spans doivent partager le m├¬me trace_id
+169 |     # Note: En r├®alit├®, sans contexte propag├®, chaque appel cr├®e un nouveau trace_id
+    |
+help: Remove assignment to unused variable `trace_ids`
+
+E402 Module level import not at top of file
+  --> tests\validation\test_phase1_validation.py:13:1
+   |
+11 |     "requests", reason="Phase 1 validation suite requires the requests package"
+12 | )
+13 | from datetime import datetime
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+14 | import sys
+15 | import os
+   |
+
+E402 Module level import not at top of file
+  --> tests\validation\test_phase1_validation.py:14:1
+   |
+12 | )
+13 | from datetime import datetime
+14 | import sys
+   | ^^^^^^^^^^
+15 | import os
+   |
+
+E402 Module level import not at top of file
+  --> tests\validation\test_phase1_validation.py:15:1
+   |
+13 | from datetime import datetime
+14 | import sys
+15 | import os
+   | ^^^^^^^^^
+16 |
+17 | # Fix Windows console encoding
+   |
+
+Found 77 errors.
+No fixes available (25 hidden fixes can be enabled with the `--unsafe-fixes` option).

@@ -2,64 +2,64 @@
 /* Variables CSS pour le thème sombre (par défaut) */
 
 [data-theme="dark"] {
-  /* === PALETTE "AURA" - DARK THEME === */
-  --color-bg-gradient: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
-  --color-bg: #090a0f;
+  /* === PALETTE "DEEP AURA" - DARK THEME === */
+  --color-bg-gradient: radial-gradient(circle at 50% 0%, #1e293b 0%, #090a0f 60%, #020617 100%);
+  --color-bg: #020617;
 
-  --color-primary: #00aaff;
-  --color-primary-hover: #33bbff;
-  --color-primary-focus-ring: rgba(0, 170, 255, 0.4);
+  --color-primary: #38bdf8;
+  --color-primary-hover: #7dd3fc;
+  --color-primary-focus-ring: rgba(56, 189, 248, 0.4);
 
-  /* Agents (couleurs saturées pour fond sombre) */
-  --color-anima: #e11d48;
-  --color-neo:   #2563eb;
+  /* Agents */
+  --color-anima: #f43f5e;
+  --color-neo: #3b82f6;
   --color-nexus: #10b981;
-  --color-user:  #8b5cf6;
+  --color-user: #a855f7;
 
-  --color-anima-bg: rgba(225, 29, 72, 0.12);
-  --color-neo-bg:   rgba(37, 99, 235, 0.12);
-  --color-nexus-bg: rgba(16, 185, 129, 0.12);
-  --color-user-bg:  rgba(139, 92, 246, 0.16);
+  --color-anima-bg: rgba(244, 63, 94, 0.15);
+  --color-neo-bg: rgba(59, 130, 246, 0.15);
+  --color-nexus-bg: rgba(16, 185, 129, 0.15);
+  --color-user-bg: rgba(168, 85, 247, 0.15);
 
-  /* Bulles chat */
+  /* Chat Bubbles */
   --color-accent-anima: var(--color-anima-bg);
-  --color-accent-neo:   var(--color-neo-bg);
+  --color-accent-neo: var(--color-neo-bg);
   --color-accent-nexus: var(--color-nexus-bg);
-  --color-accent-user:  var(--color-user-bg);
+  --color-accent-user: var(--color-user-bg);
   --color-text-on-accent: #f8fafc;
 
-  /* Texte (clair sur fond sombre) */
+  /* Text */
   --color-text-primary: #f8fafc;
-  --color-text-secondary: #e2e8f0;
-  --color-text-muted: #cbd5e1;
-  --color-text-tertiary: #94a3b8;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-tertiary: #64748b;
   --color-text-inverse: #0f172a;
   --color-text: var(--color-text-primary);
 
-  /* États */
+  /* States */
   --color-success: #22c55e;
   --color-warning: #f59e0b;
-  --color-error:   #ef4444;
-  --color-info:    var(--color-primary);
+  --color-error: #ef4444;
+  --color-info: var(--color-primary);
 
-  /* === GLASSMORPHISM V2 (adapté pour fond sombre) === */
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-blur: 16px;
-  --glass-border-color: rgba(255, 255, 255, 0.12);
-  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  /* === GLASSMORPHISM V3 === */
+  --glass-bg: rgba(15, 23, 42, 0.65);
+  --glass-blur: 24px;
+  --glass-border-color: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 
   /* === BORDURES === */
-  --border-color: rgba(255, 255, 255, 0.12);
+  --border-color: rgba(255, 255, 255, 0.08);
 
   /* === SCROLLBARS === */
-  --scrollbar-thumb: rgba(71, 85, 105, 0.45);
-  --scrollbar-thumb-hover: rgba(71, 85, 105, 0.65);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.3);
+  --scrollbar-thumb-hover: rgba(148, 163, 184, 0.5);
   --scrollbar-track: transparent;
 
   /* === ALIAS DE COMPATIBILITÉ === */
   --color-background: var(--color-bg);
   --color-background-primary: var(--color-bg);
-  --color-background-secondary: rgba(255, 255, 255, 0.04);
-  --color-background-tertiary: rgba(255, 255, 255, 0.06);
-  --color-background-light: rgba(255, 255, 255, 0.08);
+  --color-background-secondary: rgba(30, 41, 59, 0.5);
+  --color-background-tertiary: rgba(30, 41, 59, 0.3);
+  --color-background-light: rgba(255, 255, 255, 0.05);
 }

@@ -1,38 +1,78 @@
-/* src/frontend/styles/glassmorphism.css */
-/* V5 — halo et glow renforcés, sans sacrifier l’AA */
+/* src/frontend/styles/components/glassmorphism.css */
+/* Deep Aura Glassmorphism V3 */
 
-.glass-effect{
-  background-color:rgba(28,28,30,.65);
-  -webkit-backdrop-filter:blur(22px) saturate(140%);
-  backdrop-filter:blur(22px) saturate(140%);
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:16px;
-  box-shadow:
-    0 16px 40px rgba(0,0,0,.38),
-    inset 0 0 34px rgba(255,255,255,.035);
+.glass-effect {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border-color);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-panel {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 /* Halo générique (appliqué aux bulles/boutons) */
-.halo{
+.halo {
   box-shadow:
-    0 10px 28px rgba(0,0,0,.28),
-    0 0 20px rgba(255,255,255,.10),
-    inset 0 0 12px rgba(255,255,255,.05);
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
 /* Auras colorées */
-.halo--anima{ box-shadow:0 10px 28px rgba(225,29,72,.28), 0 0 24px rgba(225,29,72,.30); }
-.halo--neo  { box-shadow:0 10px 28px rgba(37,99,235,.28), 0 0 24px rgba(37,99,235,.30); }
-.halo--nexus{ box-shadow:0 10px 28px rgba(16,185,129,.28), 0 0 24px rgba(16,185,129,.30); }
+.halo--anima {
+  box-shadow: 0 0 30px var(--color-anima-glow);
+}
+
+.halo--neo {
+  box-shadow: 0 0 30px var(--color-neo-glow);
+}
+
+.halo--nexus {
+  box-shadow: 0 0 30px var(--color-nexus-glow);
+}
+
+.halo--user {
+  box-shadow: 0 0 30px var(--color-user-glow);
+}
 
 /* Lueur de bordure subtile */
-.glow-border{ position:relative; }
-.glow-border::before{
-  content:""; position:absolute; inset:-1px; border-radius:inherit;
-  padding:1px;
-  background:linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,.05));
+.glow-border {
+  position: relative;
+}
+
+.glow-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  pointer-events:none;
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }

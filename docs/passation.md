@@ -1,3 +1,89 @@
+## ✅ [2025-11-20 15:05 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/backend/core/database/queries.py`
+- `src/frontend/shared/backend-health.js`
+- `src/frontend/styles/components/rag-power-button.css`
+
+### Contexte
+- Après rétablissement des styles, les WS échouaient (`get_session_by_id` sans paramètres) et le healthcheck front tapait `/ready` sur le port Vite (404). Les toggles RAG/TTS étaient hors charte.
+
+### Travail réalisé
+1. Fix backend : `get_session_by_id(db, session_id)` corrigé pour supprimer le TypeError et permettre la récupération de session legacy lors du handshake WS.
+2. Healthcheck front : déduction de l’origine backend depuis `WS_CONFIG` et fallback `/api/monitoring/health` pour éviter les 404 `/ready` en dev.
+3. UI : restylage RAG/TTS (glass Deep Aura, états ON verts / OFF rouges, ombres) pour aligner le header avec la charte.
+
+### Tests
+- `npm run build`
+
+### Prochaines actions recommandées
+1. Relancer l’app pour valider la connexion WS et le chargement des messages (plus d’erreur get_session_by_id).
+2. Vérifier visuellement les boutons RAG/TTS (desktop + mobile) et le healthcheck (pas de 404).
+
+### Blocages / Risques
+- Service AutoSync (:8000) toujours injoignable (timeout).
+
+## ✅ [2025-11-20 14:15 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `index.html`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Contexte
+- L’UI desktop était cassée : les imports CSS core avaient disparu d’`index.html`, affichant le verrou orientation et des blocs non stylés. Objectif : rétablir les styles et aligner la release en cours.
+
+### Travail réalisé
+1. Réintégré reset/variables/thèmes/navigation/animations dans `index.html` pour recharger le socle CSS et masquer l’overlay orientation en desktop.
+2. Aligné la version sur `beta-3.3.34` (backend/front/package) et ajouté un patch note + section Correctifs dans le changelog Deep Aura.
+3. `npm run build` OK (warning connu sur import dynamique admin).
+
+### Tests
+- `npm run build`
+
+### Prochaines actions recommandées
+1. Réouvrir l’app desktop (home + module Dialogue) pour confirmer le retour à un layout normal.
+2. Ajuster si besoin les contrastes Deep Aura après feedback utilisateur.
+3. Relancer un check `curl http://localhost:8000/api/sync/status` quand le service AutoSync tournera.
+
+### Blocages / Risques
+- Service AutoSync (port 8000) injoignable actuellement (timeout).
+
+## ✅ [2025-11-02 13:30 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/documents/parser.py`
+- `requirements.txt`
+- `src/frontend/features/documents/documents.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Contexte
+- Production signalait des déconnexions + 503 sur l'upload de documents. DocumentService tombe quand PyMuPDF n'est pas présent et l'UI Documents ne déclenchait pas de reconnexion sur 401/403.
+
+### Travail réalisé
+1. Imports lazy (PyMuPDF/python-docx) + fallback PyPDF2 pour que le router Documents reste opérant même sans dépendance native ; évite les 503.
+2. Module Documents : détection explicite 401/403 (liste/upload) avec émission `auth:missing` et message de reconnexion ; l'upload conserve la sélection si la session a expiré.
+3. Version bump `beta-3.3.33` + changelog/patch notes synchronisés ; requirements mis à jour ; build Vite ok.
+
+### Tests
+- `python -m pytest tests/backend/features/test_documents_vector_resilience.py -q -s`
+- `npm run build`
+
+### Blocages / Risques
+- Déploiement requis pour embarquer PyPDF2 en prod ; valider un upload PDF volumineux après mise à jour.
+
+### Prochaines actions recommandées
+1. Déployer l'image et tester upload (PDF + TXT) en prod pour confirmer la disparition des 503.
+2. QA UI : vérifier le toast de reconnexion lorsqu'un 401 survient dans le module Documents.
+3. Surveiller les logs Cloud Run DocumentService après déploiement.
+
 # 📝 Journal de Passation Inter-Agents
 
 ## ✅ [2025-11-02 10:45 CET] - Agent: Codex GPT

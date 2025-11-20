@@ -1,8 +1,38 @@
-## [2025-11-01 15:40] — Agent: Codex GPT
+## [2025-11-20 15:05 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/backend/core/database/queries.py`
+- `src/frontend/shared/backend-health.js`
+- `src/frontend/styles/components/rag-power-button.css`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+- UI réparée mais WS KO : le handshake cassait (`get_session_by_id()` sans params) et le healthcheck tapait `/ready` sur le port Vite (404). Les toggles RAG/TTS restaient visuellement hors charte Deep Aura.
+
+### Travail réalisé
+1. Backend : réintroduit la signature `get_session_by_id(db, session_id)` pour supprimer le TypeError et permettre le chargement des sessions legacy via `SessionManager`.
+2. Front : healthcheck déduit l’origine backend via `WS_CONFIG` et fallback vers `/api/monitoring/health` pour éviter les 404 quand le dev server est sur 5173.
+3. UI : restylage RAG/TTS (glass sombre, états ON verts / OFF rouges) cohérent avec le thème Deep Aura.
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Aucun conflit ; correctif backend ciblé sur la signature de query, safe pour son code.
+
+### Prochaines actions recommandées
+1. Relancer l’app et valider que WS se connecte et hydrate les messages (plus d’erreur `get_session_by_id`).
+2. QA visuelle RAG/TTS (desktop + mobile) et vérifier la disparition des 404 `/ready`.
+
+### Blocages
+- AutoSync service (:8000) toujours injoignable (timeout).
+
+## [2025-11-01 15:40] - Agent: Codex GPT
 
 ### Version
 - **Ancienne:** beta-3.3.30
-- **Nouvelle:** beta-3.3.31 (PATCH — fallback chunking gros documents)
+- **Nouvelle:** beta-3.3.31 (PATCH - fallback chunking gros documents)
 
 ### Fichiers modifiés
 - `src/backend/features/documents/service.py`

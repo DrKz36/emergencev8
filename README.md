@@ -7,6 +7,8 @@ Multi agent conversation stack (Anima, Neo, Nexus) with cockpit, retrieval augme
 > **Score maintenabilité:** 47/100 → Cible 80/100 (roadmap 6 mois)
 >
 > **Bugs critiques:** 2 P0 en cours de correction | [Prompt fixes](PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md)
+>
+> **Note maintenance (2025-11-20)** : fallback WS r�tabli (chargement de session legacy via `get_session_by_id`), healthcheck front orient� vers le backend (plus de 404 `/ready` en dev), toggles RAG/TTS align�s sur le th�me Deep Aura et parseurs Documents/m�moire durcis (imports paresseux + hydratation threads s�curis�e).
 
 ## Features
 

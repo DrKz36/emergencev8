@@ -1,17 +1,2 @@
-src\backend\features\chat\rag_service.py:23:1: error: Module "backend.features.chat.rag_metrics" has no attribute "RAGMetrics"  [attr-defined]
-src\backend\features\chat\rag_service.py:138:54: error: Argument 1 to "_convert_results_to_hits" of "RAGService" has incompatible type "list[dict[str, Any]]"; expected "dict[str, Any]"  [arg-type]
-src\backend\features\chat\rag_service.py:415:9: error: Returning Any from function declared to return "float"  [no-any-return]
-src\backend\features\chat\rag_service.py:717:29: error: Dict entry 0 has incompatible type "str": "str"; expected "str": "dict[str, list[int]]"  [dict-item]
-src\backend\features\chat\rag_service.py:720:29: error: Dict entry 0 has incompatible type "str": "str"; expected "str": "dict[str, list[int]]"  [dict-item]
-src\backend\features\chat\rag_service.py:723:29: error: Dict entry 0 has incompatible type "str": "str"; expected "str": "dict[str, list[int]]"  [dict-item]
-src\backend\core\session_manager.py:73:9: error: Attribute "_session_user_cache" already defined on line 72  [no-redef]
-src\backend\core\session_manager.py:204:20: error: "SessionManager" has no attribute "connection_manager"  [attr-defined]
-src\backend\core\session_manager.py:205: error: Unused "type: ignore" comment  [unused-ignore]
-src\backend\core\session_manager.py:214:27: error: "SessionManager" has no attribute "connection_manager"  [attr-defined]
-src\backend\core\websocket.py:365:5: error: Return type "Coroutine[Any, Any, int]" of "close_session" incompatible with return type "Coroutine[Any, Any, None]" in supertype "backend.core.interfaces.NotificationService"  [override]
-src\backend\core\websocket.py:503:28: error: Cannot instantiate abstract class "ConnectionManager" with abstract attribute "broadcast"  [abstract]
-src\backend\features\documents\router.py:66:24: error: Incompatible default for argument "request" (default has type "None", argument has type "Request")  [assignment]
-src\backend\features\documents\router.py:66:24: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
-src\backend\features\documents\router.py:66:24: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
-src\backend\features\chat\router.py:306:17: error: Statement is unreachable  [unreachable]
-Found 14 errors in 5 files (checked 141 source files)
+src\backend\features\documents\parser.py:31: error: Unused "type: ignore" comment  [unused-ignore]
+Found 1 error in 1 file (checked 143 source files)

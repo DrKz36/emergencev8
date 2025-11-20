@@ -383,41 +383,63 @@ class DatabaseManager:
     # --------------------------------------------
 
     async def save_session(self, session_data: "Session") -> None:
-        history_json = json.dumps(getattr(session_data, "history", []))
-        metadata = getattr(session_data, "metadata", {})
-        summary = metadata.get("summary")
-        concepts = metadata.get("concepts")
-        entities = metadata.get("entities")
-        concepts_json = json.dumps(concepts) if concepts is not None else None
-        entities_json = json.dumps(entities) if entities is not None else None
-
-        query = """
-            INSERT INTO sessions (id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                updated_at = excluded.updated_at,
-                session_data = excluded.session_data,
-                summary = excluded.summary,
-                extracted_concepts = excluded.extracted_concepts,
-                extracted_entities = excluded.extracted_entities;
         """
-        params = (
-            session_data.id,
-            session_data.user_id,
-            session_data.start_time.isoformat(),
+        Persist session metadata to the 'threads' table.
+        Migration V6.8: 'sessions' table is deprecated. We now update 'threads'.
+        """
+        metadata = getattr(session_data, "metadata", {}) or {}
+
+        # Determine thread_id: use metadata['thread_id'] if available, else session_id (legacy behavior)
+        thread_id = metadata.get("thread_id") or session_data.id
+
+        # Prepare meta JSON
+        # We merge summary/concepts/entities into the meta dict if they are not already there
+        # (though usually they are part of metadata dict in Session object)
+        meta_dict = metadata.copy()
+
+        # Serialize meta
+        try:
+            meta_json = json.dumps(meta_dict)
+        except Exception:
+            meta_json = "{}"
+
+        created_at = session_data.start_time.isoformat()
+        updated_at = (
             session_data.end_time.isoformat()
             if session_data.end_time
-            else datetime.now(timezone.utc).isoformat(),
-            history_json,
-            summary,
-            concepts_json,
-            entities_json,
+            else datetime.now(timezone.utc).isoformat()
         )
+
+        # Upsert into threads
+        # We do NOT update 'type', 'title', 'created_at' on conflict to preserve existing values.
+        # We only update 'updated_at' and 'meta'.
+        query = """
+            INSERT INTO threads (id, session_id, user_id, type, title, created_at, updated_at, meta)
+            VALUES (?, ?, ?, 'chat', ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                updated_at = excluded.updated_at,
+                meta = excluded.meta;
+        """
+
+        # Default title for new threads created via this path (fallback)
+        title = f"Session {str(session_data.id)[:8]}"
+
+        params = (
+            thread_id,
+            session_data.id,
+            session_data.user_id,
+            title,
+            created_at,
+            updated_at,
+            meta_json,
+        )
+
         try:
-            await self.execute(query, params)
-            logger.info(f"Session {session_data.id} sauvegardée.")
+            await self.execute(query, params, commit=True)
+            logger.info(f"Session {session_data.id} (thread {thread_id}) saved to threads.")
         except Exception as e:
             logger.error(
-                f"Échec sauvegarde session {session_data.id}: {e}", exc_info=True
+                f"Failed to save session {session_data.id} to threads: {e}", exc_info=True
             )
-            # on ne raise pas
+            # We do not raise to avoid breaking the flow
+

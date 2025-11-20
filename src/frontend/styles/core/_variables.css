@@ -5,78 +5,113 @@
 /* ======================================= */
 
 :root {
-  /* === PALETTE "AURA" - DARK THEME === */
-  --color-bg-gradient: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
-  --color-bg: #090a0f;
+  /* === PALETTE "DEEP AURA" - DARK THEME === */
+  --color-bg-gradient: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 50%, #020617 100%);
+  --color-bg: #020617; /* Slate 950 */
 
-  --color-primary: #00aaff;
-  --color-primary-hover: #33bbff;
-  --color-primary-focus-ring: rgba(0, 170, 255, 0.4);
+  /* Primary Brand Colors */
+  --color-primary: #38bdf8; /* Sky 400 */
+  --color-primary-hover: #7dd3fc; /* Sky 300 */
+  --color-primary-active: #0ea5e9; /* Sky 500 */
+  --color-primary-focus-ring: rgba(56, 189, 248, 0.4);
 
-  /* Agents (Anima rouge-rose, Neo bleu, Nexus émeraude) */
-  --color-anima: #e11d48;             /* rose/rouge */
-  --color-neo:   #2563eb;             /* bleu */
-  --color-nexus: #10b981;             /* ✅ émeraude */
-  --color-user:  #8b5cf6;             /* violet */
+  /* Agents (Vibrant & Neon) */
+  --color-anima: #f43f5e;             /* Rose 500 */
+  --color-neo:   #3b82f6;             /* Blue 500 */
+  --color-nexus: #10b981;             /* Emerald 500 */
+  --color-user:  #a855f7;             /* Purple 500 */
 
-  --color-anima-bg: rgba(225, 29, 72, 0.12);
-  --color-neo-bg:   rgba(37, 99, 235, 0.12);
-  --color-nexus-bg: rgba(16, 185, 129, 0.12); /* ✅ émeraude */
-  --color-user-bg:  rgba(139, 92, 246, 0.16);
+  --color-anima-glow: rgba(244, 63, 94, 0.5);
+  --color-neo-glow:   rgba(59, 130, 246, 0.5);
+  --color-nexus-glow: rgba(16, 185, 129, 0.5);
+  --color-user-glow:  rgba(168, 85, 247, 0.5);
 
-  /* Bulles chat */
+  --color-anima-bg: rgba(244, 63, 94, 0.15);
+  --color-neo-bg:   rgba(59, 130, 246, 0.15);
+  --color-nexus-bg: rgba(16, 185, 129, 0.15);
+  --color-user-bg:  rgba(168, 85, 247, 0.15);
+
+  /* Chat Bubbles */
   --color-accent-anima: var(--color-anima-bg);
   --color-accent-neo:   var(--color-neo-bg);
   --color-accent-nexus: var(--color-nexus-bg);
   --color-accent-user:  var(--color-user-bg);
   --color-text-on-accent: #f8fafc;
 
-  /* Texte */
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #e2e8f0;
-  --color-text-muted: #cbd5e1;
-  --color-text-tertiary: #94a3b8;
+  /* Text */
+  --color-text-primary: #f8fafc;    /* Slate 50 */
+  --color-text-secondary: #cbd5e1;  /* Slate 300 */
+  --color-text-muted: #94a3b8;      /* Slate 400 */
+  --color-text-tertiary: #64748b;   /* Slate 500 */
   --color-text: var(--color-text-primary);
 
-  /* États */
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error:   #ef4444;
-  --color-info:    var(--color-primary);
+  /* States */
+  --color-success: #22c55e; /* Green 500 */
+  --color-warning: #f59e0b; /* Amber 500 */
+  --color-error:   #ef4444; /* Red 500 */
+  --color-info:    #0ea5e9; /* Sky 500 */
 
-  /* === GLASSMORPHISM V2 === */
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-blur: 16px;
-  --glass-border-color: rgba(255, 255, 255, 0.12);
-  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  /* === GLASSMORPHISM V3 === */
+  --glass-bg: rgba(15, 23, 42, 0.6); /* Slate 900 with opacity */
+  --glass-bg-hover: rgba(30, 41, 59, 0.7);
+  --glass-blur: 20px;
+  --glass-border-color: rgba(255, 255, 255, 0.08);
+  --glass-border-highlight: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+  --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
 
   /* === TYPO === */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'Fira Code', 'Consolas', 'Monaco', monospace;
-  --text-sm: .875rem; --text-base: 1rem; --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem; --text-3xl: 2rem;
-  --weight-regular: 400; --weight-medium: 500; --weight-semibold: 600; --weight-bold: 700;
+  --font-sans: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
 
-  /* === SPACING / RADII / ETC. === */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* === SPACING / RADII === */
   --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem;
-  --radius-md: .5rem; --radius-lg: .75rem; --radius-xl: 1rem; --radius-full: 9999px;
-  --border-width: 1px; --border-color: rgba(255, 255, 255, 0.12);
+  --radius-sm: .375rem; --radius-md: .5rem; --radius-lg: .75rem; --radius-xl: 1rem; --radius-2xl: 1.5rem; --radius-full: 9999px;
+  --border-width: 1px;
+  --border-color: var(--glass-border-color);
 
   /* === MOTION === */
-  --duration-subtle: 150ms; --duration-normal: 300ms;
-  --animation-duration-enter: 220ms;
-  --animation-duration-exit: 260ms;
-  --animation-duration-modal: 280ms;
-  --animation-duration-toast: 280ms;
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
-  --animation-ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --animation-ease-out: var(--ease-out-quint);
-  --animation-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
   /* === LAYOUT === */
-  --header-height: 56px; --sidebar-width: 258px; --mobile-nav-height: 64px; --max-content-width: 1600px;
+  --header-height: 64px;
+  --sidebar-width: 260px;
+  --mobile-nav-height: 64px;
+  --max-content-width: 1440px;
 
-  /* === Z === */
-  --z-base: 0; --z-content: 1; --z-header: 10; --z-sidebar: 11; --z-modal-backdrop: 20; --z-modal-content: 21; --z-notification: 30;
+  /* === Z-INDEX === */
+  --z-base: 0;
+  --z-content: 1;
+  --z-header: 50;
+  --z-sidebar: 40;
+  --z-modal-backdrop: 100;
+  --z-modal-content: 101;
+  --z-notification: 200;
+  --z-tooltip: 300;
 }
 
 /* === ALIAS DE COMPATIBILITÉ (stabilise les anciens styles) === */

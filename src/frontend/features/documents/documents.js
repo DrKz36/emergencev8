@@ -30,6 +30,20 @@ export default class DocumentsModule {
         this._currentThreadId = null;
     }
 
+    _handleAuthError(error, source) {
+        const status = error?.status ?? error?.response?.status;
+        if (status !== 401 && status !== 403) return false;
+
+        try { this.eventBus?.emit?.('auth:missing', { reason: status, source }); } catch {}
+        const message = 'Session expir\u00e9e. Merci de vous reconnecter.';
+        try {
+            const notifyEvent = EVENTS?.SHOW_NOTIFICATION || 'app:notify';
+            this.eventBus?.emit?.(notifyEvent, { type: 'error', message });
+        } catch {}
+        try { if (this.dom?.uploadStatus) this.dom.uploadStatus.textContent = message; } catch {}
+        return true;
+    }
+
     init() {
         if (this.isInitialized) return;
         if (this.eventBus?.on && !this._offDeselectCmd) {
@@ -365,10 +379,13 @@ export default class DocumentsModule {
         this.dom.uploadButton.disabled = true;
         this.dom.uploadStatus.classList.remove('error', 'success', 'info');
         this.dom.uploadStatus.classList.add('info');
-        this.dom.uploadStatus.textContent = `Téléversement de ${this.selectedFiles.length} fichier(s).`;
+        this.dom.uploadStatus.textContent = `Televersement de ${this.selectedFiles.length} fichier(s).`;
 
         const results = [];
+        let authErrorEncountered = false;
+
         for (const file of this.selectedFiles) {
+            if (authErrorEncountered) break;
             try {
                 const response = await this.apiClient.uploadDocument(file);
                 const vectorized = response?.vectorized !== false;
@@ -381,7 +398,7 @@ export default class DocumentsModule {
                     if (warnMessage) {
                         this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'warning', message: warnMessage });
                     } else {
-                        this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: `Téléversement : ${file.name}` });
+                        this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: `Televersement : ${file.name}` });
                     }
                 } else {
                     this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, {
@@ -391,29 +408,35 @@ export default class DocumentsModule {
                 }
             } catch (error) {
                 results.push({ ok: false, name: file.name, error });
-                // Extraire le message d'erreur du serveur (ex: fichier trop volumineux, trop de chunks, etc.)
+                if (this._handleAuthError(error, 'documents:upload')) {
+                    authErrorEncountered = true;
+                    continue;
+                }
                 const errorDetail = error?.message || 'Erreur inconnue';
                 this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, {
                     type: 'error',
-                    message: `Échec upload ${file.name}: ${errorDetail}`
+                    message: `Echec upload ${file.name}: ${errorDetail}`
                 });
             }
         }
 
-        // Reset sélection
+        if (authErrorEncountered) {
+            this.dom.uploadButton.disabled = false;
+            return;
+        }
+
         this.setSelectedFiles([]);
         this.dom.fileInput.value = '';
 
-        // Refresh & statut
         await this.fetchAndRenderDocuments(true);
 
         const okCount = results.filter(r => r.ok).length;
         const koCount = results.length - okCount;
         this.dom.uploadStatus.textContent = '';
         if (koCount === 0) {
-            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: `Téléversement terminé (${okCount}/${results.length}).` });
+            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: `Televersement termine (${okCount}/${results.length}).` });
         } else {
-            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'warning', message: `Téléversement partiel (${okCount}/${results.length}).` });
+            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'warning', message: `Televersement partiel (${okCount}/${results.length}).` });
         }
         this.dom.uploadButton.disabled = false;
     }
@@ -474,7 +497,8 @@ export default class DocumentsModule {
             const hasProcessing = this.documents.some(d => String(d.status || '').toLowerCase() === 'processing');
             this._scheduleAutoRefresh(hasProcessing);
         } catch (e) {
-            console.error('[Documents] chec de rcupration de la liste', e);
+            console.error('[Documents] echec de recuperation de la liste', e);
+            const authHandled = this._handleAuthError(e, 'documents:list');
             this.dom.listContainer.innerHTML = '<p class="error">Erreur lors du chargement des documents.</p>';
             this.updateSelectionUI();
             if (this.selectedIds.size) {
@@ -487,6 +511,9 @@ export default class DocumentsModule {
             try { if (EVENTS?.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch {}
             setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch {} }, 0);
 
+            if (authHandled && this.dom?.uploadStatus) {
+                this.dom.uploadStatus.textContent = 'Connexion requise pour afficher les documents.';
+            }
             this._scheduleAutoRefresh(false);
         }
     }
@@ -750,7 +777,6 @@ export default class DocumentsModule {
         }
     }
 }
-
 
 
 

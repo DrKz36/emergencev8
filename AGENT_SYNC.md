@@ -1,3 +1,113 @@
+## ✅ Session COMPLÉTÉE (2025-11-20 15:05 CET) - Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/backend/core/database/queries.py`
+- `src/frontend/shared/backend-health.js`
+- `src/frontend/styles/components/rag-power-button.css`
+
+### Actions réalisées
+- Corrigé `get_session_by_id` (signature explicite db + session_id) pour stopper le crash WS `TypeError: get_session_by_id() takes 0 positional arguments...`.
+- Healthcheck front : fallback automatique vers l’origine backend déduite du WS (ex. http://localhost:8000) + `/api/monitoring/health` pour éviter les 404 `/ready` en dev.
+- RAG/TTS : restylage conforme au thème Deep Aura (glass sombre, hover/ON verts ou rouges) pour retrouver l’apparence attendue.
+
+### Tests
+- `npm run build`
+
+### Prochaines actions recommandées
+1. Relancer le front après le hot reload pour vérifier que la connexion WS s’établit et que les messages chargent.
+2. Contrôler visuellement les toggles RAG/TTS (header gauche + header droit) et le healthcheck (plus de 404 `/ready`).
+
+### Blocages
+- Service AutoSync (port 8000) toujours injoignable au démarrage.
+
+## ✅ Session COMPLÉTÉE (2025-11-20 14:15 CET) - Agent : Codex GPT
+
+### Fichiers modifiés
+- `index.html`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Actions réalisées
+- Restauration des imports CSS core et composants dans `index.html` pour remettre en place le layout desktop et masquer le verrou orientation affiché par défaut.
+- Alignement de la version applicative sur `beta-3.3.34` (backend/front/package) avec patch note UI/desktop fix.
+- Ajout d’une section Correctifs dans le changelog 3.3.34 pour documenter la réparation des styles.
+
+### Tests
+- `npm run build` (OK, warning existant sur import dynamique admin)
+
+### Prochaines actions recommandées
+1. Vérifier visuellement l’UI desktop (home + module Dialogue) pour confirmer la disparition du verrou orientation et du fond cassé.
+2. Activer les assets du thème Deep Aura (animations/typographies) maintenant que les CSS core sont chargés.
+
+### Blocages
+- Service AutoSync (port 8000) injoignable au démarrage (`curl http://localhost:8000/api/sync/status` timeout).
+
+## ✅ Session COMPLÉTÉE (2025-11-20 12:40 CET) - Agent : Antigravity
+
+### Fichiers modifiés
+- `src/frontend/styles/core/_variables.css`
+- `src/frontend/styles/themes/dark.css`
+- `src/frontend/styles/core/_layout.css`
+- `src/frontend/styles/components/header-nav.css`
+- `src/frontend/styles/components/buttons.css`
+- `src/frontend/styles/components/inputs.css`
+- `src/frontend/styles/components/glassmorphism.css`
+- `src/frontend/styles/core/_typography.css`
+- `src/frontend/styles/core/_animations.css` (nouveau)
+- `index.html`
+
+### Actions réalisées
+- **Refonte Graphique "Deep Aura"** : Modernisation complète de l'interface avec un thème sombre plus profond (`#020617`), des accents vibrants (Sky/Rose/Emerald) et un glassmorphism V3 amélioré (flou 20px, bordures fines).
+- **Layout Responsive** : Refactorisation du layout principal avec une grille CSS robuste, une sidebar sticky sur desktop et une navigation mobile optimisée (menu burger avec backdrop glass).
+- **Composants Modernisés** :
+    - **Boutons** : Nouveaux gradients linéaires, effets de lueur (glow) au survol et variantes glass.
+    - **Inputs** : Champs de formulaire avec fond semi-transparent et focus ring lumineux.
+    - **Typographie** : Adoption de la stack 'Outfit' (titres) + 'Inter' (corps) pour une meilleure lisibilité et modernité.
+- **Animations Globales** : Ajout de keyframes globaux (`fadeIn`, `slideUp`, `pulse`) pour dynamiser l'interface.
+
+### Tests
+- ✅ Vérification visuelle par screenshots (Desktop Home, Mobile Home, Mobile Menu).
+- ✅ `npm run dev` pour valider le chargement des styles.
+
+### Prochaines actions recommandées
+1. Vérifier l'intégration des pages spécifiques (Chat, Settings) avec le nouveau layout.
+2. Ajuster les contrastes si nécessaire après retours utilisateurs.
+
+### Blocages
+- Aucun.
+
+## ✅ Session COMPLÉTÉE (2025-11-02 13:30 CET) - Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/documents/parser.py`
+- `requirements.txt`
+- `src/frontend/features/documents/documents.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Actions réalisées
+- Ajout d'un fallback PDF non natif : imports lazy PyMuPDF/python-docx + bascule vers PyPDF2 pour éviter les 503 Documents quand la dépendance native manque.
+- Module Documents : émission `auth:missing` et message de reconnexion sur 401/403 (liste/upload) pour éviter les erreurs silencieuses.
+- Bump version `beta-3.3.33` avec patch notes/changelog synchronisés.
+
+### Tests
+- `python -m pytest tests/backend/features/test_documents_vector_resilience.py -q -s`
+- `npm run build`
+
+### Prochaines actions recommandées
+1. Déployer l'image mise à jour (PyPDF2) et tester un upload PDF volumineux en prod.
+2. Vérifier en prod que l'UI Documents affiche la reconnexion dès un 401.
+3. Surveiller les logs Cloud Run pour confirmer la disparition des 503 Documents.
+
+### Blocages
+- Aucun.
+
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
 ## ✅ Session COMPLÉTÉE (2025-11-02 10:45 CET) - Agent : Codex GPT

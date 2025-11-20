@@ -1,44 +1,68 @@
 /* src/frontend/styles/core/typography.css */
-/* Typography styles - ÉMERGENCE V7.0 */
+/* Typography styles - ÉMERGENCE V8.3 */
 
 /* Base typography */
 body {
     font-family: var(--font-sans);
     font-size: var(--text-base);
     line-height: var(--line-height-normal);
-    color: var(--color-text, var(--color-text-primary));
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* Headings */
-h1 {
-    font-size: var(--text-3xl);
-    font-weight: var(--weight-bold);
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--color-text-primary);
     line-height: var(--line-height-tight);
-    margin-bottom: var(--space-lg);
+    letter-spacing: -0.02em;
+}
+
+h1 {
+    font-size: var(--text-4xl);
+    font-weight: var(--weight-bold);
+    margin-bottom: var(--space-8);
+    background: linear-gradient(to right, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 h2 {
-    font-size: var(--text-2xl);
+    font-size: var(--text-3xl);
     font-weight: var(--weight-semibold);
-    line-height: var(--line-height-tight);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-6);
 }
 
 h3 {
-    font-size: var(--text-xl);
+    font-size: var(--text-2xl);
     font-weight: var(--weight-semibold);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-4);
+}
+
+h4 {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-medium);
+    margin-bottom: var(--space-3);
 }
 
 /* Paragraphs */
 p {
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-4);
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
 }
 
 /* Links */
 a {
     color: var(--color-primary);
-    transition: color var(--duration-fast);
+    text-decoration: none;
+    transition: color var(--duration-fast) ease;
 }
 
 a:hover {
@@ -49,29 +73,78 @@ a:hover {
 code {
     font-family: var(--font-mono);
     font-size: 0.875em;
-    background: var(--color-bg-tertiary);
-    padding: 0.125rem 0.25rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.2em 0.4em;
     border-radius: var(--radius-sm);
+    color: var(--color-primary-hover);
 }
 
 pre {
     font-family: var(--font-mono);
-    background: var(--color-bg-secondary);
-    padding: var(--space-md);
+    background: var(--glass-bg);
+    padding: var(--space-4);
     border-radius: var(--radius-md);
     overflow-x: auto;
+    border: 1px solid var(--glass-border-color);
 }
 
 /* Strong */
 strong {
     font-weight: var(--weight-semibold);
+    color: var(--color-text-primary);
 }
 
-/* Small text */
-.text-xs { font-size: var(--text-xs); }
-.text-sm { font-size: var(--text-sm); }
-.text-base { font-size: var(--text-base); }
-.text-lg { font-size: var(--text-lg); }
-.text-xl { font-size: var(--text-xl); }
-.text-2xl { font-size: var(--text-2xl); }
-.text-3xl { font-size: var(--text-3xl); }
+/* Utilities */
+.text-xs {
+    font-size: var(--text-xs);
+}
+
+.text-sm {
+    font-size: var(--text-sm);
+}
+
+.text-base {
+    font-size: var(--text-base);
+}
+
+.text-lg {
+    font-size: var(--text-lg);
+}
+
+.text-xl {
+    font-size: var(--text-xl);
+}
+
+.text-2xl {
+    font-size: var(--text-2xl);
+}
+
+.text-3xl {
+    font-size: var(--text-3xl);
+}
+
+.text-4xl {
+    font-size: var(--text-4xl);
+}
+
+.font-mono {
+    font-family: var(--font-mono);
+}
+
+.font-bold {
+    font-weight: var(--weight-bold);
+}
+
+.font-medium {
+    font-weight: var(--weight-medium);
+}
+
+.text-muted {
+    color: var(--color-text-muted);
+}
+
+.text-gradient {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-neo) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}

@@ -68,19 +68,9 @@ TABLE_DEFINITIONS = [
     CREATE INDEX IF NOT EXISTS idx_document_chunks_user
     ON document_chunks(user_id, document_id);
     """,
-    # -- sessions (existant) --
-    """
-    CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY,
-        user_id TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        session_data TEXT,
-        summary TEXT,
-        extracted_concepts TEXT,
-        extracted_entities TEXT
-    );
-    """,
+    # -- sessions (DEPRECATED/REMOVED) --
+    # Table removed in V6.8 migration (sessions -> threads)
+
     # -- threads/messages/thread_docs (NOUVEAU V6) --
     """
     CREATE TABLE IF NOT EXISTS threads (

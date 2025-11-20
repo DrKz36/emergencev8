@@ -20,12 +20,12 @@
 
 .header-nav-button:hover {
   color: var(--color-text-primary);
-  background-color: var(--color-background-light);
+  background-color: var(--glass-bg-hover);
 }
 
 .header-nav-button.active {
   color: var(--color-primary);
-  background-color: rgba(0, 122, 255, 0.15);
+  background-color: rgba(56, 189, 248, 0.15);
 }
 
 .header-nav-button svg {
@@ -54,13 +54,11 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  /* 🔧 Amélioration contraste: fond bleu semi-transparent avec bordure visible */
   background-color: rgba(59, 130, 246, 0.2);
-  border: 2px solid rgba(59, 130, 246, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.5);
   color: rgba(255, 255, 255, 1);
-  /* 🔧 Ajout d'une lueur pour améliorer la visibilité */
-  box-shadow: 0 0 16px rgba(59, 130, 246, 0.4),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
@@ -73,9 +71,9 @@
   color: rgba(255, 255, 255, 1);
   background-color: rgba(59, 130, 246, 0.35);
   border-color: rgba(56, 189, 248, 1);
-  box-shadow: 0 0 24px rgba(56, 189, 248, 0.6),
-              inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transform: scale(1.08);
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
 }
 
 /* 🔧 État ouvert: rotation de l'icône pour feedback visuel */
@@ -83,9 +81,9 @@
   color: rgba(255, 255, 255, 1);
   background-color: rgba(59, 130, 246, 0.45);
   border-color: rgba(56, 189, 248, 1);
-  box-shadow: 0 0 28px rgba(56, 189, 248, 0.7),
-              inset 0 2px 8px rgba(0, 0, 0, 0.2);
-  transform: scale(1.05);
+  box-shadow: 0 0 28px rgba(56, 189, 248, 0.5),
+    inset 0 2px 8px rgba(0, 0, 0, 0.2);
+  transform: scale(1.02);
 }
 
 /* 🔧 Amélioration accessibilité keyboard */
@@ -105,10 +103,8 @@
 .mobile-nav-toggle svg {
   width: 24px;
   height: 24px;
-  /* 🔧 Lueur autour de l'icône pour renforcer la visibilité */
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
   transition: filter 0.25s ease;
-  /* 🔧 Force la couleur blanche sur tous les traits */
   color: #ffffff !important;
   stroke: currentColor !important;
 }
@@ -120,19 +116,17 @@
 
 .app-header .mobile-nav {
   position: fixed;
-  top: calc(var(--header-height, 56px) + 8px);
+  top: calc(var(--header-height, 64px) + 8px);
   right: 12px;
   left: auto;
   width: min(320px, calc(100% - 24px));
   display: block;
   padding: 16px;
   border-radius: 20px;
-  /* 🔧 Amélioration contraste: fond plus opaque avec bordure bleue cohérente */
-  background: rgba(11, 15, 26, 0.98);
-  border: 2px solid rgba(59, 130, 246, 0.4);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.85),
-              0 0 0 1px rgba(59, 130, 246, 0.2);
-  max-height: calc(100vh - var(--header-height, 56px) - 24px);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--glass-border-color);
+  box-shadow: var(--glass-shadow);
+  max-height: calc(100vh - var(--header-height, 64px) - 24px);
   overflow-y: auto;
   z-index: 1201;
   backdrop-filter: blur(20px);
@@ -165,7 +159,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   align-items: stretch;
 }
 
@@ -181,36 +175,33 @@
   width: 100%;
   height: auto;
   padding: 12px 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  /* 🔧 Amélioration de la visibilité des liens */
-  color: rgba(226, 232, 240, 0.95);
-  background: rgba(15, 23, 42, 0.4);
+  border-radius: 12px;
+  border: 1px solid transparent;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.03);
   font-size: 0.95rem;
   font-weight: 500;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .app-header .mobile-nav .nav-link:hover {
-  color: rgba(255, 255, 255, 1);
-  background-color: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.4);
+  color: var(--color-text-primary);
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--glass-border-color);
   transform: translateX(4px);
 }
 
 .app-header .mobile-nav .nav-link.active {
-  color: rgba(255, 255, 255, 1);
-  background-color: rgba(59, 130, 246, 0.3);
-  border-color: rgba(59, 130, 246, 0.6);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3),
-              0 4px 12px rgba(59, 130, 246, 0.25);
+  color: var(--color-text-primary);
+  background-color: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.1);
 }
 
 .app-header .mobile-nav .nav-link .nav-text {
   display: inline;
   font-size: 0.95rem;
   font-weight: 500;
-  /* 🔧 Assurer la visibilité du texte */
   color: inherit;
 }
 
@@ -219,7 +210,6 @@
   width: 24px;
   height: 24px;
   flex: 0 0 auto;
-  /* 🔧 Assurer la visibilité de l'icône */
   color: inherit;
 }
 
@@ -227,31 +217,34 @@
 /*   NAVIGATION EN SIDEBAR   */
 /* ========================= */
 
-/* Réglage “patron = Documents”
-   -> 10ch ~ longueur "Documents", ajustable si besoin. */
-:root{
+:root {
   --nav-text-doc-ch: 10ch;
-  --nav-icon-w: 22px;     /* largeur icône */
-  --nav-gap: 10px;        /* espace icône/texte */
-  --nav-pad-x: 24px;      /* padding gauche+droite cumulé */
+  --nav-icon-w: 22px;
+  --nav-gap: 12px;
+  --nav-pad-x: 24px;
 }
 
 /* 2 espacements nets sous le branding */
-.app-sidebar .brand-block { margin-bottom: 24px !important; }
+.app-sidebar .brand-block {
+  margin-bottom: 32px !important;
+}
 
 /* Colonne nav bornée */
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   max-width: var(--sidebar-w);
   width: var(--sidebar-w);
   overflow: visible;
   padding-top: 4px;
-  align-items: flex-start; /* important: évite l’étirement plein-largeur */
+  align-items: flex-start;
 }
 
-.sidebar-nav .nav-item { list-style: none; width: auto; }
+.sidebar-nav .nav-item {
+  list-style: none;
+  width: auto;
+}
 
 /* Lien = largeur fixe calée sur "Documents",
    clampé pour ne jamais dépasser la sidebar. */
@@ -259,47 +252,61 @@
   display: inline-flex;
   align-items: center;
   gap: var(--nav-gap);
-  inline-size: clamp(
-    140px,
-    calc(var(--nav-text-doc-ch) + var(--nav-icon-w) + var(--nav-gap) + var(--nav-pad-x)),
-    calc(var(--sidebar-w) - 16px)
-  );
-  padding: 8.8px 10.5px;
+  inline-size: clamp(140px,
+      calc(var(--nav-text-doc-ch) + var(--nav-icon-w) + var(--nav-gap) + var(--nav-pad-x)),
+      calc(var(--sidebar-w) - 16px));
+  padding: 10px 16px;
   border-radius: 12px;
   text-decoration: none;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   border: 1px solid transparent;
   white-space: nowrap;
   overflow: visible;
   text-overflow: ellipsis;
+  transition: all 0.2s ease;
 }
 
-.sidebar-nav .nav-link .nav-icon { flex: 0 0 auto; }
+.sidebar-nav .nav-link .nav-icon {
+  flex: 0 0 auto;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
 .sidebar-nav .nav-link .nav-text {
   flex: 1 1 auto;
   min-width: 0;
   overflow: visible;
   text-overflow: ellipsis;
+  font-weight: var(--weight-medium);
 }
 
 .sidebar-nav .nav-link:hover {
   color: var(--color-text-primary);
-  background-color: var(--color-background-light);
+  background-color: var(--glass-bg-hover);
+}
+
+.sidebar-nav .nav-link:hover .nav-icon {
+  opacity: 1;
 }
 
 .sidebar-nav .nav-link.active {
+  color: var(--color-text-primary);
+  background-color: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
+}
+
+.sidebar-nav .nav-link.active .nav-icon {
   color: var(--color-primary);
-  background-color: var(--color-background-tertiary);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px rgba(37,99,235,.25);
+  opacity: 1;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
 }
 
 /* Mobile backdrop */
 .mobile-backdrop {
   position: fixed;
   inset: 0;
-  /* 🔧 Fond semi-transparent amélioré */
-  background: rgba(5, 10, 20, 0.85);
+  background: rgba(2, 6, 23, 0.8);
   backdrop-filter: blur(8px);
   z-index: 1199;
   display: none;
@@ -314,7 +321,6 @@
   pointer-events: auto;
 }
 
-/* 🔧 Backdrop visible quand le menu est ouvert */
 body.mobile-nav-open .mobile-backdrop,
 body.mobile-menu-open .mobile-backdrop {
   display: block;
@@ -326,8 +332,3 @@ body.mobile-nav-open,
 body.mobile-menu-open {
   overflow: hidden;
 }
-
-
-
-
-
