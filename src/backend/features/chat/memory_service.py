@@ -20,7 +20,6 @@ from datetime import datetime
 
 from backend.features.memory.vector_service import VectorService
 from backend.core.session_manager import SessionManager
-from backend.features.chat.rag_metrics import RAGMetrics
 from backend.core.database import queries
 
 logger = logging.getLogger(__name__)
@@ -43,23 +42,23 @@ class MemoryService:
         session_manager: SessionManager,
         rag_cache: Any,  # RAGCache from ChatService
         memory_query_tool: Optional[Any] = None,
-        metrics: Optional[RAGMetrics] = None
+        metrics: Optional[Any] = None
     ):
         """
         Initialize MemoryService.
-        
+
         Args:
             vector_service: VectorService for embeddings & search
             session_manager: SessionManager for database access
             rag_cache: RAGCache instance for caching
             memory_query_tool: Optional MemoryQueryTool for timeline
-           metrics: Optional RAGMetrics for telemetry
+            metrics: Optional metrics instance for telemetry
         """
         self.vector_service = vector_service
         self.session_manager = session_manager
         self.rag_cache = rag_cache
         self.memory_query_tool = memory_query_tool
-        self.metrics = metrics or RAGMetrics()
+        self.metrics = metrics
         
         # Collection
         self._knowledge_collection = None
@@ -120,7 +119,7 @@ class MemoryService:
             from backend.features.chat import rag_metrics
             rag_metrics.record_cache_hit()
 
-            return consolidated_entries
+            return consolidated_entries  # type: ignore[no-any-return]
 
         # Cache MISS - Recherche dans ChromaDB
         logger.debug(
@@ -129,10 +128,11 @@ class MemoryService:
 
         try:
             search_start = time.time()
-            if self._knowledge_collection is None:
-                raise RuntimeError("Knowledge collection should be initialized")
-            
-            results = self._knowledge_collection.query(
+
+            # Ensure collection is initialized
+            assert self._knowledge_collection is not None, "Knowledge collection not initialized"
+
+            results = self._knowledge_collection.query(  # type: ignore[unreachable]
                 query_texts=[query_text],
                 n_results=n_results,
                 where=where_filter,

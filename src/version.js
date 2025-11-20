@@ -59,9 +59,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.31',
-  name: 'Large Document Upload Resilience',
-  date: '2025-11-01',
+  version: 'beta-3.3.32',
+  name: 'ChatService Architecture - Phase 2+3 Decomposition',
+  date: '2025-11-20',
 };
 
 export const VERSION = CURRENT_RELEASE.version;
@@ -76,6 +76,18 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.32',
+    tagline: 'ChatService Architecture - Décomposition Phase 2+3 (MemoryService + PromptService)',
+    date: '2025-11-20',
+    changes: [
+      { type: 'quality', text: '🏗️ REFACTOR ARCHITECTURAL: Extraction de MemoryService depuis ChatService (Phase 2) - Gestion consolidée mémoire, concepts, temporal history, groupement thématique' },
+      { type: 'quality', text: '🏗️ REFACTOR ARCHITECTURAL: Extraction de PromptService depuis ChatService (Phase 3) - Chargement prompts avec versioning (v3>v2>lite), résolution config agents, application style rules tutoiement' },
+      { type: 'quality', text: '✨ Code plus maintenable: ChatService passé de ~2000 lignes monolithique → 3 services spécialisés avec responsabilités claires' },
+      { type: 'quality', text: '🔧 Cleanup imports: Suppression import Optional inutilisé dans interfaces.py (ruff clean)' },
+      { type: 'docs', text: '📚 Architecture documentée: Nouveaux services ajoutés dans docs/architecture/10-Components.md' }
+    ]
+  },
   {
     version: 'beta-3.3.31',
     tagline: 'Large Document Upload Resilience - Chunk fallback multi-phase',

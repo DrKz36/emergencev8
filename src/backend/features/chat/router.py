@@ -303,7 +303,8 @@ async def _handle_chat_message(
                 last_text = last.get("content") or last.get("message")
                 last_doc_ids_raw = last.get("doc_ids")
             else:
-                last_text = getattr(last, "content", None) or getattr(last, "message", None)
+                # mypy thinks this is unreachable but it's not (last can be a Message object)
+                last_text = getattr(last, "content", None) or getattr(last, "message", None)  # type: ignore[unreachable]
                 last_doc_ids_raw = getattr(last, "doc_ids", None)
             
             if str(last_role).lower().endswith("user") and (last_text or "").strip() == txt.strip():
