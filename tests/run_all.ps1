@@ -91,6 +91,10 @@ try {
         if ($uploadJson -is [System.Collections.IEnumerable]) {
             foreach ($entry in $uploadJson) {
                 if ($null -eq $entry) { continue }
+                if ($entry.document_id) {
+                    $uploadDocId = [string]$entry.document_id
+                    break
+                }
                 if ($entry.id) {
                     $uploadDocId = [string]$entry.id
                     break
@@ -100,6 +104,8 @@ try {
                     break
                 }
             }
+        } elseif ($uploadJson.document_id) {
+            $uploadDocId = [string]$uploadJson.document_id
         } elseif ($uploadJson.id) {
             $uploadDocId = [string]$uploadJson.id
         } elseif ($uploadJson.document -and $uploadJson.document.id) {
@@ -119,9 +125,12 @@ try {
 
 Write-Host "`n=== [5] Suppression du document cree (si detecte) ==="
 try {
-    $targetDocId = if ($uploadDocId) { $uploadDocId } else { "1" }
-    Invoke-RestMethod -Uri "$resolvedBase/api/documents/$targetDocId" -Method DELETE -Headers $commonHeaders -TimeoutSec 20 | Out-Null
-    Write-Host ("Suppression du document {0} OK (si existait)." -f $targetDocId)
+    if ($uploadDocId) {
+        Invoke-RestMethod -Uri "$resolvedBase/api/documents/$uploadDocId" -Method DELETE -Headers $commonHeaders -TimeoutSec 20 | Out-Null
+        Write-Host ("Suppression du document {0} OK." -f $uploadDocId)
+    } else {
+        Write-Host "Aucun ID detecte, suppression sautee."
+    }
 } catch {
     Write-Host "Suppression FAILED (peut etre normal si ID=1 n'existe pas): $_"
 }
