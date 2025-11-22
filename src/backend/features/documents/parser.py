@@ -28,7 +28,7 @@ def _import_pymupdf():
 def _import_pypdf_reader() -> Optional[Any]:
     """Import lazily PyPDF2.PdfReader, returns the class or None."""
     try:
-        from PyPDF2 import PdfReader  # type: ignore[import-not-found]
+        from PyPDF2 import PdfReader
         return PdfReader
     except Exception as exc:  # pragma: no cover - defensive log
         logger.error("Import PyPDF2 impossible: %s", exc, exc_info=True)

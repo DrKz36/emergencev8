@@ -2,8 +2,10 @@
 Router pour les endpoints Guardian - Auto-fix et monitoring
 """
 
-from fastapi import APIRouter, HTTPException, Header, BackgroundTasks
-from typing import Optional, Any
+from fastapi import APIRouter, HTTPException, Header, BackgroundTasks, Depends
+from typing import Optional, Any, Dict
+
+from backend.shared.dependencies import require_admin_claims
 import hashlib
 import hmac
 import json
@@ -348,12 +350,12 @@ async def scheduled_guardian_report(
 
 
 @router.post("/generate-reports")
-async def generate_guardian_reports():
+async def generate_guardian_reports(admin_claims: Dict[str, Any] = Depends(require_admin_claims)) -> Dict[str, Any]:
     """
     Endpoint pour générer rapports Guardian en temps réel (Production logs)
     Upload les rapports vers Cloud Storage pour persistence
 
-    Accessible sans auth pour l'instant (TODO: require admin)
+    Accessible uniquement par les administrateurs.
     """
     logger.info("Manual Guardian report generation triggered from Admin UI")
 
@@ -445,12 +447,12 @@ async def generate_guardian_reports():
 
 
 @router.post("/run-audit")
-async def run_guardian_audit():
+async def run_guardian_audit(admin_claims: Dict[str, Any] = Depends(require_admin_claims)) -> Dict[str, Any]:
     """
     Endpoint pour lancer audit Guardian manuellement (Admin UI)
     Charge tous les rapports disponibles depuis Cloud Storage et retourne summary
 
-    Accessible sans auth pour l'instant (TODO: require admin)
+    Accessible uniquement par les administrateurs.
     """
     logger.info("Manual Guardian audit triggered from Admin UI")
 

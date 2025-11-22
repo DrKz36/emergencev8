@@ -3,14 +3,14 @@
 > **Document de Référence Unique** - Roadmap complète features + maintenance technique
 
 **Date création:** 2025-10-23
-**Dernière mise à jour:** 2025-10-27
-**Version:** 2.1 (sync avec état réel après audit + fixes tests)
+**Dernière mise à jour:** 2025-11-20
+**Version:** 2.2 (sync avec version beta-3.3.37)
 
 ---
 
 ## 📊 ÉTAT GLOBAL DU PROJET
 
-**Version Actuelle:** `beta-3.3.0` (PWA Mode Hors Ligne - P3.10 Complétée) [Mise à jour: 2025-10-27]
+**Version Actuelle:** `beta-3.3.37` (cache SW versionné, persistance allégée localStorage) [Mise à jour: 2025-11-20]
 
 ### Métriques Globales
 
@@ -22,12 +22,15 @@ Progression Totale : [████████████████] 18/23 (7
 ⏳ À faire               : 5/23 (22%)
 ```
 
+**Mises à jour récentes (beta-3.3.35 → 3.3.37)**  
+- Service worker versionné et purge des caches (styles RAG/TTS)  
+- Precache CSS RAG/TTS + restauration complète du thème Deep Aura  
+- Persistance StateManager allégée pour éviter `QuotaExceededError` localStorage  
+- Fix WS/session (get_session_by_id) + healthcheck front fallback `/api/monitoring/health`
+
 **Production Cloud Run:**
-- ✅ **100% uptime** (monitoring 24/7)
-- ✅ **311 req/h** (moyenne dernière heure)
-- ✅ **0 errors** (logs clean)
-- ✅ **285 tests backend** passed
-- ✅ **Build frontend** OK
+- ⚠️ Dev local : AutoSync :8000 injoignable, tests smoke nécessitent backend local + creds.
+- ✅ Build frontend OK (beta-3.3.37). Backend prod stable (Cloud Run europe-west1).
 
 ---
 
@@ -142,7 +145,7 @@ Progression Totale : [████████████████] 18/23 (7
 > **Durée estimée restante:** 5-8 jours (API + Agents)
 
 #### 10. Mode Hors Ligne (PWA) ✅
-**Statut:** ✅ Complété (2025-10-27, ~1 jour)
+**Statut:** ✅ Complété (2025-10-27, ~1 jour) – QA continue (SW cache v3.3.35-3.3.37, persistance allégée)
 **Temps réel:** 1 jour (Codex 80% + Claude 20%)
 - [x] Créer `manifest.webmanifest` (PWA config)
 - [x] Service Worker cache-first strategy

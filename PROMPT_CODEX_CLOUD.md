@@ -311,17 +311,26 @@ with open('c:/dev/emergenceV8/reports/codex_summary.md', 'r', encoding='utf-8') 
 
 ## 📚 RESSOURCES CLÉS
 
+**Documentation Architecture (CRITIQUE):**
+- **`docs/architecture/00-Overview.md`** - Contexte C4 (conteneurs, invariants)
+- **`docs/architecture/10-Components.md`** - Services backend + Modules frontend (TOUS)
+- **`docs/architecture/30-Contracts.md`** - Contrats API (WebSocket + REST)
+- **`docs/architecture/ADR-*.md`** - Décisions architecturales (sessions/threads, etc.)
+- **`docs/MYPY_STYLE_GUIDE.md`** ⭐ - Guide de style mypy (type hints OBLIGATOIRES)
+
+**Synchronisation:**
 - `SYNC_STATUS.md` - Vue d'ensemble (LIRE EN PREMIER)
 - `AGENT_SYNC_CODEX.md` - TON état sync
 - `AGENT_SYNC_CLAUDE.md` - État Claude
 - `docs/passation_codex.md` - TON journal (48h)
 - `docs/passation_claude.md` - Journal Claude (contexte)
+
+**Guides & Protocoles:**
 - `CODEX_GPT_GUIDE.md` - Guide complet (local)
 - `CODEV_PROTOCOL.md` - Protocole multi-agents
 - `docs/VERSIONING_GUIDE.md` - Guide versioning complet
 - `PROMPT_CODEX_RAPPORTS.md` - Rapports Guardian
 - `docs/CODEX_SUMMARY_SETUP.md` - Setup Task Scheduler
-- `docs/architecture/` - Architecture C4
 
 ---
 
