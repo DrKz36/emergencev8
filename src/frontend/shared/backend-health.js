@@ -98,8 +98,8 @@ export async function waitForBackendReady(options = {}) {
       let response;
       try {
         const urlCandidates = backendOrigin
-          ? [`${backendOrigin}/ready`, `${backendOrigin}/api/monitoring/health`]
-          : ['/ready', '/api/monitoring/health'];
+          ? [`${backendOrigin}/ready`]
+          : ['/ready'];
 
         let lastError = null;
         for (const url of urlCandidates) {

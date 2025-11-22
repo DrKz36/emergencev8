@@ -1,4 +1,7 @@
-const CACHE_NAME = 'emergence-shell-v1';
+const params = new URL(self.location.href).searchParams;
+const CACHE_VERSION = params.get('v') || 'dev';
+const SHELL_CACHE = `emergence-shell-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `emergence-runtime-${CACHE_VERSION}`;
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -11,15 +14,17 @@ const SHELL_ASSETS = [
   '/src/frontend/styles/core/reset.css',
   '/src/frontend/styles/core/_variables.css',
   '/src/frontend/styles/main-styles.css',
+  '/src/frontend/styles/components/rag-power-button.css',
   '/src/frontend/styles/themes/dark.css',
   '/src/frontend/styles/themes/light.css',
   '/src/frontend/styles/pwa.css',
   '/assets/emergence_logo_icon.png'
 ];
+const SHELL_ASSET_SET = new Set(SHELL_ASSETS);
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(SHELL_CACHE)
       .then((cache) => cache.addAll(SHELL_ASSETS))
       .then(() => self.skipWaiting())
       .catch((error) => {
@@ -29,11 +34,12 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  const allowedCaches = new Set([SHELL_CACHE, RUNTIME_CACHE]);
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
         keys
-          .filter((key) => key !== CACHE_NAME)
+          .filter((key) => !allowedCaches.has(key))
           .map((key) => caches.delete(key))
       ))
       .then(() => self.clients.claim())
@@ -59,19 +65,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (isSameOrigin && SHELL_ASSETS.includes(url.pathname)) {
+  if (isSameOrigin && SHELL_ASSET_SET.has(url.pathname)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
+      caches.open(SHELL_CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
         if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
-          return response;
-        });
+        const response = await fetch(request);
+        if (response && response.status === 200) {
+          cache.put(request, response.clone()).catch(() => {});
+        }
+        return response;
       })
     );
     return;
@@ -80,14 +83,9 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (
-          response &&
-          response.status === 200 &&
-          isSameOrigin &&
-          response.type === 'basic'
-        ) {
+        if (response && response.status === 200 && isSameOrigin && response.type === 'basic') {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone)).catch(() => {});
         }
         return response;
       })

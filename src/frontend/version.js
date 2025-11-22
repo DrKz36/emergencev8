@@ -10,6 +10,9 @@
  * - PATCH : Bugfixes et hotfixes
  *
  * Historique :
+ * - beta-3.3.37 : Persist state light (quota localStorage) [ACTUEL]
+ * - beta-3.3.36 : SW Deep Aura cache (RAG/TTS)
+ * - beta-3.3.35 : PWA cache versionn� (RAG/TTS styles appliqu�s sans vidage cache)
  * - beta-1.0.0 : Phase P0 complétée (Quick Wins - 3/3)
  * - beta-2.0.0 : Phase P1 complétée (UX Essentielle - 3/3)
  * - beta-2.1.0 : Phase 1 & 3 Debug (Backend fixes + UI/UX improvements)
@@ -18,10 +21,10 @@
  * - beta-2.1.3 : Guardian email reports automation
  * - beta-2.1.4 : Fix 404 production (reset-password, favicon)
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
- * - beta-3.3.26 : RAG Phase 4.1 - Pattern sans accent + metadata fix [ACTUEL]
+ * - beta-3.3.26 : RAG Phase 4.1 - Pattern sans accent + metadata fix
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.22 : Fix TTS mobile portrait visibility - Override CSS important [ACTUEL]
+ * - beta-3.3.22 : Fix TTS mobile portrait visibility - Override CSS important
  * - beta-3.3.21 : Fix allowlist overwrite FINAL - Merge intelligent Firestore (union emails)
  * - beta-3.3.21 : Fix bouton TTS mobile disparu + Sync desktop/mobile
  * - beta-3.3.20 : Fix allowlist overwrite on redeploy - Preserve manually added accounts
@@ -56,8 +59,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.34',
-  name: 'Deep Aura UI Refresh & Desktop Fix',
+  version: 'beta-3.3.37',
+  name: 'Persist state light (quota localStorage)',
   date: '2025-11-20',
 };
 
@@ -73,6 +76,34 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.37',
+    tagline: 'Persist state light (quota localStorage)',
+    date: '2025-11-20',
+    changes: [
+      { type: 'fix', text: 'Prune des messages et docs avant persist pour �viter QuotaExceededError dans localStorage (limite 20 messages/agent + map threads sans payloads).' },
+      { type: 'quality', text: 'StateManager �crit un �tat all�g� (threads sans messages/docs) pour ne pas saturer la persist offline.' }
+    ]
+  },
+  {
+    version: 'beta-3.3.36',
+    tagline: 'SW Deep Aura cache (RAG/TTS)',
+    date: '2025-11-20',
+    changes: [
+      { type: 'fix', text: 'Le service worker precache explicitement rag-power-button.css pour appliquer les styles RAG/TTS sans hard refresh.' },
+      { type: 'ops', text: "Version SW incrementee (beta-3.3.36) pour forcer l'activation du nouveau cache sur les postes existants." }
+    ]
+  },
+  {
+    version: 'beta-3.3.35',
+    tagline: 'PWA cache versioning - styles RAG/TTS',
+    date: '2025-11-20',
+    changes: [
+      { type: 'fix', text: 'Service worker versionn� par release via `/sw.js?v=<version>` pour invalider automatiquement les caches CSS sans vider manuellement le cache navigateur.' },
+      { type: 'quality', text: 'Caches shell/runtime nomm�s avec la version et purge syst�matique des versions obsol�tes � l\'activation du SW.' },
+      { type: 'ux', text: 'Les boutons RAG/TTS appliquent d�s le premier chargement les styles Deep Aura en local (plus besoin de hard refresh + cache clear).' }
+    ]
+  },
   {
     version: 'beta-3.3.34',
     tagline: 'Deep Aura UI Refresh & Desktop Fix',

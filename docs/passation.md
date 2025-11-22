@@ -1,3 +1,113 @@
+## ? [2025-11-20 17:47 CET] - Agent: Codex GPT
+
+### Fichiers modifies
+- `src/backend/core/session_manager.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Ruff F841 sur `load_session_from_db` (variable `threads` non utilisee par la CI Guardian).
+- Service AutoSync `http://localhost:8000/api/sync/status` injoignable au demarrage (port ferme/backend arrete).
+
+### Travail realise
+1. Supprime l'appel `get_threads` non utilise et conserve le fallback `get_thread_any` pour eviter l'assert et supprimer l'avertissement ruff.
+2. `ruff check src/backend/core/session_manager.py` pour valider le lint.
+
+### Tests
+- `ruff check src/backend/core/session_manager.py`
+
+### Prochaines actions recommandees
+1. Relancer la CI/Guardian backend (lint + pytest) pour confirmer le passage.
+2. Relancer le service AutoSync si requis avant la prochaine session.
+
+### Blocages / Risques
+- AutoSync port 8000 injoignable au demarrage (non bloquant pour ce fix).
+
+## ? [2025-11-20 16:45 CET] - Agent: Codex GPT
+
+### Fichiers modifies
+- `src/frontend/core/state-manager.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Contexte
+- `QuotaExceededError` r�current sur `emergenceState-V14` (localStorage trop volumineux).
+
+### Travail realise
+1. Persistance all�g�e: threads map sans payloads (messages/docs) + buckets chat tronqu�s � 20 messages/agent avant `localStorage.setItem`.
+2. Version bump `beta-3.3.37` avec patch notes/changelog align�s (fix quota localStorage).
+
+### Tests
+- `npm run build` (warning import dynamique admin connu).
+
+### Prochaines actions recommandees
+1. Rafra�chir l'app pour appliquer l'�criture all�g�e; la taille dans `Application > Storage` doit rester faible et supprimer les erreurs quota.
+
+### Blocages / Risques
+- Aucun.
+
+
+## ? [2025-11-20 16:25 CET] - Agent: Codex GPT
+
+### Fichiers modifies
+- `sw.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Contexte
+- Styles RAG/TTS toujours absents au premier chargement; besoin de forcer le nouveau cache SW.
+
+### Travail realise
+1. Ajout de `rag-power-button.css` dans le precache SW et bump version `beta-3.3.36` pour forcer la prise en compte sur les postes caches.
+2. Patch notes/changelog alignes sur 3.3.36 (Deep Aura cache).
+
+### Tests
+- `npm run build` (warning import dynamique admin connu).
+
+### Prochaines actions recommandees
+1. Rafraichir le front pour que le SW 3.3.36 s'active; verifier les styles RAG/TTS sans hard refresh.
+2. Traiter le QuotaExceededError localStorage (StateManager) si le probleme persiste.
+
+### Blocages / Risques
+- Quota localStorage atteint chez l'utilisateur (logs StateManager), non adresse ici.
+
+
+## ? [2025-11-20 16:30 CET] - Agent: Codex GPT
+
+### Fichiers modifies
+- `sw.js`
+- `src/frontend/features/pwa/sync-manager.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+
+### Contexte
+- Styles RAG/TTS désactivés au premier chargement tant que l'ancien cache du service worker n'était pas vidé manuellement.
+
+### Travail realise
+1. Service worker appelé avec la version (`/sw.js?v=<version>`) + caches shell/runtime nommés par version pour invalider automatiquement les CSS; purge des anciens caches à l'activation.
+2. Fix backend Documents: ordre des paramètres dans `router.py` (request avant depends) pour supprimer le SyntaxError au démarrage.
+3. Version bump `beta-3.3.35` avec patch notes synchros (front/back) + changelog dédié.
+
+### Tests
+- `npm run build` (warning existant sur import dynamique admin)
+
+### Prochaines actions recommandees
+1. Recharger l'app pour forcer le nouveau SW et vérifier les styles RAG/TTS sans vider le cache navigateur.
+2. Contrôler sur un poste avec ancien cache que `emergence-shell-<version>` / `emergence-runtime-<version>` remplacent le cache `v1`.
+
+### Blocages / Risques
+- AutoSync (`http://localhost:8000/api/sync/status`) injoignable lors du check initial (backend non lancé).
+
+
 ## ✅ [2025-11-20 15:05 CET] - Agent: Codex GPT
 
 ### Fichiers modifiés

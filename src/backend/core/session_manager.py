@@ -469,23 +469,9 @@ class SessionManager:
         
         # 1. Tentative de chargement depuis la table 'threads' (Nouvelle architecture)
         # On cherche un thread associé à ce session_id
-        # Note: souvent thread_id == session_id, mais on utilise get_threads avec session_id pour être sûr
+        # Note: souvent thread_id == session_id; on passe par get_thread_any faute de user_id disponible ici
         try:
-            threads = await queries.get_threads(
-                self.db_manager, 
-                session_id=session_id, 
-                user_id=None, # On ne filtre pas par user_id ici pour le chargement système, ou on devrait ?
-                              # load_session_from_db est souvent appelé avec un ID précis.
-                              # Pour l'instant on passe user_id=None mais get_threads exige user_id...
-                              # Attends, get_threads lève une erreur si user_id est None.
-                              # On doit récupérer le user_id ou utiliser une méthode qui bypass la sécurité si c'est interne.
-                              # queries.get_thread_any est fait pour ça (fallback interne).
-            )
-            # Ah, get_threads exige user_id. get_thread_any aussi a un fallback mais check user_id d'abord.
-            # Si on ne connait pas le user_id, on ne peut pas utiliser get_threads facilement sans modifier queries.
-            # Mais on a get_thread_any qui fait "SELECT * FROM threads WHERE id = ?" en fallback.
-            # Essayons de charger par ID direct (si session_id == thread_id)
-            
+            # get_threads exige user_id; on utilise le fallback interne get_thread_any.
             thread_row = await queries.get_thread_any(self.db_manager, session_id)
             
             # Si pas trouvé par ID direct, on ne peut pas facilement chercher par session_id sans user_id 

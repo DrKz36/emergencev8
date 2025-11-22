@@ -7,6 +7,75 @@
 
 ---
 
+## ✅ [2025-11-20 16:10 CET] Onboarding Gemini Pro - 3ème agent dans l'équipe
+
+### Contexte
+Intégration de Gemini Pro comme 3ème agent dans l'équipe de développement collaboratif multi-agents Emergence V8. Gemini apporte expertise spécifique sur Google Cloud Platform, optimisation performance, monitoring, tests end-to-end et recherche.
+
+### Fichiers créés
+- `GEMINI.md` - Configuration complète Gemini Pro (style CLAUDE.md)
+- `AGENT_SYNC_GEMINI.md` - Fichier de synchronisation Gemini
+- `docs/passation_gemini.md` - Journal de passation Gemini (48h max)
+
+### Fichiers modifiés
+- `SYNC_STATUS.md` - Ajout Gemini dans toutes les sections (tableau, activités, tâches, docs, checklist)
+- `AGENT_SYNC_CLAUDE.md` - Entrée de cette session d'onboarding
+
+### Zones d'expertise Gemini Pro
+- 🚀 **Google Cloud Platform natif** (Cloud Run, Vertex AI, GCS, Firestore, IAM, Secret Manager, Logging, Monitoring)
+- 📊 **Performance & optimisation** (profiling cProfile/py-spy, caching Redis/Memcached, load testing Locust/k6)
+- 🧪 **Testing & quality** (E2E Playwright/Puppeteer, chaos engineering, benchmarking ARE/Gaia2)
+- ☁️ **DevOps & CI/CD** (GitHub Actions, Docker optimisation, monitoring et alerting, IaC)
+- 🔍 **Research & analysis** (veille techno, audit sécurité dépendances, competitive analysis)
+- 🖼️ **Multimodal** (si activé - traitement images/PDFs, extraction texte)
+
+### Tâches prioritaires suggérées pour Gemini
+- ⏳ **P3.12: Benchmarking Performance** (profiling backend, load testing, optimisation SQL/vector store)
+- ⏳ **P3.13: Auto-scaling Agents** (Vertex AI pour auto-scaling, monitoring GCP native, alerting automatique)
+- ⏳ **Monitoring GCP** (dashboards Cloud Monitoring, alerting sur latence/erreurs/OOM, logs structurés)
+- ⏳ **Tests end-to-end manquants** (Playwright pour workflow complet, chaos engineering pour résilience)
+- ⏳ **Audit sécurité et dépendances** (npm audit, safety Python, Snyk/Trivy pour vulnérabilités)
+
+### Structure 3 agents (bénéfices)
+- ✅ **Zéro conflit merge** (fichiers séparés par agent: AGENT_SYNC_*.md, passation_*.md)
+- ✅ **Spécialisation expertise** (Claude: backend/archi, Codex: frontend/UX, Gemini: GCP/perf/monitoring)
+- ✅ **Coordination optimale** (chaque agent voit ce que font les autres via SYNC_STATUS.md)
+- ✅ **Rotation auto 48h** (passation légère, archives pour historique long terme)
+
+### Prochaines actions recommandées
+
+**Pour Gemini (première session):**
+1. Lire `GEMINI.md` en entier (15 min)
+2. Lire docs architecture obligatoires (AGENTS_CHECKLIST.md, 00-Overview.md, 10-Components.md, 30-Contracts.md, MYPY_STYLE_GUIDE.md)
+3. Lire `SYNC_STATUS.md` + `AGENT_SYNC_CLAUDE.md` + `AGENT_SYNC_CODEX.md` (comprendre contexte actuel)
+4. Configurer environnement local (venv Python + Node.js 18+)
+5. Analyser état production GCP:
+   - Logs: `gcloud logging read "resource.type=cloud_run_revision" --limit 50`
+   - Healthcheck: `curl https://emergence-app-486095406755.europe-west1.run.app/ready`
+   - Métriques Cloud Run (latence, erreurs, memory, CPU)
+6. Identifier opportunités d'optimisation performance (profiling, caching, requêtes lentes)
+7. Prendre en charge P3.12 (Benchmarking) ou P3.13 (Auto-scaling)
+
+**Pour Claude/Codex:**
+- Lire `GEMINI.md` pour comprendre zones d'expertise Gemini (10 min)
+- Solliciter Gemini pour tâches liées à GCP, performance, monitoring, tests E2E
+- Continuer coordination via fichiers séparés (zéro conflit)
+
+### Tests
+- N/A (initialisation documentation uniquement, pas de changement de code)
+
+### Blockers
+- Aucun. Gemini est prêt à démarrer dès sa première session réelle.
+
+### Notes techniques
+- Structure fichiers séparés garantit zéro conflit merge entre 3 agents
+- Gemini peut modifier n'importe quel fichier (autonomie totale) mais spécialisation recommandée pour efficacité
+- Versioning obligatoire pour tout changement de code (même règle pour les 3 agents)
+- Ton de communication direct et cash (même pour Gemini, pas de corporate bullshit)
+- Guardian hooks Git automatiques s'appliquent aussi à Gemini (pre-commit, post-commit, pre-push)
+
+---
+
 ## ✅ [2025-11-20 17:30 CET] Refactoring Architecture ChatService Phase 2+3 - v3.3.32
 
 ### Contexte

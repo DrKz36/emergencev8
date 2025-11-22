@@ -60,10 +60,10 @@ async def list_documents_alias(
 
 @router.post("/upload", status_code=201)
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     session: deps.SessionContext = Depends(deps.get_session_context),
     service: DocumentService = Depends(_get_document_service),
-    request: Optional[Request] = None,
 ) -> Dict[str, Any]:
     supported_types = [".pdf", ".txt", ".docx"]
     filename = file.filename or ""
