@@ -350,7 +350,7 @@ async def scheduled_guardian_report(
 
 
 @router.post("/generate-reports")
-async def generate_guardian_reports(admin_claims: Dict[str, Any] = Depends(require_admin_claims)):
+async def generate_guardian_reports(admin_claims: Dict[str, Any] = Depends(require_admin_claims)) -> Dict[str, Any]:
     """
     Endpoint pour générer rapports Guardian en temps réel (Production logs)
     Upload les rapports vers Cloud Storage pour persistence
@@ -447,7 +447,7 @@ async def generate_guardian_reports(admin_claims: Dict[str, Any] = Depends(requi
 
 
 @router.post("/run-audit")
-async def run_guardian_audit(admin_claims: Dict[str, Any] = Depends(require_admin_claims)):
+async def run_guardian_audit(admin_claims: Dict[str, Any] = Depends(require_admin_claims)) -> Dict[str, Any]:
     """
     Endpoint pour lancer audit Guardian manuellement (Admin UI)
     Charge tous les rapports disponibles depuis Cloud Storage et retourne summary

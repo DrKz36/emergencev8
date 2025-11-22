@@ -1,2 +1,1 @@
-src\backend\features\documents\parser.py:31: error: Unused "type: ignore" comment  [unused-ignore]
-Found 1 error in 1 file (checked 143 source files)
+Success: no issues found in 143 source files
