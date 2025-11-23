@@ -5,3 +5,7 @@
 
 Fichiers concernés :
 - `src/backend/features/documents/parser.py`
+
+## Maintenance 2025-11-23
+
+- Nettoyage lint (`Optional` supprimé dans `src/backend/features/documents/router.py`) sans changement de contrat ni de comportement API (endpoints GET/POST/DELETE inchangés, cf. `docs/architecture/30-Contracts.md`).

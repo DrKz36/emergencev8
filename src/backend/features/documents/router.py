@@ -2,7 +2,7 @@
 # V2.2 - Safe resolver for get_document_service + alias sans slash
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Awaitable, Callable, cast, Optional
+from typing import Any, Dict, List, Awaitable, Callable, cast
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
 from fastapi.responses import FileResponse
