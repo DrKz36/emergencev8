@@ -170,14 +170,30 @@ export class OfflineSyncManager {
     try {
       const swUrl = `/sw.js?v=${encodeURIComponent(VERSION || 'dev')}`;
       this.registration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
-      if (this.registration?.waiting) {
-        this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      }
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        try {
+          window.location.reload();
+        } catch {
+          // best effort reload
+        }
+      });
+
+      const sendSkipWaiting = (reg) => {
+        if (reg?.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      };
+
+      sendSkipWaiting(this.registration);
+      this.registration?.update?.();
+
       this.registration?.addEventListener?.('updatefound', () => {
         const installing = this.registration?.installing;
         if (!installing) return;
         installing.addEventListener('statechange', () => {
           if (installing.state === 'installed' && navigator.serviceWorker?.controller) {
+            sendSkipWaiting(this.registration);
             this.eventBus.emit?.('ui:toast', {
               kind: 'info',
               text: 'Une mise à jour hors ligne est disponible. Rechargez pour appliquer.',
