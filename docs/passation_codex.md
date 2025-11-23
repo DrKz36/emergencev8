@@ -5,6 +5,38 @@
 
 ---
 
+## [2025-11-23 04:58 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- (SW référencé via version bump)
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Les styles RAG/TTS ne se rafraîchissent qu’après un vidage manuel du cache : le SW restait sur `beta-3.3.37`. Bump de version pour forcer l’invalidation des caches shell/runtime et livrer les assets CSS récents.
+
+### Travail réalisé
+1. Incrémenté la version vers `beta-3.3.38` (src/version.js, src/frontend/version.js, package.json) + patch notes/changelog.
+2. Confirmé le build Vite (`npm run build`) pour générer les assets versionnés ; le SW est servi via `/sw.js?v=beta-3.3.38` (cache bust automatique).
+3. Sync journaux (AGENT_SYNC_CODEX.md, passation_codex.md).
+
+### Tests
+- `npm run build` : OK
+
+### Travail de Claude Code pris en compte
+- Aucun impact backend ; seulement versioning/front PWA.
+
+### Prochaines actions recommandées
+1. Recharger l’app sans vider le cache pour vérifier que les styles RAG/TTS sont bien appliqués (nouveau cache SW).
+2. Si persistance du souci, envisager un `clients.claim()` + toast update-ready plus visible (déjà présent via SKIP_WAITING).
+
+### Blocages
+- AutoSync :8000 reste absent (non bloquant pour ce fix).
+
 ## [2025-11-23 04:13 CET] - Agent: Codex GPT
 
 ### Fichiers modifiés

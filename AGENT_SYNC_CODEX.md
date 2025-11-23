@@ -1,3 +1,27 @@
+## Session COMPLETED (2025-11-23 04:58 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- (SW référencé via version bump)
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+- Bump version en `beta-3.3.38` pour invalider les caches SW (shell/runtime) et appliquer les styles RAG/TTS/mobile sans vider le cache. PWA enregistrée via `/sw.js?v=beta-3.3.38` et patch notes/changelog synchronisés.
+- Build frontend Vite ok pour livrer les assets versionnés.
+
+### Tests
+- `npm run build` : OK
+
+### Next steps
+1. Recharger l'app (sans vider cache) pour valider que les styles RAG/TTS s'appliquent bien avec la nouvelle version SW.
+
+### Blockers
+- Aucun (AutoSync :8000 toujours signalé KO côté backend logs, non bloquant pour ce fix).
+
 ## Session COMPLETED (2025-11-23 04:13 CET) - Agent : Codex GPT
 
 ### Files touched

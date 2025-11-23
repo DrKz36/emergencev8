@@ -31,6 +31,16 @@
 
 - Toujours versionné via `/sw.js?v=<version>` et caches `emergence-shell/runtime-<version>` ; ajout du CSS RAG/TTS dans la liste pré-cache.
 
+## [beta-3.3.38] - 2025-11-23
+
+### ?? Correctifs
+
+- Invalidation forcée des caches SW (shell/runtime) pour appliquer les styles RAG/TTS et le layout mobile sans vidage manuel.
+
+### ??? Technique
+
+- Bump version PWA (`/sw.js?v=beta-3.3.38`) pour recréer les caches et activer `SKIP_WAITING` dès l'installation.
+
 ## [beta-3.3.35] - 2025-11-20
 
 ### ?? Correctifs
@@ -2297,4 +2307,3 @@ python check_cockpit_data.py
 ---
 
 **Dernière mise à jour** : 2025-10-10
-
