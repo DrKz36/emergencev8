@@ -11,6 +11,18 @@ from .backfill import run_user_scope_backfill
 logger = logging.getLogger(__name__)
 
 TABLE_DEFINITIONS = [
+    # -- sessions (DEPRECATED/REMOVED) --
+    """
+    CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        session_data TEXT,
+        metadata TEXT,
+        summary TEXT
+    );
+    """,
     # -- coûts --
     """
     CREATE TABLE IF NOT EXISTS costs (

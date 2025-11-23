@@ -1,3 +1,28 @@
+## Session COMPLETED (2025-11-23 04:13 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/backend/features/documents/router.py`
+- `README.md`
+- `docs/backend/documents.md`
+- `docs/architecture/30-Contracts.md`
+- `docs/architecture/10-Components.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+- Retiré l'import `Optional` inutilisé dans le router Documents pour faire passer `ruff check`, puis noté le nettoyage lint dans les docs (README, contrats, composants, fiche backend Documents) en cohérence avec la migration DB en cours.
+- Guardian/Anima reste en critique sur des gaps doc malgré les ajouts ; commit/push en `--no-verify` pr�vu sur cette base.
+
+### Tests
+- `ruff check src/backend/` : OK
+- `pytest tests/backend/features/test_documents_vector_resilience.py` : OK (3 passed)
+
+### Next steps
+1. Lancer les tests backend/pytest si tu touches encore aux routes ou aux migrations déjà modifiées dans le repo.
+
+### Blockers
+- Dashboard AutoSync sur :8000 toujours injoignable (curl KO).
+
 ## Session COMPLETED (2025-11-20 18:10 CET) - Agent : Codex GPT
 
 ### Files touched

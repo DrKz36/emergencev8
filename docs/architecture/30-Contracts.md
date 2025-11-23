@@ -124,6 +124,7 @@
 - `GET /api/documents` → `{ total, items:[{id,name,size,state,tokens,created_at}] }`.
 - `POST /api/documents/upload` (multipart) → 201 (`{ id, name, chunks }`).
 - `DELETE /api/documents/{id}` → 204 (purge embeddings + metadata).
+- Note maintenance (2025-11-23) : nettoyage lint du router Documents (`src/backend/features/documents/router.py`), aucun changement de payload/statut.
 
 ### Dashboard / coûts
 - `GET /api/dashboard/costs/summary` → `{ day, week, month, total, sessions, documents }`.

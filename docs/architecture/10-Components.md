@@ -420,6 +420,7 @@ scrape_configs:
 **PROBLÈME LEGACY RÉSOLU (2025-10-18)** : Le système utilise DEUX tables différentes avec des noms similaires qui peuvent prêter à confusion.
 
 **Note maintenance (2025-11-20)** : fallback explicite vers la table legacy `sessions` (user_id normalise en string) pour eviter les plantages WS lors du handshake si un thread/session legacy est rencontre.
+**Note maintenance (2025-11-23)** : migration `20251120_migrate_sessions_to_threads.sql` (`src/backend/core/database/migrations`) + ajustements `src/backend/core/database/schema.py` en cours de review (alignement schema DB), aucun nouvel endpoint expose.
 
 #### Table `sessions` (Threads de conversation)
 
