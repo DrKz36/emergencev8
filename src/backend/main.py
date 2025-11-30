@@ -6,6 +6,15 @@ import os
 import re
 import sys
 from pathlib import Path
+
+# Charger les variables d'environnement depuis .env (dev local)
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path)
+except ImportError:
+    pass  # python-dotenv non installé, variables déjà dans l'environnement
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Callable, cast
 from fastapi import FastAPI, Request
@@ -493,9 +502,23 @@ def create_app() -> FastAPI:
         logger.warning(f"Usage tracking middleware non activé: {e}")
 
     # CORS d'abord...
+    # Sécurité : allow_origins=["*"] + allow_credentials=True est une vulnérabilité
+    # On utilise des origines explicites via env ou fallback dev-friendly
+    cors_origins_raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    if cors_origins_raw.strip():
+        cors_origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
+    else:
+        # Fallback dev: localhost + Cloud Run URL connues
+        cors_origins = [
+            "http://localhost:8000",
+            "http://localhost:3000",
+            "http://127.0.0.1:8000",
+            "http://127.0.0.1:3000",
+            "https://emergence-app-486095406755.europe-west1.run.app",
+        ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

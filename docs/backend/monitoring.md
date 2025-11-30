@@ -1,8 +1,8 @@
 # Monitoring Feature - Advanced Health Checks
 
 **Module**: `src/backend/features/monitoring/router.py`
-**Version**: P1.5 (Émergence V8)
-**Dernière mise à jour**: 2025-10-11
+**Version**: P1.6 (Émergence V8)
+**Dernière mise à jour**: 2025-11-30
 
 ## Vue d'ensemble
 
@@ -15,6 +15,18 @@ Le système de monitoring repose sur 3 couches:
 1. **Health Checks**: Probes K8s (liveness, readiness) + healthchecks détaillés
 2. **Métriques Application**: Statistiques endpoints, erreurs, latences
 3. **Monitoring Sécurité/Performance**: Détection patterns suspects, slow queries, temps IA
+
+---
+
+## Authentification & Sécurité (mise à jour 2025-11-30)
+
+- Tous les endpoints `/api/monitoring/**` (metrics, sécurité, performance, `/api/system/info`, etc.) exigent désormais un **JWT admin** dans l’en-tête `Authorization: Bearer <token>`.
+- La dépendance FastAPI `verify_admin()` :
+  - récupère `AuthService` via le container DI du backend ;
+  - vérifie la signature du token (`AuthService.verify_token`) ;
+  - refuse l’accès (`401`) si le token est manquant/invalide, ou (`403`) si `claims.role != "admin"`.
+- Les requêtes non authentifiées sont loggées (`warning`) pour audit et retour d’état (ex: tentative d’accès par un non-admin).
+- Les probes publiques restent ouvertes : `/api/monitoring/health*`, `/health/liveness`, `/health/readiness`.
 
 ---
 
@@ -258,7 +270,7 @@ readinessProbe:
 
 ## Endpoints Métriques Admin
 
-**Authentification requise**: Tous les endpoints ci-dessous nécessitent `verify_admin()` (stub actuel, à remplacer par vraie auth).
+**Authentification requise**: `Authorization: Bearer <JWT admin>` (implémentation complète depuis novembre 2025).
 
 ### 5. `/api/monitoring/metrics` - Métriques Application
 
@@ -651,6 +663,11 @@ SUSPICIOUS_PATTERN_THRESHOLD = 10  # Alerting après 10 patterns
 ---
 
 ## Changelog
+
+### P1.6 - 2025-11-30
+- 🔐 `verify_admin()` effectif sur tous les endpoints `/api/monitoring/**` (tokens JWT obligatoires, rôle `admin` requis)
+- 🔏 `/api/system/info` protégé (plus accessible publiquement)
+- 📓 Documentation mise à jour (section Authentification & Sécurité + rappels d’usage)
 
 ### P2.1.2 - 2025-10-17
 - **Synchronisation versioning** : `version` maintenant `beta-2.1.2` (ligne 38)

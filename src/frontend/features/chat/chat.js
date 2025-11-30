@@ -461,20 +461,55 @@ export default class ChatModule {
 
   async _primeThreadsDataForModal() {
     try {
+      const existingMap = this.state.get('threads.map') || {};
+      const existingOrder = this.state.get('threads.order') || [];
       const [activeList, archivedList] = await Promise.all([
         fetchThreads({ type: 'chat', limit: 50 }),
         fetchArchivedThreads({ type: 'chat', limit: 50 }),
       ]);
-      const existingMap = this.state.get('threads.map') || {};
       const map = {};
       const order = [];
       for (const thread of Array.isArray(activeList) ? activeList : []) {
         const id = thread?.id;
         if (!id) continue;
         const existing = existingMap[id] || { id, messages: [], docs: [] };
-        map[id] = { ...existing, id, thread };
+        map[id] = { ...existing, id, thread, messages: existing.messages || [], docs: existing.docs || [] };
         order.push(id);
       }
+
+      // Si aucune donn�e r�seau n'est disponible, conserver le cache existant pour laisser le bouton "Reprendre"
+      const hasFetchedThreads = order.length > 0;
+      if (!hasFetchedThreads && Object.keys(existingMap).length > 0) {
+        const preservedOrder = Array.isArray(existingOrder)
+          ? existingOrder.filter((id) => !!existingMap[id])
+          : [];
+        const fallbackOrder = preservedOrder.length ? preservedOrder : Object.keys(existingMap);
+        this.state.set('threads.map', existingMap);
+        if (fallbackOrder.length) {
+          this.state.set('threads.order', fallbackOrder);
+        }
+        this.state.set('threads.status', 'ready');
+        this.state.set('threads.error', null);
+        const counts = {
+          active: fallbackOrder.length,
+          archived: 0,
+        };
+        this.state.set('threads.counts', counts);
+        this.eventBus?.emit?.(EVENTS.THREADS_LIST_UPDATED || 'threads:list_updated', {
+          items: fallbackOrder.map((id) => existingMap[id]?.thread || { id }),
+          counts,
+          fetchedAt: Date.now(),
+          source: 'chat-modal-cache',
+        });
+        this.eventBus?.emit?.(EVENTS.THREADS_READY || 'threads:ready', {
+          items: fallbackOrder.map((id) => existingMap[id]?.thread || { id }),
+          counts,
+          fetchedAt: Date.now(),
+          source: 'chat-modal-cache',
+        });
+        return;
+      }
+
       const fetchedAt = Date.now();
       this.state.set('threads.map', map);
       this.state.set('threads.order', order);
@@ -2428,4 +2463,3 @@ export default class ChatModule {
     });
   }
 }
-

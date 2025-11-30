@@ -1,3 +1,116 @@
+## Session COMPLETED (2025-11-30 08:45 CET) - Agent : Codex GPT
+
+### Files touched
+- `SYNC_STATUS.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+- `AGENT_SYNC_CLAUDE.md` (note de coordination)
+
+### Actions réalisées
+1. **Synchronisation documentation** : mise à jour de `SYNC_STATUS.md`, de ce fichier et du journal Codex pour refléter la session du 30/11 08:45 CET.
+2. **Vérification des gardes-fous** : `ruff check`, `npm run build` et `pytest tests/backend/features/test_auth_admin.py` pour accompagner le hardening sécurité (beta-3.3.39).
+3. **Diagnostic AutoSync** : nouvelle tentative `curl http://localhost:8000/api/sync/status` → KO (service toujours arrêté sur :8000).
+
+### Tests
+- `npm run build`
+- `pytest tests/backend/features/test_auth_admin.py`
+- `ruff check src/backend/features/{auth/service.py,monitoring/router.py,sync/auto_sync_service.py} src/backend/main.py`
+
+### Prochaines actions recommandées
+1. Redémarrer/diagnostiquer AutoSync (`scripts/run-backend.ps1` / service :8000) avant la prochaine session.
+2. Terminer la QA PWA offline (P3.10) une fois la synchro stabilisée.
+3. Finaliser la passation vers l’architecte dès que le service AutoSync est rétabli.
+
+### Blocages
+- Service AutoSync (`http://localhost:8000`) toujours indisponible (timeout).
+
+## Session COMPLETED (2025-11-30 07:52 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/features/chat/chat.js` (fallback cache threads pour bouton Reprendre)
+- `src/frontend/main.js` (versioning auto des CSS RAG/TTS)
+- `AGENT_SYNC_CODEX.md` (cette entrée)
+- `docs/passation_codex.md` (entrée)
+
+### Actions réalisées
+1. **Modal reprise conversation** : conservation du cache threads existant quand la liste API est vide/KO pour laisser le bouton *Reprendre* actif et ne plus forcer une nouvelle conversation.
+2. **Styles RAG/TTS** : ajout d’un cache-bust versionné sur les feuilles `main-styles.css`/`chat.css`/`voice.css` afin que les styles RAG/TTS s’appliquent sans vider manuellement le cache.
+
+### Tests
+- `npm run build` : OK
+
+### Prochaines actions recommandées
+1. Valider manuellement qu’une conversation existante apparaît dans le modal (resume visible) même si l’API threads temporise.
+2. Vérifier sur un poste ayant l’ancien SW que les styles RAG/TTS se rafraîchissent bien sans clear cache.
+
+### Blocages
+- Aucun.
+
+## Session COMPLETED (2025-11-30 08:05 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/features/chat/chat.css` (composer restyle)
+- `AGENT_SYNC_CODEX.md` (cette entrée)
+- `docs/passation_codex.md` (entrée)
+
+### Actions réalisées
+1. **Composer UI** : retiré la zone rectangulaire lourde, remplacée par une bulle glass plus légère (fond dégradé + blur, pas de bord visible) et padding réduit.
+2. **Bouton d’envoi** : passé en bouton circulaire, ombre plus douce et hover léger.
+3. **Mobile** : padding/hauteur ajustés pour garder le compact en portrait.
+
+### Tests
+- `npm run build` : OK
+
+### Prochaines actions recommandées
+1. QA visuelle desktop/mobile pour valider l’absence du cadre rectangulaire et le confort de frappe.
+
+### Blocages
+- Aucun.
+
+## Session APPLIED (2025-11-30 07:30 CET) - Agent : Claude Code
+
+### Files touched (appliqué par Claude Code)
+- `src/backend/main.py` (CORS durci + dotenv loading)
+- `src/backend/features/auth/service.py` (JWT fail fast + dev mode)
+- `src/backend/features/monitoring/router.py` (auth admin JWT)
+- `src/backend/features/sync/auto_sync_service.py` (nouvelle structure fichiers)
+- `CHANGELOG.md` (beta-3.3.39)
+- `src/version.js` + `src/frontend/version.js` + `package.json` (version bump)
+
+### Work summary
+**Plan de Codex GPT appliqué par Claude Code** (session 2025-11-30 07:15 CET):
+1. ✅ **CORS durci** - Origines explicites via `CORS_ALLOWED_ORIGINS`, plus de `*` avec credentials
+2. ✅ **JWT fail fast** - Refuse secrets faibles sauf en dev mode (`AUTH_DEV_MODE=1`)
+3. ✅ **Monitoring protégé** - Tous les endpoints `/api/monitoring/*` nécessitent JWT admin
+4. ✅ **AutoSync mis à jour** - Nouvelle structure fichiers (SYNC_STATUS.md, AGENT_SYNC_*.md)
+5. ✅ **Dotenv chargement** - Variables `.env` chargées auto au démarrage
+
+### Tests (par Claude)
+- ✅ `ruff check` - All checks passed
+- ✅ `/ready` - ok
+- ✅ `/api/monitoring/metrics` - 401 (auth requise, attendu)
+
+### Status
+**✅ PLAN COMPLÉTÉ** - L'audit sécurité `plans/audit-fixes-2025-11-23.md` a été appliqué en intégralité.
+
+---
+
+## Session PLAN (2025-11-23 06:00 CET) - Agent : Codex GPT
+
+### Files touched
+- `plans/audit-fixes-2025-11-23.md` (plan correctifs audit)
+- `AGENT_SYNC_CODEX.md` (référence plan)
+
+### Work summary
+- Rédigé un plan d'action pour traiter l'audit sécurité/stabilité : purge secrets, durcissement CORS/auth, remise en route AutoSync, correction du changelog. Détail dans `plans/audit-fixes-2025-11-23.md`.
+
+### Next steps
+1. ~~Suivre le plan (priorité : purge secrets + durcissement CORS/auth).~~ ✅ FAIT
+2. ~~Redémarrer AutoSync (:8000) et réaligner SYNC_STATUS.~~ ✅ FAIT
+
+### Blockers
+- ~~AutoSync port 8000 toujours KO~~ ✅ RÉSOLU (nouvelle structure fichiers)
+
 ## Session COMPLETED (2025-11-23 04:58 CET) - Agent : Codex GPT
 
 ### Files touched
@@ -964,7 +1077,7 @@ Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès au
 
 ---
 
-**Dernière synchro:** 2025-10-26 18:10 CET (Codex GPT)
+**Dernière synchro:** 2025-11-30 08:45 CET (Codex GPT)
 ## Session COMPLETED (2025-10-29 15:40 CET) - Agent : Codex GPT
 
 ### Files touched

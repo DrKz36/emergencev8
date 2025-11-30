@@ -32,8 +32,9 @@ Le système de synchronisation automatique permet aux différents agents (Claude
 
 Le service surveille en permanence les fichiers critiques :
 
-- `AGENT_SYNC.md` - État de synchronisation
-- `docs/passation.md` - Journal de passation
+- `SYNC_STATUS.md` - Vue d'ensemble synchronisation
+- `AGENT_SYNC_CLAUDE.md` / `AGENT_SYNC_CODEX.md` / `AGENT_SYNC_GEMINI.md` - suivis agents
+- `docs/passation_claude.md` / `docs/passation_codex.md` - journaux 48h
 - `AGENTS.md` - Configuration agents
 - `CODEV_PROTOCOL.md` - Protocole de collaboration
 - `docs/architecture/*.md` - Documentation architecture
@@ -74,7 +75,7 @@ sync_consolidation_duration_seconds  # Durée des consolidations
 
 ### 3. Rapport de consolidation
 
-Chaque consolidation génère un rapport automatique ajouté à `AGENT_SYNC.md` :
+Chaque consolidation génère un rapport automatique ajouté à `SYNC_STATUS.md` :
 
 ```markdown
 ## 🤖 Synchronisation automatique
@@ -86,10 +87,11 @@ Chaque consolidation génère un rapport automatique ajouté à `AGENT_SYNC.md` 
 **Changements consolidés** : 5 événements sur 3 fichiers
 
 **Fichiers modifiés** :
-- **AGENT_SYNC.md** : 2 événement(s)
+- **AGENT_SYNC_CLAUDE.md** : 2 événement(s)
   - `modified` à 2025-10-10T14:25:00 (agent: claude-code)
   - `modified` à 2025-10-10T14:28:00 (agent: codex-local)
-- **docs/passation.md** : 3 événement(s)
+- **docs/passation_claude.md** : 1 événement
+- **docs/passation_codex.md** : 2 événement(s)
   - `modified` à 2025-10-10T14:20:00 (agent: codex-cloud)
   - `modified` à 2025-10-10T14:26:00 (agent: claude-code)
   - `modified` à 2025-10-10T14:29:00 (agent: codex-local)
@@ -351,7 +353,8 @@ docker logs emergence-app | grep "Error in consolidation"
 
 ## Références
 
-- [AGENT_SYNC.md](../../AGENT_SYNC.md) - État de synchronisation
+- [SYNC_STATUS.md](../../SYNC_STATUS.md) - Vue d'ensemble synchronisation
+- [AGENT_SYNC_CLAUDE.md](../../AGENT_SYNC_CLAUDE.md) / [AGENT_SYNC_CODEX.md](../../AGENT_SYNC_CODEX.md) / [AGENT_SYNC_GEMINI.md](../../AGENT_SYNC_GEMINI.md) - Suivi agents
 - [CODEV_PROTOCOL.md](../../CODEV_PROTOCOL.md) - Protocole multi-agents
 - [Architecture mémoire](../architecture/10-Memoire.md) - Architecture système
 - [Métriques Prometheus](../monitoring/prometheus-p1-metrics.md) - Guide métriques

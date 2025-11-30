@@ -5,7 +5,7 @@
 Le module d'authentification d'ÉMERGENCE V8 gère l'authentification des utilisateurs, la gestion des sessions, les permissions basées sur les rôles, et la réinitialisation de mot de passe par email.
 
 **Version:** V2.0 (avec support email)
-**Dernière mise à jour:** Octobre 2025
+**Dernière mise à jour:** Novembre 2025 (beta-3.3.39)
 
 ## Architecture
 
@@ -323,8 +323,14 @@ CREATE TABLE auth_audit_log (
   - `email`: Email de l'utilisateur
   - `role`: Rôle (admin/member/guest)
   - `sid`: Session ID
-  - `iat`: Issued at
-  - `exp`: Expiration
+- `iat`: Issued at
+- `exp`: Expiration
+
+### Secret JWT obligatoire (Novembre 2025)
+
+- `AUTH_JWT_SECRET` doit être défini dans l'environnement (min. 32 caractères alphanumériques).  
+- Les valeurs par défaut/weak (`change-me`, `changeme`, `secret`, `test`) sont désormais refusées : **le backend ne démarre plus** pour éviter l'exposition des sessions.  
+- En mode développement (`AUTH_DEV_MODE=1`), un secret temporaire est généré automatiquement et journalisé. Ce secret est volatil et ne doit jamais être utilisé en production.
 
 ### Tokens de réinitialisation
 
@@ -452,6 +458,11 @@ Ces fonctions exécutent un `UPDATE` explicite pour garantir que `password_must_
    ```
 
 ## Changelog
+
+### V3.3.39 (Novembre 2025)
+- 🔐 Démarrage bloqué si `AUTH_JWT_SECRET` est vide/weak (`change-me`, `secret`, etc.) ; en mode dev (`AUTH_DEV_MODE=1`) un secret temporaire est généré automatiquement.
+- 🧪 Chargement automatique du fichier `.env` lors du démarrage local afin que `AUTH_DEV_MODE`/`AUTH_JWT_SECRET` soient disponibles sans configuration supplémentaire.
+- 📌 Documentation README/architecture mise à jour pour rappeler le durcissement (CORS explicites + JWT admin sur monitoring).
 
 ### V2.1.2 (Octobre 2025)
 - ✅ **FIX CRITIQUE:** Bug password_must_reset résolu définitivement
