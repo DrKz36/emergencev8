@@ -12,6 +12,8 @@ Multi agent conversation stack (Anima, Neo, Nexus) with cockpit, retrieval augme
 
 > **Note maintenance (2025-11-23)** : nettoyage lint sur le router Documents (`Optional` retir� dans `src/backend/features/documents/router.py`), aucun changement de contrat API.
 
+> **Note maintenance (2025-11-30)** : durcissement sécurité beta-3.3.39 — `AUTH_JWT_SECRET` doit être fourni (fail fast côté backend, secret temporaire uniquement quand `AUTH_DEV_MODE=1`), `main.py` charge automatiquement `.env` pour le dev local, `CORS_ALLOWED_ORIGINS` remplace le wildcard `*`, et tous les endpoints `/api/monitoring/**` (dont `/api/system/info`, métriques sécurité/perf) exigent désormais un JWT admin via `verify_admin()`.
+
 ## Features
 
 - **Multi-Agent Conversations** : Chat avec agents spécialisés (Anima, Neo, Nexus)

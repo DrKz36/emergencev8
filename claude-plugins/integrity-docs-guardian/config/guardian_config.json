@@ -190,7 +190,7 @@
     "sync_targets": [
       "package.json",
       "CHANGELOG.md",
-      "ROADMAP_OFFICIELLE.md"
+      "ROADMAP.md"
     ],
     "verify_consistency": true,
     "rollback_on_failure": true

@@ -10,11 +10,35 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.39] - 2025-11-30
+
+### 🔒 Sécurité
+
+- **CORS durci** : Remplacement de `allow_origins=["*"]` par des origines explicites via `CORS_ALLOWED_ORIGINS` ou fallback dev-friendly (localhost + Cloud Run URL).
+- **Endpoints monitoring protégés** : `/api/monitoring/*` et `/api/monitoring/system/info` nécessitent désormais un JWT admin valide (401/403 si non autorisé).
+- **JWT fail fast** : Le backend refuse de démarrer si `AUTH_JWT_SECRET` est absent ou faible ("change-me", etc.) sauf en `AUTH_DEV_MODE=1` (génère un secret temporaire).
+
+### 🛠️ Technique
+
+- Chargement automatique du `.env` via `python-dotenv` dans `main.py` pour le dev local.
+- AutoSync : Mise à jour des fichiers surveillés vers la nouvelle structure (`SYNC_STATUS.md`, `AGENT_SYNC_CLAUDE.md`, `AGENT_SYNC_CODEX.md`, `docs/passation_*.md`).
+- Changelog réordonné (beta-3.3.38 était mal placé).
+
+## [beta-3.3.38] - 2025-11-23
+
+### 🚑 Correctifs
+
+- Invalidation forcée des caches SW (shell/runtime) pour appliquer les styles RAG/TTS et le layout mobile sans vidage manuel.
+
+### 🛠️ Technique
+
+- Bump version PWA (`/sw.js?v=beta-3.3.38`) pour recréer les caches et activer `SKIP_WAITING` dès l'installation.
+
 ## [beta-3.3.37] - 2025-11-20
 
 ### 🚑 Correctifs
 
-- Allègement de la persistance locale : purge des messages/docs dans l’état sauvegardé (limite 20 messages/agent, threads sans payload) pour éviter `QuotaExceededError` sur `localStorage`.
+- Allègement de la persistance locale : purge des messages/docs dans l'état sauvegardé (limite 20 messages/agent, threads sans payload) pour éviter `QuotaExceededError` sur `localStorage`.
 
 ### 🛠️ Technique
 
@@ -25,21 +49,11 @@
 ### 🚑 Correctifs
 
 - Le service worker précache désormais `rag-power-button.css` : les styles RAG/TTS se chargent sans vider le cache navigateur.
-- Version SW incrémentée pour forcer l’activation du nouveau cache sur les clients existants.
+- Version SW incrémentée pour forcer l'activation du nouveau cache sur les clients existants.
 
 ### 🛠️ Technique
 
 - Toujours versionné via `/sw.js?v=<version>` et caches `emergence-shell/runtime-<version>` ; ajout du CSS RAG/TTS dans la liste pré-cache.
-
-## [beta-3.3.38] - 2025-11-23
-
-### ?? Correctifs
-
-- Invalidation forcée des caches SW (shell/runtime) pour appliquer les styles RAG/TTS et le layout mobile sans vidage manuel.
-
-### ??? Technique
-
-- Bump version PWA (`/sw.js?v=beta-3.3.38`) pour recréer les caches et activer `SKIP_WAITING` dès l'installation.
 
 ## [beta-3.3.35] - 2025-11-20
 

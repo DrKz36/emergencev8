@@ -101,8 +101,14 @@ class AuthService:
             payload.get("jwt_secret")
             or payload.get("secret")
             or payload.get("secret_key")
-            or "change-me"
+            or ""
         )
+        # Sécurité : refuser les secrets faibles ou absents
+        if not secret or secret in ("change-me", "changeme", "secret", "test"):
+            raise ValueError(
+                "AUTH_JWT_SECRET invalide ou absent. "
+                "Définir une clé forte (min 32 caractères) via variable d'environnement."
+            )
         issuer = payload.get("jwt_issuer") or payload.get("issuer") or "emergence.local"
         audience = (
             payload.get("jwt_audience") or payload.get("audience") or "emergence-app"
@@ -2417,9 +2423,25 @@ TRUTHY = {"1", "true", "yes", "on"}
 
 
 def build_auth_config_from_env() -> AuthConfig:
-    secret = os.getenv("AUTH_JWT_SECRET", "change-me")
-    if not secret:
-        secret = "change-me"
+    secret = os.getenv("AUTH_JWT_SECRET", "")
+    dev_mode = str(os.getenv("AUTH_DEV_MODE", "0")).strip().lower() in TRUTHY
+
+    # Sécurité : fail fast si secret absent ou faible (sauf en dev mode)
+    if not secret or secret in ("change-me", "changeme", "secret", "test"):
+        if dev_mode:
+            # En dev mode, générer un secret aléatoire pour la session
+            import secrets as secrets_mod
+            secret = secrets_mod.token_hex(32)
+            logger.warning(
+                "AUTH_JWT_SECRET absent - secret temporaire généré (DEV MODE ONLY). "
+                "NE PAS utiliser en production !"
+            )
+        else:
+            raise ValueError(
+                "AUTH_JWT_SECRET invalide ou absent. "
+                "Définir une clé forte (min 32 caractères) via variable d'environnement. "
+                "Pour le dev local, activer AUTH_DEV_MODE=1."
+            )
     issuer = os.getenv("AUTH_JWT_ISSUER", "emergence.local")
     audience = os.getenv("AUTH_JWT_AUDIENCE", "emergence-app")
     ttl_raw = os.getenv("AUTH_JWT_TTL_DAYS", "7")

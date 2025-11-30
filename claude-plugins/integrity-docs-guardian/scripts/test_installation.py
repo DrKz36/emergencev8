@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Script de test pour vérifier l'installation du système d'orchestration automatique
+Script de test pour vérifier l'installation du système Guardian v3.0
 """
 
 import sys
@@ -20,8 +20,8 @@ if sys.platform == "win32":
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 PLUGIN_DIR = REPO_ROOT / "claude-plugins" / "integrity-docs-guardian"
 SCRIPTS_DIR = PLUGIN_DIR / "scripts"
-REPORTS_DIR = PLUGIN_DIR / "reports"
-CLAUDE_COMMANDS = REPO_ROOT / ".claude" / "commands"
+REPORTS_DIR = REPO_ROOT / "reports"  # UNIFIED: All reports in repo root
+CONFIG_DIR = PLUGIN_DIR / "config"
 
 
 def check_file(file_path: Path, description: str) -> bool:
@@ -41,77 +41,99 @@ def check_dir(dir_path: Path, description: str) -> bool:
 
 
 def main():
-    """Test d'installation"""
+    """Test d'installation Guardian v3.0"""
     print("=" * 70)
-    print("🔍 TEST D'INSTALLATION - ORCHESTRATION AUTOMATIQUE v2.0.0")
+    print("🛡️  TEST D'INSTALLATION - GUARDIAN v3.0")
     print("=" * 70)
     print()
 
     checks: List[bool] = []
 
-    # 1. Scripts principaux
-    print("📁 Scripts principaux:")
+    # 1. Scripts agents principaux (REQUIS)
+    print("📁 Scripts agents (REQUIS):")
+    checks.append(check_file(SCRIPTS_DIR / "scan_docs.py", "Anima (DocKeeper) v2.0"))
     checks.append(
-        check_file(SCRIPTS_DIR / "auto_orchestrator.py", "Orchestrateur automatique")
-    )
-    checks.append(
-        check_file(SCRIPTS_DIR / "auto_update_docs.py", "Agent de mise à jour doc")
-    )
-    checks.append(check_file(SCRIPTS_DIR / "scheduler.py", "Planificateur"))
-    print()
-
-    # 2. Scripts agents existants
-    print("📁 Scripts agents:")
-    checks.append(check_file(SCRIPTS_DIR / "scan_docs.py", "Anima (DocKeeper)"))
-    checks.append(
-        check_file(SCRIPTS_DIR / "check_integrity.py", "Neo (IntegrityWatcher)")
+        check_file(SCRIPTS_DIR / "check_integrity.py", "Neo (IntegrityWatcher) v2.0")
     )
     checks.append(check_file(SCRIPTS_DIR / "check_prod_logs.py", "ProdGuardian"))
     checks.append(check_file(SCRIPTS_DIR / "generate_report.py", "Nexus (Coordinator)"))
-    checks.append(check_file(SCRIPTS_DIR / "merge_reports.py", "Merge Reports"))
+    checks.append(
+        check_file(SCRIPTS_DIR / "master_orchestrator.py", "Master Orchestrator")
+    )
     print()
 
-    # 3. Hooks Git
+    # 2. Scripts agents optionnels
+    print("📁 Scripts agents (OPTIONNELS):")
+    checks.append(check_file(SCRIPTS_DIR / "argus_analyzer.py", "Argus (DevLogs)"))
+    checks.append(check_file(SCRIPTS_DIR / "analyze_ai_costs.py", "Theia (CostWatcher)"))
+    checks.append(check_file(SCRIPTS_DIR / "auto_update_docs.py", "Auto-update docs"))
+    print()
+
+    # 3. Scripts utilitaires
+    print("📁 Scripts utilitaires:")
+    checks.append(
+        check_file(
+            SCRIPTS_DIR / "send_guardian_reports_email.py", "Email reports sender"
+        )
+    )
+    checks.append(
+        check_file(SCRIPTS_DIR / "generate_html_report.py", "HTML report generator")
+    )
+    print()
+
+    # 4. Hooks Git
     print("📁 Hooks Git:")
+    pre_commit_hook = REPO_ROOT / ".git" / "hooks" / "pre-commit"
     post_commit_hook = REPO_ROOT / ".git" / "hooks" / "post-commit"
+    pre_push_hook = REPO_ROOT / ".git" / "hooks" / "pre-push"
+    checks.append(check_file(pre_commit_hook, "Hook pre-commit"))
     checks.append(check_file(post_commit_hook, "Hook post-commit"))
+    checks.append(check_file(pre_push_hook, "Hook pre-push"))
     print()
 
-    # 4. Commandes slash
-    print("📁 Commandes slash Claude:")
-    checks.append(check_file(CLAUDE_COMMANDS / "auto_sync.md", "/auto_sync"))
-    checks.append(check_file(CLAUDE_COMMANDS / "check_docs.md", "/check_docs"))
-    checks.append(
-        check_file(CLAUDE_COMMANDS / "check_integrity.md", "/check_integrity")
-    )
-    checks.append(check_file(CLAUDE_COMMANDS / "check_prod.md", "/check_prod"))
-    checks.append(
-        check_file(CLAUDE_COMMANDS / "guardian_report.md", "/guardian_report")
-    )
-    checks.append(check_file(CLAUDE_COMMANDS / "sync_all.md", "/sync_all"))
+    # 5. Configuration
+    print("📁 Configuration:")
+    checks.append(check_file(CONFIG_DIR / "guardian_config.json", "Config Guardian"))
     print()
 
-    # 5. Documentation
+    # 6. PowerShell scripts
+    print("📁 Scripts PowerShell:")
+    checks.append(check_file(SCRIPTS_DIR / "setup_guardian.ps1", "Setup Guardian"))
+    checks.append(check_file(SCRIPTS_DIR / "run_audit.ps1", "Run Audit"))
+    checks.append(
+        check_file(
+            SCRIPTS_DIR / "guardian_monitor_with_notifications.ps1",
+            "Monitor with notifications",
+        )
+    )
+    print()
+
+    # 7. Documentation
     print("📁 Documentation:")
     checks.append(check_file(PLUGIN_DIR / "README.md", "README principal"))
-    checks.append(check_file(PLUGIN_DIR / "QUICKSTART_AUTO.md", "Guide de démarrage"))
-    checks.append(check_file(PLUGIN_DIR / "AUTO_ORCHESTRATION.md", "Doc complète"))
-    checks.append(
-        check_file(PLUGIN_DIR / "SUMMARY_AUTO_SETUP.md", "Résumé installation")
-    )
+    checks.append(check_file(PLUGIN_DIR / "QUICKSTART.md", "Guide de démarrage"))
     print()
 
-    # 6. Dossiers
+    # 8. Dossiers
     print("📁 Dossiers:")
     checks.append(check_dir(SCRIPTS_DIR, "Scripts"))
-    checks.append(check_dir(REPORTS_DIR, "Rapports"))
+    checks.append(check_dir(REPORTS_DIR, "Reports (repo root)"))
+    checks.append(check_dir(CONFIG_DIR, "Config"))
     logs_dir = PLUGIN_DIR / "logs"
     if not logs_dir.exists():
         logs_dir.mkdir(exist_ok=True)
-    checks.append(check_dir(logs_dir, "Logs (créé si nécessaire)"))
+    checks.append(check_dir(logs_dir, "Logs"))
     print()
 
-    # 7. Variables d'environnement (info seulement)
+    # 9. Fichiers sync multi-agents (NOUVEAU)
+    print("📁 Fichiers sync multi-agents:")
+    checks.append(check_file(REPO_ROOT / "SYNC_STATUS.md", "Vue d'ensemble"))
+    checks.append(check_file(REPO_ROOT / "AGENT_SYNC_CLAUDE.md", "Sync Claude"))
+    checks.append(check_file(REPO_ROOT / "AGENT_SYNC_CODEX.md", "Sync Codex"))
+    checks.append(check_file(REPO_ROOT / "AGENT_SYNC_GEMINI.md", "Sync Gemini"))
+    print()
+
+    # 10. Variables d'environnement (info seulement)
     print("📋 Variables d'environnement (configuration):")
     auto_update_docs = os.environ.get("AUTO_UPDATE_DOCS", "0")
     auto_apply = os.environ.get("AUTO_APPLY", "0")
@@ -142,19 +164,24 @@ def main():
         print("🎉 INSTALLATION COMPLÈTE ET FONCTIONNELLE !")
         print()
         print("💡 Prochaines étapes:")
-        print("   1. Tester l'orchestration:")
+        print("   1. Lancer un audit global:")
         print(
-            "      python claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py"
+            "      pwsh -File claude-plugins/integrity-docs-guardian/scripts/run_audit.ps1"
         )
         print()
-        print("   2. Activer le hook post-commit (optionnel):")
-        print("      export AUTO_UPDATE_DOCS=1")
+        print("   2. (Re)configurer les hooks Git:")
+        print(
+            "      pwsh -File claude-plugins/integrity-docs-guardian/scripts/setup_guardian.ps1"
+        )
         print()
         print("   3. Consulter la documentation:")
-        print("      claude-plugins/integrity-docs-guardian/QUICKSTART_AUTO.md")
+        print("      claude-plugins/integrity-docs-guardian/README.md")
+        return 0
+    elif failed_checks <= 3:
+        print("⚠️  Installation presque complète - quelques éléments optionnels manquent")
         return 0
     else:
-        print("⚠️ Installation incomplète - vérifier les éléments manquants ci-dessus")
+        print("❌ Installation incomplète - vérifier les éléments manquants ci-dessus")
         return 1
 
 

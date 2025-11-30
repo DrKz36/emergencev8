@@ -23,7 +23,11 @@ if sys.platform == "win32":
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 REPORTS_DIR = REPO_ROOT / "reports"  # UNIFIED: All reports in repo root
 DOCS_DIR = REPO_ROOT / "docs"
-AGENT_SYNC_FILE = REPO_ROOT / "AGENT_SYNC.md"
+# NOUVELLE STRUCTURE: Fichiers séparés par agent (plus de AGENT_SYNC.md unique)
+SYNC_STATUS_FILE = REPO_ROOT / "SYNC_STATUS.md"
+AGENT_SYNC_CLAUDE = REPO_ROOT / "AGENT_SYNC_CLAUDE.md"
+AGENT_SYNC_CODEX = REPO_ROOT / "AGENT_SYNC_CODEX.md"
+AGENT_SYNC_GEMINI = REPO_ROOT / "AGENT_SYNC_GEMINI.md"
 
 
 def load_report(report_name: str) -> Dict[str, Any]:
@@ -72,8 +76,8 @@ def update_agent_sync_production(prod_report: Dict[str, Any]) -> List[str]:
 
         updates.append(
             {
-                "file": str(AGENT_SYNC_FILE),
-                "section": "🚀 Déploiement Cloud Run",
+                "file": str(SYNC_STATUS_FILE),
+                "section": "Production Status",
                 "content": update_text,
                 "priority": "HIGH" if status == "CRITICAL" else "MEDIUM",
             }
@@ -140,8 +144,8 @@ def update_agent_sync_from_integrity(integrity_report: Dict[str, Any]) -> List[s
 
             updates.append(
                 {
-                    "file": str(AGENT_SYNC_FILE),
-                    "section": "🔧 Architecture Technique",
+                    "file": str(SYNC_STATUS_FILE),
+                    "section": "Integrity Issues",
                     "content": update_text,
                     "priority": "CRITICAL",
                 }

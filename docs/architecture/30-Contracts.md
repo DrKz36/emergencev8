@@ -102,7 +102,7 @@
 ### Monitoring et Healthchecks
 - `GET /api/monitoring/health` → 200 `{ status: "healthy", timestamp, version }` (version: `beta-2.1.3`)
 - `GET /api/monitoring/health/detailed` → 200 `{ status, timestamp, system: { platform, python_version, cpu_percent, memory, disk } }`
-- `GET /api/system/info` → 200 Informations système complètes pour About page
+- `GET /api/system/info` → 200 Informations système complètes pour About page *(JWT admin requis depuis 2025-11-30, voir `verify_admin()`)*.
   ```json
   {
     "version": { "backend": "beta-2.1.3", "python": "3.11.5", "environment": "production" },
@@ -114,6 +114,7 @@
   }
   ```
   Version backend via `BACKEND_VERSION` env var (défaut: `beta-2.1.3`), synchronisée avec `package.json` et `index.html`.
+- `GET /api/monitoring/metrics*`, `/api/monitoring/security/*`, `/api/monitoring/performance/*` → **Authorization: Bearer <JWT admin> obligatoire** (401/403 sinon).
 
 ### Mémoire
 - `POST /api/memory/tend-garden` (`{ thread_id?, mode? }`) → 202 + job async ; renvoie état courant (`{ status, last_run_at, summary_id }`).

@@ -3,7 +3,7 @@
 ## Backend
 - **`main.py`** : instancie `ServiceContainer`, exécute migrations SQLite, monte routers REST (`/api/*`) et WS (`/ws/{session_id}`), gère middleware deny-list + statiques.
 - **`containers.py`** : centralise la DI (DB, `SessionManager`, `ConnectionManager`, `VectorService`, `MemoryAnalyzer`, `ChatService`, `DocumentService`, `DebateService`, `DashboardService`).
-- **`features/auth/service.py`** : gère l'allowlist email, génère les JWT locaux (HS256, 7 jours), trace les sessions (`auth_sessions`), expose la révocation + métadonnées OTP ; bootstrap l'allowlist depuis `AUTH_ALLOWLIST_SEED` / `_PATH` lors du démarrage Cloud Run ; le helper `dev_login` n'est accessible que quand `AUTH_DEV_MODE=1` (sinon 404 côté router). **V2.1.2:** Fix critique `password_must_reset` - SQL CASE statement dans `_upsert_allowlist()` (lignes 1218-1222) + UPDATE explicites dans `change_own_password()` / `set_allowlist_password()` garantissent que les membres ne sont plus forcés de réinitialiser après chaque login.
+- **`features/auth/service.py`** : gère l'allowlist email, génère les JWT locaux (HS256, 7 jours), trace les sessions (`auth_sessions`), expose la révocation + métadonnées OTP ; bootstrap l'allowlist depuis `AUTH_ALLOWLIST_SEED` / `_PATH` lors du démarrage Cloud Run ; le helper `dev_login` n'est accessible que quand `AUTH_DEV_MODE=1` (sinon 404 côté router). **V2.1.2:** Fix critique `password_must_reset` - SQL CASE statement dans `_upsert_allowlist()` (lignes 1218-1222) + UPDATE explicites dans `change_own_password()` / `set_allowlist_password()` garantissent que les membres ne sont plus forcés de réinitialiser après chaque login. **V3.3.39:** démarrage impossible sans `AUTH_JWT_SECRET` fort (fallback `change-me` supprimé) ; en dev (`AUTH_DEV_MODE=1`), un secret aléatoire temporaire est généré et loggé pour éviter le crash local.
 - **V3.3.5:** lorsque AUTH_ALLOWLIST_SNAPSHOT_BACKEND=firestore, AuthService.bootstrap() restaure l'allowlist depuis uth_config/allowlist et chaque mutation (ajout, reset mot de passe, 2FA, revoke) publie un snapshot pour que les comptes survivent aux redéploiements Cloud Run.
 - **`features/auth/router.py`** : endpoints login/logout (`POST /api/auth/*`), opérations admin (allowlist, sessions), route DEV (`POST /api/auth/dev/login`) qui renvoie 404 tant que `AUTH_DEV_MODE=0`, et branche le rate limiting côté FastAPI.
 - **`features/auth/rate_limiter.py`** : garde-fou IP+email (fenêtre glissante), utilisé par le router pour limiter les tentatives.
@@ -15,7 +15,7 @@
 - **`features/documents/service.py`** : upload, parsing (`ParserFactory`), chunking sémantique (limite 2 paragraphes par chunk configurable via `DOCUMENTS_MAX_PARAGRAPHS_PER_CHUNK`), vectorisation, suppression (purge embeddings associés).
 - **`features/debate/service.py`** : gère `debate:create`, chaîne les tours agents, isole les contextes, publie `ws:debate_*`.
 - **`features/dashboard/service.py`** : agrège coûts (jour/semaine/mois/total), sessions actives, documents traités.
-- **`features/monitoring/router.py`** : healthchecks (`/api/monitoring/health`, `/api/monitoring/health/detailed`) et endpoint system info (`/api/system/info`) pour About page. **V2.1.3:** Version synchronisée `beta-2.1.3` via `BACKEND_VERSION` env var (lignes 38, 384), exposée dans tous les healthchecks et system info.
+- **`features/monitoring/router.py`** : healthchecks (`/api/monitoring/health`, `/api/monitoring/health/detailed`) et endpoint system info (`/api/system/info`) pour About page. **V2.1.3:** Version synchronisée `beta-2.1.3` via `BACKEND_VERSION` env var (lignes 38, 384), exposée dans tous les healthchecks et system info. **V3.3.39:** tous les endpoints `/api/monitoring/**` (metrics, sécurité, performance, `/api/system/info`) appellent `verify_admin()` → requièrent un JWT admin (401/403 sinon).
 - **`features/dashboard/timeline_service.py`** (V3.4 - Phase 1.2) : service dédié aux graphiques temporels du Cockpit (activité, coûts, tokens par jour), gère les valeurs NULL avec pattern COALESCE robuste, isolation multi-utilisateurs (user_id) + filtrage optionnel par session (X-Session-Id), périodes flexibles (7j, 30j, 90j, 1 an).
 - **`features/dashboard/admin_service.py`** (V3.4 - Phase 1.3-1.5) : service admin pour statistiques globales, breakdown utilisateurs avec LEFT JOIN flexible, métriques temporelles avec fallbacks robustes, nouveau endpoint breakdown détaillé des coûts par utilisateur/module.
 - **`features/benchmarks/service.py`** : orchestre le `BenchmarksRunner`, charge le catalogue de scénarios (ARE/Gaia2), persiste les runs en SQLite et (optionnellement) Firestore (`EMERGENCE_FIRESTORE_PROJECT`, `GOOGLE_APPLICATION_CREDENTIALS`) et expose les endpoints `/api/benchmarks/*` (fallback SQLite forcé si `EDGE_MODE=1`). **V3.1.3:** Méthode `calculate_temporal_ndcg()` pour évaluer la qualité d'un classement avec pénalisation temporelle exponentielle (formule nDCG@k temporelle : DCG^time@k = Σ (2^rel_i - 1) * exp(-λ * Δt_i) / log2(i+1)), utilisée pour mesurer l'impact des boosts fraîcheur/entropie dans le moteur de ranking ; implémentation complète dans `features/benchmarks/metrics/temporal_ndcg.py` avec 18 tests unitaires.
@@ -305,12 +305,12 @@
 
 **Fichier** : `src/backend/features/sync/router.py`
 
-**Responsabilité** : Auto-sync inter-agents (AGENT_SYNC.md updates automatiques).
+**Responsabilité** : Auto-sync inter-agents (mise à jour `SYNC_STATUS.md` + `AGENT_SYNC_*.md` + journaux de passation).
 
 **Fonctionnalités** :
-- Monitoring fichiers AGENT_SYNC.md, docs/passation.md
+- Monitoring fichiers `SYNC_STATUS.md`, `AGENT_SYNC_CLAUDE.md`, `AGENT_SYNC_CODEX.md`, `AGENT_SYNC_GEMINI.md`, `docs/passation_claude.md`, `docs/passation_codex.md`, `AGENTS.md`, `CODEV_PROTOCOL.md`, `docs/architecture/*.md`, `ROADMAP.md`
 - Notifications WebSocket quand changements détectés
-- Auto-update documentation
+- Auto-update documentation + rapports consolidés injectés dans `SYNC_STATUS.md`
 
 **Endpoints** :
 - `GET /api/sync/status` - Status synchronisation

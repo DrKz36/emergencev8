@@ -22,10 +22,41 @@ import { showWelcomePopupIfNeeded } from './shared/welcome-popup.js';
 import { ProactiveHintsUI } from './features/memory/ProactiveHintsUI.js';
 import { OfflineSyncManager } from './features/pwa/sync-manager.js';
 import './core/version-display.js'; // Auto-update version displays
+import { VERSION } from './version.js';
 
 const storeAuthToken = typeof storeAuthTokenImpl === 'function' ? storeAuthTokenImpl : () => null;
 const clearStoredAuth = typeof clearAuthImpl === 'function' ? clearAuthImpl : () => {};
 const getIdToken = typeof getIdTokenImpl === 'function' ? getIdTokenImpl : () => null;
+
+function applyStylesheetVersioning() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  const version = VERSION || 'dev';
+  const selectors = [
+    'link[href*="main-styles.css"]',
+    'link[href*="chat.css"]',
+    'link[href*="voice.css"]',
+  ];
+  const seen = new Set();
+  selectors.forEach((selector) => {
+    const links = document.querySelectorAll(selector);
+    links.forEach((link) => {
+      if (!link || !link.getAttribute) return;
+      const href = link.getAttribute('href');
+      if (!href || seen.has(href)) return;
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.searchParams.get('v') === version) return;
+        url.searchParams.set('v', version);
+        link.setAttribute('href', url.pathname + url.search);
+        seen.add(href);
+      } catch (error) {
+        console.warn('[Main] Unable to version stylesheet', href, error);
+      }
+    });
+  });
+}
+
+applyStylesheetVersioning();
 
 /* ---------------- WS-first Chat dedupe & reroute (main.js patch V1) ----------------
    - Empêche le doublon d'affichage du message utilisateur.

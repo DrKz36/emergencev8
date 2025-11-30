@@ -1,9 +1,13 @@
 """
 Router pour les endpoints de monitoring et healthcheck
+
+SÉCURITÉ: Les endpoints sensibles (/metrics, /security/*, /performance/*)
+nécessitent une authentification admin via JWT.
 """
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Any
 import psutil
 import platform
@@ -19,11 +23,58 @@ from backend.core.monitoring import (
 
 logger = logging.getLogger(__name__)
 
+# Security bearer token scheme
+security = HTTPBearer(auto_error=False)
 
-# Stub pour verify_admin - à remplacer par la vraie dépendance
-def verify_admin():
-    """Placeholder - À remplacer par la vraie authentification admin"""
-    return {"role": "admin"}
+
+async def verify_admin(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> dict[str, Any]:
+    """
+    Vérifie que l'utilisateur est authentifié avec un token JWT valide
+    et possède le rôle admin.
+
+    Raises:
+        HTTPException 401: Token manquant ou invalide
+        HTTPException 403: Utilisateur non-admin
+    """
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Token d'authentification requis pour accéder aux endpoints monitoring",
+        )
+
+    token = credentials.credentials
+
+    # Récupérer AuthService depuis le container DI
+    container = getattr(request.app.state, "service_container", None)
+    if not container:
+        raise HTTPException(status_code=500, detail="Service container unavailable")
+
+    try:
+        auth_service = container.auth_service()
+    except Exception as e:
+        logger.error(f"AuthService not available: {e}")
+        raise HTTPException(status_code=500, detail="Auth service unavailable")
+
+    try:
+        claims = await auth_service.verify_token(token)
+    except Exception as e:
+        logger.warning(f"Token verification failed for monitoring access: {e}")
+        raise HTTPException(status_code=401, detail="Token invalide ou expiré")
+
+    role = claims.get("role", "member")
+    if role != "admin":
+        logger.warning(
+            f"Non-admin user {claims.get('email')} attempted monitoring access"
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Accès réservé aux administrateurs",
+        )
+
+    return {"role": role, "email": claims.get("email")}
 
 
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
@@ -444,7 +495,10 @@ async def readiness_probe(request: Request) -> dict[str, Any] | JSONResponse:
 
 
 @router.get("/system/info")
-async def get_system_info(request: Request) -> dict[str, Any]:
+async def get_system_info(
+    request: Request,
+    _: dict[str, Any] = Depends(verify_admin),
+) -> dict[str, Any]:
     """
     Get comprehensive system information for About page.
 

@@ -45,16 +45,20 @@ def determine_overall_status(anima_report: Dict, neo_report: Dict) -> str:
     anima_status = anima_report.get("status", "unknown")
     neo_status = neo_report.get("status", "unknown")
 
-    # Critical from Neo takes precedence
-    if neo_status == "critical":
+    # Critical from either agent takes precedence
+    if neo_status == "critical" or anima_status == "critical":
         return "critical"
 
     # Warning from either agent
-    if neo_status == "warning" or anima_status == "needs_update":
+    if neo_status == "warning" or anima_status == "warning" or anima_status == "needs_update":
         return "warning"
 
     # If both are OK
     if anima_status == "ok" and neo_status == "ok":
+        return "ok"
+
+    # If one is OK and the other is unknown, return OK (partial data)
+    if anima_status == "ok" or neo_status == "ok":
         return "ok"
 
     # Default

@@ -10,7 +10,8 @@
  * - PATCH : Bugfixes et hotfixes
  *
  * Historique :
- * - beta-3.3.38 : SW cache bust (RAG/TTS styles auto-apply) [ACTUEL]
+ * - beta-3.3.39 : Audit sécurité (CORS, JWT fail fast, monitoring auth) [ACTUEL]
+ * - beta-3.3.38 : SW cache bust (RAG/TTS styles auto-apply)
  * - beta-3.3.37 : Persist state light (quota localStorage)
  * - beta-3.3.36 : SW Deep Aura cache (RAG/TTS)
  * - beta-3.3.35 : PWA cache versionn� (RAG/TTS styles appliqu�s sans vidage cache)
@@ -63,9 +64,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.38',
-  name: 'SW cache bust (RAG/TTS styles auto-apply)',
-  date: '2025-11-23',
+  version: 'beta-3.3.39',
+  name: 'Audit sécurité (CORS, JWT, monitoring)',
+  date: '2025-11-30',
 };
 
 export const VERSION = CURRENT_RELEASE.version;

@@ -124,13 +124,17 @@ class AutoSyncService:
         self.consolidation_interval = timedelta(minutes=consolidation_interval_minutes)
 
         # Fichiers critiques à surveiller (relatifs à repo_root)
+        # Nouvelle structure multi-agents (2025-10-26)
         self.watched_files = [
-            "AGENT_SYNC.md",
-            "docs/passation.md",
+            "SYNC_STATUS.md",  # Vue d'ensemble sync
+            "AGENT_SYNC_CLAUDE.md",  # État Claude Code
+            "AGENT_SYNC_CODEX.md",  # État Codex GPT
+            "docs/passation_claude.md",  # Journal Claude
+            "docs/passation_codex.md",  # Journal Codex
             "AGENTS.md",
             "CODEV_PROTOCOL.md",
             "docs/architecture/00-Overview.md",
-            "docs/architecture/10-Memoire.md",
+            "docs/architecture/10-Components.md",
             "docs/architecture/30-Contracts.md",
             "ROADMAP.md",
         ]
@@ -352,7 +356,7 @@ class AutoSyncService:
                 return "architecture"
             if "passation" in rel_path:
                 return "passation"
-            if rel_path == "AGENT_SYNC.md":
+            if rel_path in ("SYNC_STATUS.md", "AGENT_SYNC_CLAUDE.md", "AGENT_SYNC_CODEX.md"):
                 return "sync"
             return "docs"
         return "other"
@@ -428,7 +432,7 @@ class AutoSyncService:
             # Générer rapport de consolidation
             report = await self._generate_consolidation_report(trigger)
 
-            # Écrire le rapport dans AGENT_SYNC.md (section automatique)
+            # Écrire le rapport dans SYNC_STATUS.md (section automatique)
             await self._write_consolidation_report(report)
 
             # Réinitialiser l'état
@@ -474,15 +478,15 @@ class AutoSyncService:
         }
 
     async def _write_consolidation_report(self, report: dict[str, Any]) -> None:
-        """Écrit le rapport de consolidation dans AGENT_SYNC.md."""
-        agent_sync_path = self.repo_root / "AGENT_SYNC.md"
+        """Écrit le rapport de consolidation dans SYNC_STATUS.md."""
+        sync_status_path = self.repo_root / "SYNC_STATUS.md"
 
-        if not agent_sync_path.exists():
-            logger.warning("AGENT_SYNC.md not found, skipping report write")
+        if not sync_status_path.exists():
+            logger.warning("SYNC_STATUS.md not found, skipping report write")
             return
 
         # Lire le contenu actuel
-        content = agent_sync_path.read_text(encoding="utf-8")
+        content = sync_status_path.read_text(encoding="utf-8")
 
         # Chercher la section "## 🤖 Synchronisation automatique"
         section_marker = "## 🤖 Synchronisation automatique"
@@ -515,9 +519,9 @@ class AutoSyncService:
             new_content = content + report_text
 
         # Écrire le nouveau contenu
-        agent_sync_path.write_text(new_content, encoding="utf-8")
+        sync_status_path.write_text(new_content, encoding="utf-8")
 
-        logger.info("Consolidation report written to AGENT_SYNC.md")
+        logger.info("Consolidation report written to SYNC_STATUS.md")
 
     def _format_events_for_markdown(
         self, events_by_file: dict[str, list[dict[str, Any]]]
